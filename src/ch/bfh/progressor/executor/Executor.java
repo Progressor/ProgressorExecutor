@@ -15,5 +15,7 @@ public final class Executor {
 	public static void main(String... args) {
 
 		System.err.println("Not yet implemented.");
+
+		//TODO: support platforms
 	}
 }
