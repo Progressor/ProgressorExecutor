@@ -4,8 +4,12 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gen-java" isTestSource="false" generated="true" />
+      <sourceFolder url="file://$MODULE_DIR$/resources" type="java-resource" />
+      <excludeFolder url="file://$MODULE_DIR$/thrift" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="org.apache.thrift:libthrift:0.9.3" level="project" />
   </component>
 </module>
