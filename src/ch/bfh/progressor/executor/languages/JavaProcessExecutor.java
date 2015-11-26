@@ -92,7 +92,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 					outStm.useDelimiter(CodeExecutor.END_OF_LINE + CodeExecutor.END_OF_LINE);
 					while (outStm.hasNext()) {
 						String res = outStm.next();
-						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res));
+						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(2)));
 					}
 				}
 
@@ -174,7 +174,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
 				sb.append(')');
 
-			sb.append(" ? \"OK\" : \"ERR\", res); }").append(CodeExecutor.END_OF_LINE);
+			sb.append(" ? \"OK\" : \"ER\", res); }").append(CodeExecutor.END_OF_LINE);
 		}
 
 		return sb.toString();
