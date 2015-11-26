@@ -6,13 +6,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
-import ch.bfh.progressor.executor.Helpers;
 import ch.bfh.progressor.executor.Result;
 import ch.bfh.progressor.executor.TestCase;
 import ch.bfh.progressor.executor.executorConstants;
@@ -39,14 +39,8 @@ public class JavaProcessExecutor implements CodeExecutor {
 	/** Maximum time to use for for the compilation of the user code (in seconds). */
 	public static final int COMPILE_TIMEOUT_SECONDS = 3;
 
-	/** Maximum time for the compilation to finish after 'soft' destruction (in seconds). */
-	public static final int COMPILE_DESTROY_TIMEOUT_SECONDS = 2;
-
 	/** Maximum time to use for the execution of the user code (in seconds). */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
-
-	/** Maximum time for the execution to finish after 'soft' destruction (in seconds). */
-	public static final int EXECUTION_DESTROY_TIMEOUT_SECONDS = 3;
 
 	@Override
 	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
@@ -58,18 +52,15 @@ public class JavaProcessExecutor implements CodeExecutor {
 			if (!dir.exists() && !dir.mkdirs())
 				throw new ExecutorException("Could not create a temporary directory for the user code.");
 
-			List<String> code = Files.readAllLines(JavaProcessExecutor.CODE_TEMPLATE, JavaProcessExecutor.CODE_CHARSET);
-			for (int i = 0; i < code.size(); i++)
-				if (code.get(i).endsWith(JavaProcessExecutor.CODE_CUSTOM_FRAGMENT)) {
-					code.remove(i);
-					code.add(i, codeFragment);
+			StringBuilder code = new StringBuilder(new String(Files.readAllBytes(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET));
 
-				} else if (code.get(i).endsWith(JavaProcessExecutor.TEST_CASES_FRAGMENT)) {
-					code.remove(i);
-					code.add(i, this.getTestCaseSignatures(testCases));
-				}
+			int fragStart = code.indexOf(JavaProcessExecutor.CODE_CUSTOM_FRAGMENT);
+			code.replace(fragStart, fragStart + JavaProcessExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
-			Files.write(Paths.get(dir.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), code);
+			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT);
+			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
+
+			Files.write(Paths.get(dir.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), Collections.singletonList(code));
 
 			Runtime rnt = Runtime.getRuntime();
 			Process cmp = rnt.exec("javac *.java", null, dir);
@@ -78,41 +69,41 @@ public class JavaProcessExecutor implements CodeExecutor {
 					throw new ExecutorException("Could not compile the user code.");
 
 			} else {
-				cmp.destroy();
-
-				if (!cmp.waitFor(JavaProcessExecutor.COMPILE_DESTROY_TIMEOUT_SECONDS, TimeUnit.SECONDS))
-					cmp.destroyForcibly();
+				//cmp.destroy();
+				cmp.destroyForcibly();
 
 				throw new ExecutorException("Could not compile the user code in time.");
 			}
 
-			for (int i = 0; i < testCases.size(); i++)
-				try {
-					Process exec = rnt.exec(String.format("java %s %d", JavaProcessExecutor.CODE_CLASS_NAME, i), null, dir);
-					if (exec.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-						if (exec.exitValue() != 0)
-							throw new ExecutorException("Could not execute the user code.");
+			try {
+				Process exec = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, dir);
+				if (exec.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+					if (exec.exitValue() != 0)
+						throw new ExecutorException("Could not execute the user code.");
 
-					} else {
-						exec.destroy();
+				} else {
+					//exec.destroy();
+					exec.destroyForcibly();
 
-						if (!exec.waitFor(JavaProcessExecutor.EXECUTION_DESTROY_TIMEOUT_SECONDS, TimeUnit.SECONDS))
-							exec.destroyForcibly();
-
-						throw new ExecutorException("Could not execute the user code in time.");
-					}
-
-					try (Scanner outStm = new Scanner(exec.getInputStream(), JavaProcessExecutor.CODE_CHARSET.name())) {
-						String res = outStm.useDelimiter("\\A").next();
-						ret.add(new Result().setSuccess("OK".equals(res)).setResult(res));
-					}
-
-				} catch (Exception ex) {
-					ret.add(new Result().setSuccess(false).setResult(Helpers.getExceptionMessage("Could not invoke the user code.", ex)));
+					throw new ExecutorException("Could not execute the user code in time.");
 				}
 
+				try (Scanner outStm = new Scanner(exec.getInputStream(), JavaProcessExecutor.CODE_CHARSET.name())) {
+					outStm.useDelimiter(CodeExecutor.END_OF_LINE + CodeExecutor.END_OF_LINE);
+					while (outStm.hasNext()) {
+						String res = outStm.next();
+						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res));
+					}
+				}
+
+			} catch (Exception ex) {
+				Result res = new Result().setSuccess(false).setResult(CodeExecutor.getExceptionMessage("Could not invoke the user code.", ex));
+				for (int i = ret.size(); i < testCases.size(); i++)
+					ret.add(res);
+			}
+
 		} catch (Throwable ex) {
-			Result res = new Result().setSuccess(false).setResult(Helpers.getExceptionMessage("Could not load the user code.", ex));
+			Result res = new Result().setSuccess(false).setResult(CodeExecutor.getExceptionMessage("Could not load the user code.", ex));
 			for (int i = ret.size(); i < testCases.size(); i++)
 				ret.add(res);
 
@@ -139,30 +130,52 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 	private String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
-		String nl = String.format("%n");
-
-		StringBuilder sb = new StringBuilder("switch (index) {").append(nl);
-		for (int i = 0; i < testCases.size(); i++) {
-			TestCase testCase = testCases.get(i);
-
-			sb.append("case ").append(i).append(": ");
-			sb.append(JavaProcessExecutor.CODE_CLASS_NAME).append(".assertResult(inst.").append(testCase.getFunctionName()).append("(");
+		StringBuilder sb = new StringBuilder();
+		for (TestCase testCase : testCases) {
 
 			if (testCase.getInputValuesSize() != testCase.getInputTypesSize())
 				throw new ExecutorException("The same number of input values & types have to be defined..");
 
+			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getOutputTypesSize() != 1)
+				throw new ExecutorException("Exactly one output value has to be defined for a java sample.");
+
+			String oType = testCase.getOutputTypes().get(0);
+			sb.append("{ ").append(this.getJavaClass(oType)).append(" res = ").append("inst.").append(testCase.getFunctionName()).append('(');
 			for (int j = 0; j < testCase.getInputValuesSize(); j++) {
 				if (j > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(j), testCase.getInputTypes().get(j)));
 			}
+			sb.append("); ");
 
-			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getOutputTypesSize() != 1)
-				throw new ExecutorException("Exactly one output value has to be defined for a java sample.");
+			sb.append("System.out.printf(\"%s:%s%n%n\", res ");
+			switch (oType) {
+				case executorConstants.TypeCharacter:
+				case executorConstants.TypeBoolean:
+				case executorConstants.TypeByte:
+				case executorConstants.TypeShort:
+				case executorConstants.TypeInteger:
+				case executorConstants.TypeLong:
+				case executorConstants.TypeSingle:
+				case executorConstants.TypeDouble:
+					sb.append(" == ");
+					break;
 
-			sb.append("), ").append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), testCase.getOutputTypes().get(0))).append(");");
-			sb.append(" break;").append(nl);
+				case executorConstants.TypeString:
+				case executorConstants.TypeDecimal:
+					sb.append(".equals(");
+					break;
+
+				default:
+					throw new ExecutorException(String.format("Value type %s is not supported.", oType));
+			}
+
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType));
+
+			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
+				sb.append(')');
+
+			sb.append(" ? \"OK\" : \"ERR\", res); }").append(CodeExecutor.END_OF_LINE);
 		}
-		sb.append("}");
 
 		return sb.toString();
 	}

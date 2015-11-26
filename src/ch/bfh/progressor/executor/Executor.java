@@ -25,8 +25,8 @@ public class Executor {
 	public static void main(String... args) {
 
 		try {
+			System.out.println("Accepting requests...");
 			new Executor().startService(Executor.DEFAULT_SERVER_PORT);
-			System.out.println("Server started. Accepting requests:");
 
 		} catch (TException ex) {
 			System.err.println("Could not successfully start server.");
@@ -36,17 +36,17 @@ public class Executor {
 
 	public void startService(int port) throws TException {
 
-		TServerTransport transport = new TServerSocket(port);
-		TProcessor processor = new ExecutorService.Processor<>(this::execute);
-		this.server = new TThreadPoolServer(new TThreadPoolServer.Args(transport).processor(processor));
+		try (TServerTransport transport = new TServerSocket(port)) {
+			TProcessor processor = new ExecutorService.Processor<>(Executor::execute);
+			this.server = new TThreadPoolServer(new TThreadPoolServer.Args(transport).processor(processor));
 
-		this.server.serve();
+			this.server.serve();
+		}
 	}
 
-	private List<Result> execute(String language, String fragment, List<TestCase> testCases) throws TException {
+	private static List<Result> execute(String language, String fragment, List<TestCase> testCases) throws TException {
 
-		System.out.printf("%s[language=%s, %d testCases]: %s...%n", LocalDateTime.now(),
-											language, testCases.size(), testCases.size() > 0 ? testCases.get(0) : null);
+		System.out.printf("%s[language=%s, %d testCases]: %s...%n", LocalDateTime.now(), language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null);
 
 		if (!"java".equals(language)) throw new TException("Unhandled language.");
 

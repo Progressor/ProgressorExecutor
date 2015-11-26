@@ -32,7 +32,12 @@ struct TestCase {
 
 struct Result {
 	1: bool success,
-	2: string result
+	2: string result,
+	3: PerformanceIndicators performance
+}
+
+struct PerformanceIndicators {
+	1: i64 runtimeMilliSeconds
 }
 
 service ExecutorService {

@@ -12,6 +12,11 @@ import java.util.List;
 public interface CodeExecutor {
 
 	/**
+	 * String to indicate the end of a line.
+	 */
+	String END_OF_LINE = String.format("%n");
+
+	/**
 	 * Execute a provided code fragment.
 	 *
 	 * @param codeFragment code fragment to execute
@@ -32,5 +37,22 @@ public interface CodeExecutor {
 	default List<Result> execute(String codeFragment, TestCase... testCases) {
 
 		return this.execute(codeFragment, Arrays.asList(testCases));
+	}
+
+	/**
+	 * Get a human-readable exception message.
+	 *
+	 * @param message top-level message
+	 * @param ex      thrown exception to get message from
+	 *
+	 * @return human-readable exception message
+	 */
+	static String getExceptionMessage(String message, Throwable ex) {
+
+		StringBuilder sb = new StringBuilder(message);
+		do sb.append(CodeExecutor.END_OF_LINE).append('>').append(ex);
+		while ((ex = ex.getCause()) != null);
+
+		return sb.toString();
 	}
 }
