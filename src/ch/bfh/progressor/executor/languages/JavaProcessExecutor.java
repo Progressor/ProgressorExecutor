@@ -92,7 +92,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 					outStm.useDelimiter(CodeExecutor.END_OF_LINE + CodeExecutor.END_OF_LINE);
 					while (outStm.hasNext()) {
 						String res = outStm.next();
-						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(2)));
+						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(3)));
 					}
 				}
 
