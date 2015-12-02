@@ -3,6 +3,8 @@ package ch.bfh.progressor.executor;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import ch.bfh.progressor.executor.thrift.Result;
+import ch.bfh.progressor.executor.thrift.TestCase;
 
 /**
  * Interface to be implemented by all code execution engines.

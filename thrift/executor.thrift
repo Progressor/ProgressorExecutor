@@ -4,7 +4,7 @@
 # .\thrift\thrift-0.9.3.exe -gen java .\thrift\executor.thrift
 # .\thrift\thrift-0.9.3.exe -gen js:node .\thrift\executor.thrift
 
-namespace java ch.bfh.progressor.executor
+namespace java ch.bfh.progressor.executor.thrift
 
 const string TypeContainerArray = "array"; #e.g. array<string>
 const string TypeContainerList = "list"; #e.g. list<string>

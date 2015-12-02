@@ -15,12 +15,13 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
-import ch.bfh.progressor.executor.PerformanceIndicators;
-import ch.bfh.progressor.executor.Result;
-import ch.bfh.progressor.executor.TestCase;
-import ch.bfh.progressor.executor.executorConstants;
+import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
+import ch.bfh.progressor.executor.thrift.Result;
+import ch.bfh.progressor.executor.thrift.TestCase;
+import ch.bfh.progressor.executor.thrift.executorConstants;
 
 /**
  * Code execution engine for java code.
@@ -36,14 +37,19 @@ public class JavaProcessExecutor implements CodeExecutor {
 	public static final Charset CODE_CHARSET = Charset.forName("UTF-8");
 
 	/**
+	 * Unique name of the language this executor supports.
+	 */
+	public static final String CODE_LANGUAGE = "java";
+
+	/**
 	 * Path to the file containing the code template to put the fragment into.
 	 */
-	protected static final Path CODE_TEMPLATE = Paths.get("resources", "java", "template-process.java");
+	protected static final Path CODE_TEMPLATE = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "template-process.java");
 
 	/**
 	 * Path to the file containing the blacklist for this language.
 	 */
-	protected static final Path CODE_BLACKLIST = Paths.get("resources", "java", "blacklist.txt");
+	protected static final Path CODE_BLACKLIST = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "blacklist.txt");
 
 	/**
 	 * Name of the class as defined in the template.
@@ -70,12 +76,16 @@ public class JavaProcessExecutor implements CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
+	private static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
+
+	private static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
+
 	private List<String> blacklist;
 	private StringBuilder template;
 
 	@Override
 	public String getLanguage() {
-		return "java";
+		return JavaProcessExecutor.CODE_LANGUAGE;
 	}
 
 	@Override
@@ -111,8 +121,14 @@ public class JavaProcessExecutor implements CodeExecutor {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException("Could not create a temporary directory for the user code.");
 
+			//*********************
+			//*** GENERATE CODE ***
+			//*********************
 			this.generateCodeFile(codeDirectory, codeFragment, testCases);
 
+			//********************
+			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
+			//********************
 			long javacStart = System.nanoTime();
 			Process javacProcess = rnt.exec("javac *.java", null, codeDirectory);
 			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -125,6 +141,9 @@ public class JavaProcessExecutor implements CodeExecutor {
 			}
 			long javacEnd = System.nanoTime();
 
+			//********************
+			//*** EXECUTE CODE ***
+			//********************
 			long javaStart = System.nanoTime();
 			Process javaProcess = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, codeDirectory);
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -137,15 +156,22 @@ public class JavaProcessExecutor implements CodeExecutor {
 			}
 			long javaEnd = System.nanoTime();
 
+			//****************************
+			//*** TEST CASE EVALUATION ***
+			//****************************
 			try (Scanner outStm = new Scanner(javaProcess.getInputStream(), //create a scanner to read the console output case by case
 																				JavaProcessExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) {
 					String res = outStm.next(); //get output lines of next test case
-					results.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(3))
-																	.setPerformance(new PerformanceIndicators().setRuntimeMilliSeconds((javaEnd - javaStart) / 1000)));
+					results.add(new Result(res.startsWith("OK"),
+																 res.substring(3),
+																 new PerformanceIndicators((javaEnd - javaStart) / 1000)));
 				}
 			}
 
+			//**************************
+			//*** EXCEPTION HANDLING ***
+			//**************************
 		} catch (Exception ex) {
 			Result res = new Result().setSuccess(false);
 			if (ex instanceof ExecutorException && ((ExecutorException)ex).getOutput() != null)
@@ -214,24 +240,28 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 	private String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
+		final String NEWLINE = String.format("%n");
+
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 
+			//validate input / output types & values
 			if (testCase.getInputValuesSize() != testCase.getInputTypesSize())
 				throw new ExecutorException("The same number of input values & types have to be defined..");
-
-			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getOutputTypesSize() != 1)
+			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != testCase.getOutputTypesSize())
 				throw new ExecutorException("Exactly one output value has to be defined for a java sample.");
 
-			String oType = testCase.getOutputTypes().get(0);
-			sb.append("{ ").append(this.getJavaClass(oType)).append(" res = ").append("inst.").append(testCase.getFunctionName()).append('(');
-			for (int j = 0; j < testCase.getInputValuesSize(); j++) {
-				if (j > 0) sb.append(", ");
-				sb.append(this.getValueLiteral(testCase.getInputValues().get(j), testCase.getInputTypes().get(j)));
-			}
-			sb.append("); ");
+			sb.append("try {").append(NEWLINE); //begin test case block
 
-			sb.append("System.out.printf(\"%s:%s%n%n\", res ");
+			String oType = testCase.getOutputTypes().get(0); //test case invocation and return value storage
+			sb.append(this.getJavaClass(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
+			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
+				if (i > 0) sb.append(", ");
+				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), testCase.getInputTypes().get(i)));
+			}
+			sb.append(");").append(NEWLINE);
+
+			sb.append("boolean suc = ret "); //begin validation of return value
 			switch (oType) {
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
@@ -241,24 +271,33 @@ public class JavaProcessExecutor implements CodeExecutor {
 				case executorConstants.TypeLong:
 				case executorConstants.TypeSingle:
 				case executorConstants.TypeDouble:
-					sb.append(" == ");
+					sb.append(" == "); //compare primitive types using equality operator
 					break;
 
 				case executorConstants.TypeString:
 				case executorConstants.TypeDecimal:
-					sb.append(".equals(");
+					sb.append(".equals("); //compare objects using equality method
 					break;
+
+				//TODO: maps, lists, sets
 
 				default:
 					throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType));
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
 
 			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
-				sb.append(')');
+				sb.append(')'); //close equality method parentheses
 
-			sb.append(" ? \"OK\" : \"ER\", res); }").append(String.format("%n"));
+			sb.append(';').append(NEWLINE); //finish validation of return value
+
+			sb.append("System.out.printf(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret);").append(NEWLINE); //print result to the console
+
+			sb.append("} catch (Exception ex) {").append(NEWLINE); //finish test case block / begin exception handling
+			sb.append("System.out.print(\"ER:\");");
+			sb.append("ex.printStackTrace(System.out);");
+			sb.append('}').append(NEWLINE); //finish exception handling
 		}
 
 		return sb.toString();
@@ -269,56 +308,58 @@ public class JavaProcessExecutor implements CodeExecutor {
 		if ("null".equals(value))
 			return "null";
 
+		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
 		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
-
 		if (isArr || isLst || isSet) {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
 			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
 
-			if (elmTyp.split(",\\s*").length != 1)
+			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
-			if (isArr)
+			if (isArr) //begin array initialisation syntax
 				sb.append("new ").append(this.getJavaClass(elmTyp)).append("[] { ");
-			else if (isLst)
+			else if (isLst) //begin list initialisation using helper method
 				sb.append(String.format("Arrays.<%s>asList(", this.getJavaClass(elmTyp)));
-			else
+			else //begin set initialisation using constructor and helper method
 				sb.append(String.format("new HashSet<%1$s>(Arrays.<%1$s>asList(", this.getJavaClass(elmTyp)));
 
-			boolean first = true;
-			for (String elm : value.split(",\\s*")) {
+			boolean first = true; //generate collection elements
+			for (String elm : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
 				if (first) first = false;
 				else sb.append(", ");
 				sb.append(this.getValueLiteral(elm, elmTyp));
 			}
 
-			return sb.append(isArr ? " }" : isLst ? ')' : "))").toString();
+			return sb.append(isArr ? " }" : isLst ? ')' : "))").toString(); //finish collection initialisation and return literal
 
+			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - executorConstants.TypeContainerMap.length() - 2);
-			String[] kvTyps = elmTyp.split(",\\s*");
+			String[] kvTyps = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
 
-			if (kvTyps.length != 2)
+			if (kvTyps.length != 2) // validate type parameters
 				throw new ExecutorException("Map type needs 2 type parameters.");
 
-			StringBuilder sb = new StringBuilder();
+			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
 			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getJavaClass(kvTyps[0]), this.getJavaClass(kvTyps[1])));
 
-			for (String ety : value.split(",\\s*")) {
-				String[] kv = ety.split(":\\s*");
+			for (String ety : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+				String[] kv = JavaProcessExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
-				if (kv.length != 2)
+				if (kv.length != 2) //validate key/value pair
 					throw new ExecutorException("Map entries always need a key and a value.");
 
 				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[0], kvTyps[0])).append("); ");
 			}
-			return sb.append("}};").toString();
+
+			return sb.append("}};").toString(); //finish initialisation and return literal
 		}
 
-		switch (type) {
+		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 				return String.format("\"%s\"", value);
 
@@ -331,16 +372,14 @@ public class JavaProcessExecutor implements CodeExecutor {
 			case executorConstants.TypeByte:
 			case executorConstants.TypeShort:
 			case executorConstants.TypeInteger:
-				return String.format("%d", Integer.parseInt(value, 10));
+			case executorConstants.TypeDouble:
+				return String.format("%s", value);
 
 			case executorConstants.TypeLong:
-				return String.format("%dL", Long.parseLong(value, 10));
+				return String.format("%sL", value);
 
 			case executorConstants.TypeSingle:
-				return String.format("%ff", Float.parseFloat(value));
-
-			case executorConstants.TypeDouble:
-				return String.format("%f", Double.parseDouble(value));
+				return String.format("%sf", value);
 
 			case executorConstants.TypeDecimal:
 				return String.format("new BigDecimal(\"%s\")", value);
@@ -352,25 +391,30 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 	private String getJavaClass(String type) throws ExecutorException {
 
-		if (type.startsWith(String.format("%s<", executorConstants.TypeContainerArray))) {
+		//check for collection container types
+		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
+		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
+		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
+		if (isArr || isLst || isSet) {
 			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
-			return String.format("%s[]", this.getJavaClass(typeParam));
 
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerList))) {
-			String typeParam = type.substring(executorConstants.TypeContainerList.length() + 1, type.length() - executorConstants.TypeContainerList.length() - 2);
-			return String.format("List<%s>", this.getJavaClass(typeParam));
+			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
+				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
 
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerSet))) {
-			String typeParam = type.substring(executorConstants.TypeContainerSet.length() + 1, type.length() - executorConstants.TypeContainerSet.length() - 2);
-			return String.format("Set<%s>", this.getJavaClass(typeParam));
+			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getJavaClass(typeParam)); //return class name
 
+			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - executorConstants.TypeContainerMap.length() - 2);
 			String[] typeParamsArray = typeParams.split(",\\s*");
-			return String.format("Map<%s, %s>", this.getJavaClass(typeParamsArray[0]), this.getJavaClass(typeParamsArray[1]));
+
+			if (typeParamsArray.length != 2) // validate type parameters
+				throw new ExecutorException("Map type needs 2 type parameters.");
+
+			return String.format("Map<%s, %s>", this.getJavaClass(typeParamsArray[0]), this.getJavaClass(typeParamsArray[1])); //return class name
 		}
 
-		switch (type) {
+		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 				return "String";
 

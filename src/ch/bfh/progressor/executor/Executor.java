@@ -15,6 +15,9 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import ch.bfh.progressor.executor.thrift.ExecutorService;
+import ch.bfh.progressor.executor.thrift.Result;
+import ch.bfh.progressor.executor.thrift.TestCase;
 
 /**
  * Main class.
@@ -101,7 +104,17 @@ public final class Executor {
 			Executor.LOGGER.info(String.format("execute(language=%s, ..., %d testCases=%s...)", language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
 			try {
-				return this.getCodeExecutor(language).execute(fragment, testCases); //delegate call
+				CodeExecutor codeExecutor = this.getCodeExecutor(language);
+
+				if (codeExecutor.getBlacklist().stream().anyMatch(fragment::contains)) { //validate fragment against blacklist
+					Result result = new Result(false, "Validation against blacklist failed.", null);
+					List<Result> results = new ArrayList<>(testCases.size());
+					while (results.size() < testCases.size())
+						results.add(result);
+					return results;
+				}
+
+				return codeExecutor.execute(fragment, testCases); //delegate execution call
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not execute the code fragment in language '%s'.", language);
