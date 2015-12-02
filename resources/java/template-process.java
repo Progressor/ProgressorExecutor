@@ -1,4 +1,4 @@
-public class CustomClass { $CustomCode$
+import java.util.*; public class CustomClass { $CustomCode$
 
 	public static void main(String[] args) {
 

@@ -1,6 +1,10 @@
 package ch.bfh.progressor.executor.languages;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
+import ch.bfh.progressor.executor.PerformanceIndicators;
 import ch.bfh.progressor.executor.Result;
 import ch.bfh.progressor.executor.TestCase;
 import ch.bfh.progressor.executor.executorConstants;
@@ -25,107 +30,186 @@ import ch.bfh.progressor.executor.executorConstants;
  */
 public class JavaProcessExecutor implements CodeExecutor {
 
-	/** Character set to use for the custom code. */
+	/**
+	 * Character set to use for the custom code.
+	 */
 	public static final Charset CODE_CHARSET = Charset.forName("UTF-8");
 
+	/**
+	 * Path to the file containing the code template to put the fragment into.
+	 */
 	protected static final Path CODE_TEMPLATE = Paths.get("resources", "java", "template-process.java");
 
+	/**
+	 * Path to the file containing the blacklist for this language.
+	 */
+	protected static final Path CODE_BLACKLIST = Paths.get("resources", "java", "blacklist.txt");
+
+	/**
+	 * Name of the class as defined in the template.
+	 */
 	protected static final String CODE_CLASS_NAME = "CustomClass";
 
+	/**
+	 * Placeholder for the custom code fragment as defined in the template.
+	 */
 	protected static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
 
+	/**
+	 * Placeholder for the test cases as defined in the template.
+	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
-	/** Maximum time to use for for the compilation of the user code (in seconds). */
+	/**
+	 * Maximum time to use for for the compilation of the user code (in seconds).
+	 */
 	public static final int COMPILE_TIMEOUT_SECONDS = 3;
 
-	/** Maximum time to use for the execution of the user code (in seconds). */
+	/**
+	 * Maximum time to use for the execution of the user code (in seconds).
+	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
+
+	private List<String> blacklist;
+	private StringBuilder template;
+
+	@Override
+	public String getLanguage() {
+		return "java";
+	}
+
+	@Override
+	public List<String> getBlacklist() {
+
+		if (this.blacklist == null)
+			try {
+				this.blacklist = Collections.unmodifiableList(Files.readAllLines(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET));
+
+			} catch (IOException ex) {
+				throw new UncheckedIOException(ex); //do not handle i/o exception
+			}
+
+		return this.blacklist; //return the same unmodifiable list every time
+	}
+
+	private StringBuilder getTemplate() throws IOException {
+
+		if (this.template == null)
+			this.template = new StringBuilder(new String(Files.readAllBytes(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET)); //read template to StringBuilder
+
+		return new StringBuilder(this.template); //return a new string builder every time
+	}
 
 	@Override
 	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
 
-		List<Result> ret = new ArrayList<>(testCases.size());
-		File dir = Paths.get("temp", UUID.randomUUID().toString()).toFile();
+		List<Result> results = new ArrayList<>(testCases.size());
+		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		Runtime rnt = Runtime.getRuntime();
 
 		try {
-			if (!dir.exists() && !dir.mkdirs())
+			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException("Could not create a temporary directory for the user code.");
 
-			StringBuilder code = new StringBuilder(new String(Files.readAllBytes(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET));
+			this.generateCodeFile(codeDirectory, codeFragment, testCases);
 
-			int fragStart = code.indexOf(JavaProcessExecutor.CODE_CUSTOM_FRAGMENT);
-			code.replace(fragStart, fragStart + JavaProcessExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
-
-			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT);
-			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
-
-			Files.write(Paths.get(dir.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), Collections.singletonList(code));
-
-			Runtime rnt = Runtime.getRuntime();
-			Process cmp = rnt.exec("javac *.java", null, dir);
-			if (cmp.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (cmp.exitValue() != 0)
-					throw new ExecutorException("Could not compile the user code.");
+			long javacStart = System.nanoTime();
+			Process javacProcess = rnt.exec("javac *.java", null, codeDirectory);
+			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				if (javacProcess.exitValue() != 0)
+					throw new ExecutorException("Could not compile the user code.", this.readConsole(javacProcess));
 
 			} else {
-				//cmp.destroy();
-				cmp.destroyForcibly();
-
+				javacProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException("Could not compile the user code in time.");
 			}
+			long javacEnd = System.nanoTime();
 
-			try {
-				Process exec = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, dir);
-				if (exec.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-					if (exec.exitValue() != 0)
-						throw new ExecutorException("Could not execute the user code.");
+			long javaStart = System.nanoTime();
+			Process javaProcess = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, codeDirectory);
+			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				if (javaProcess.exitValue() != 0)
+					throw new ExecutorException("Could not execute the user code.", this.readConsole(javaProcess));
 
-				} else {
-					//exec.destroy();
-					exec.destroyForcibly();
+			} else {
+				javaProcess.destroyForcibly(); //destroy()
+				throw new ExecutorException("Could not execute the user code in time.");
+			}
+			long javaEnd = System.nanoTime();
 
-					throw new ExecutorException("Could not execute the user code in time.");
+			try (Scanner outStm = new Scanner(javaProcess.getInputStream(), //create a scanner to read the console output case by case
+																				JavaProcessExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+				while (outStm.hasNext()) {
+					String res = outStm.next(); //get output lines of next test case
+					results.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(3))
+																	.setPerformance(new PerformanceIndicators().setRuntimeMilliSeconds((javaEnd - javaStart) / 1000)));
 				}
-
-				try (Scanner outStm = new Scanner(exec.getInputStream(), JavaProcessExecutor.CODE_CHARSET.name())) {
-					outStm.useDelimiter(CodeExecutor.END_OF_LINE + CodeExecutor.END_OF_LINE);
-					while (outStm.hasNext()) {
-						String res = outStm.next();
-						ret.add(new Result().setSuccess(res.startsWith("OK")).setResult(res.substring(3)));
-					}
-				}
-
-			} catch (Exception ex) {
-				Result res = new Result().setSuccess(false).setResult(CodeExecutor.getExceptionMessage("Could not invoke the user code.", ex));
-				for (int i = ret.size(); i < testCases.size(); i++)
-					ret.add(res);
 			}
 
-		} catch (Throwable ex) {
-			Result res = new Result().setSuccess(false).setResult(CodeExecutor.getExceptionMessage("Could not load the user code.", ex));
-			for (int i = ret.size(); i < testCases.size(); i++)
-				ret.add(res);
+		} catch (Exception ex) {
+			Result res = new Result().setSuccess(false);
+			if (ex instanceof ExecutorException && ((ExecutorException)ex).getOutput() != null)
+				res.setResult(String.format("%s:%n%s", ex.getMessage(), ((ExecutorException)ex).getOutput()));
+			else
+				res.setResult(String.format("%s:%n%s", "Could not invoke the user code.", ex));
+
+			while (results.size() < testCases.size())
+				results.add(res);
 
 		} finally {
-			if (dir.exists())
-				this.deleteRecursive(dir);
+			if (codeDirectory.exists())
+				this.deleteRecursive(codeDirectory);
 		}
 
-		return ret;
+		return results;
 	}
 
 	private boolean deleteRecursive(File file) {
 
 		boolean ret = true;
 
-		File[] children;
+		File[] children; //recursively delete children
 		if (file.isDirectory() && (children = file.listFiles()) != null)
 			for (File child : children)
 				ret &= this.deleteRecursive(child);
-		ret &= file.delete();
 
+		ret &= file.delete(); //delete file itself
 		return ret;
+	}
+
+	private String readConsole(Process process) throws ExecutorException {
+
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), JavaProcessExecutor.CODE_CHARSET))) {
+			StringBuilder sb = new StringBuilder();
+
+			String line; //read every line
+			while ((line = reader.readLine()) != null)
+				sb.append(line).append(String.format("%n"));
+
+			return sb.toString(); //create concatenated string
+
+		} catch (IOException ex) {
+			throw new ExecutorException("Could not read the console output.", ex);
+		}
+	}
+
+	private void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
+
+		try {
+			StringBuilder code = this.getTemplate(); //read the template
+
+			int fragStart = code.indexOf(JavaProcessExecutor.CODE_CUSTOM_FRAGMENT); //place fragment in template
+			code.replace(fragStart, fragStart + JavaProcessExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
+
+			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
+			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
+
+			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
+
+		} catch (ExecutorException | IOException ex) {
+			throw new ExecutorException("Could not generate the code file.", ex);
+		}
 	}
 
 	private String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
@@ -174,7 +258,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
 				sb.append(')');
 
-			sb.append(" ? \"OK\" : \"ER\", res); }").append(CodeExecutor.END_OF_LINE);
+			sb.append(" ? \"OK\" : \"ER\", res); }").append(String.format("%n"));
 		}
 
 		return sb.toString();

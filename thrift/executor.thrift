@@ -42,6 +42,10 @@ struct PerformanceIndicators {
 
 service ExecutorService {
 
+	list<string> getBlacklist(
+		1: string language
+	)
+
 	list<Result> execute(
 		1: string language,
 		2: string fragment,
