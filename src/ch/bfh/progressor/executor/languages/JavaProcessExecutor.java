@@ -262,6 +262,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			sb.append(");").append(NEWLINE);
 
 			sb.append("boolean suc = ret "); //begin validation of return value
+
 			switch (oType) {
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
@@ -276,13 +277,12 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 				case executorConstants.TypeString:
 				case executorConstants.TypeDecimal:
+				default:
 					sb.append(".equals("); //compare objects using equality method
 					break;
 
-				//TODO: maps, lists, sets
-
-				default:
-					throw new ExecutorException(String.format("Value type %s is not supported.", oType));
+				//default:
+				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
