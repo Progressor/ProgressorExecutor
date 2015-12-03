@@ -129,7 +129,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			//********************
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
-			long javacStart = System.nanoTime();
+			long javacStart = System.currentTimeMillis();
 			Process javacProcess = rnt.exec("javac *.java", null, codeDirectory);
 			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javacProcess.exitValue() != 0)
@@ -139,12 +139,12 @@ public class JavaProcessExecutor implements CodeExecutor {
 				javacProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException("Could not compile the user code in time.");
 			}
-			long javacEnd = System.nanoTime();
+			long javacEnd = System.currentTimeMillis();
 
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			long javaStart = System.nanoTime();
+			long javaStart = System.currentTimeMillis();
 			Process javaProcess = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, codeDirectory);
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
@@ -154,7 +154,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 				javaProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException("Could not execute the user code in time.");
 			}
-			long javaEnd = System.nanoTime();
+			long javaEnd = System.currentTimeMillis();
 
 			//****************************
 			//*** TEST CASE EVALUATION ***
@@ -165,7 +165,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"),
 																 res.substring(3),
-																 new PerformanceIndicators((javaEnd - javaStart) / 1000)));
+																 new PerformanceIndicators(Math.toIntExact(javaEnd - javaStart))));
 				}
 			}
 

@@ -37,7 +37,7 @@ struct Result {
 }
 
 struct PerformanceIndicators {
-	1: i64 runtimeMilliSeconds
+	1: i32 runtimeMilliseconds
 }
 
 service ExecutorService {
