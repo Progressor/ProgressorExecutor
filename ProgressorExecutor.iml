@@ -12,6 +12,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="org.apache.thrift:libthrift:0.9.3" level="project" />
-    <orderEntry type="library" name="Simple Logging Facade for Java:1.7.13" level="project" />
+    <orderEntry type="library" name="org.slf4j:slf4j-api:1.7.13" level="project" />
   </component>
 </module>

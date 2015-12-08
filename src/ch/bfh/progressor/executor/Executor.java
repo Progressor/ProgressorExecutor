@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.server.TServer;
@@ -101,13 +102,14 @@ public final class Executor {
 		@Override
 		public List<Result> execute(String language, String fragment, List<TestCase> testCases) throws TException {
 
-			Executor.LOGGER.info(String.format("execute(language=%s, ..., %d testCases=%s...)", language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
+			Executor.LOGGER.info(String.format("execute(language=%s, fragment=..., %d testCases: %s...)", language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
 			try {
 				CodeExecutor codeExecutor = this.getCodeExecutor(language);
 
-				if (codeExecutor.getBlacklist().stream().anyMatch(fragment::contains)) { //validate fragment against blacklist
-					Result result = new Result(false, "Validation against blacklist failed.", null);
+				List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
+				if (!blacklist.isEmpty()) { //validate fragment against blacklist
+					Result result = new Result(false, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
 					List<Result> results = new ArrayList<>(testCases.size());
 					while (results.size() < testCases.size())
 						results.add(result);

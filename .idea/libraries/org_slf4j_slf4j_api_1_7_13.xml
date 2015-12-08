@@ -1,5 +1,5 @@
 <component name="libraryTable">
-  <library name="Simple Logging Facade for Java:1.7.13" type="repository">
+  <library name="org.slf4j:slf4j-api:1.7.13" type="repository">
     <properties maven-id="org.slf4j:slf4j-simple:1.7.13" />
     <CLASSES>
       <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-simple/1.7.13/slf4j-simple-1.7.13.jar!/" />

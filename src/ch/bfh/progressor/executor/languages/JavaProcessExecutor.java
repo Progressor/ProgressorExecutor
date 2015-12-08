@@ -16,6 +16,7 @@ import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
@@ -76,6 +77,8 @@ public class JavaProcessExecutor implements CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
+	private static final Pattern BLACKLIST_COMMENT_PATTERN = Pattern.compile("#.*");
+
 	private static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
 
 	private static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
@@ -93,13 +96,16 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 		if (this.blacklist == null)
 			try {
-				this.blacklist = Collections.unmodifiableList(Files.readAllLines(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET));
+				this.blacklist = Files.readAllLines(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET).stream() //read blacklist
+															.map(l -> JavaProcessExecutor.BLACKLIST_COMMENT_PATTERN.matcher(l).replaceAll("")) //remove comments
+															.filter(l -> !l.isEmpty()) //only add lines that actually contain information
+															.collect(Collectors.toList());
 
 			} catch (IOException ex) {
 				throw new UncheckedIOException(ex); //do not handle i/o exception
 			}
 
-		return this.blacklist; //return the same unmodifiable list every time
+		return Collections.unmodifiableList(this.blacklist);
 	}
 
 	private StringBuilder getTemplate() throws IOException {
