@@ -6,6 +6,11 @@ This is the code executor of the project **Progressor - The Programming Professo
 
 This repository contains an *IntelliJ IDEA* project.
 
+This project depends on the following compilers to be available and included in the home path:
+
+1. Java 8 Compiler: `javac`
+2. C++ Compiler: `???`
+
 This project has two maven dependencies that should be downloaded automatically:
 
 1. [org.apache.thrift:libthrift:0.9.3](http://mvnrepository.com/artifact/org.apache.thrift/libthrift/0.9.3)

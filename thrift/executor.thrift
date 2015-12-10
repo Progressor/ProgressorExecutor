@@ -6,10 +6,10 @@
 
 namespace java ch.bfh.progressor.executor.thrift
 
-const string TypeContainerArray = "array"; #e.g. array<string>
-const string TypeContainerList = "list"; #e.g. list<string>
-const string TypeContainerSet = "set"; #e.g. set<string>
-const string TypeContainerMap = "map"; #e.g. map<string, string>
+const string TypeContainerArray = "array"; #e.g. array<string>   --> asdf,temp, qwertz
+const string TypeContainerList = "list"; #e.g. list<string>      --> asdf, temp,qwertz
+const string TypeContainerSet = "set"; #e.g. set<string>         --> asdf,temp,  qwertz
+const string TypeContainerMap = "map"; #e.g. map<string, string> --> asdf:temp,qwer:tz
 
 const string TypeString = "string";
 const string TypeCharacter = "char";
@@ -22,12 +22,18 @@ const string TypeSingle = "single";
 const string TypeDouble = "double";
 const string TypeDecimal = "decimal";
 
+struct FunctionSignature {
+	1: string name,
+	2: list<string> inputNames,
+	3: list<string> inputTypes,
+	4: list<string> outputNames,
+	5: list<string> outputTypes
+}
+
 struct TestCase {
 	1: string functionName,
-	2: list<string> inputTypes,
-	3: list<string> inputValues,
-	4: list<string> outputTypes,
-	5: list<string> expectedOutputValues
+	2: list<string> inputValues,
+	3: list<string> expectedOutputValues
 }
 
 struct Result {
@@ -37,7 +43,7 @@ struct Result {
 }
 
 struct PerformanceIndicators {
-	1: i32 runtimeMilliseconds
+	1: double runtimeMilliseconds
 }
 
 service ExecutorService {
@@ -46,9 +52,15 @@ service ExecutorService {
 		1: string language
 	)
 
+	string getFragment(
+		1: string language,
+		3: list<FunctionSignature> functions
+	)
+
 	list<Result> execute(
 		1: string language,
 		2: string fragment,
-		3: list<TestCase> testCases
+		3: list<FunctionSignature> functions,
+		4: list<TestCase> testCases
 	)
 }

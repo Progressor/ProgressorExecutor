@@ -17,6 +17,7 @@ import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import ch.bfh.progressor.executor.thrift.ExecutorService;
+import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.Result;
 import ch.bfh.progressor.executor.thrift.TestCase;
 
@@ -100,7 +101,22 @@ public final class Executor {
 		}
 
 		@Override
-		public List<Result> execute(String language, String fragment, List<TestCase> testCases) throws TException {
+		public String getFragment(String language, List<FunctionSignature> functions) throws TException {
+
+			Executor.LOGGER.info(String.format("getFragment(language=%s)", language));
+
+			try {
+				return this.getCodeExecutor(language).getFragment(functions); //delegate call
+
+			} catch (Exception ex) { //wrap exception
+				String msg = String.format("Could not generate the fragment for language '%s'.", language);
+				Executor.LOGGER.log(Level.WARNING, msg, ex);
+				throw new TException(msg, ex);
+			}
+		}
+
+		@Override
+		public List<Result> execute(String language, String fragment, List<FunctionSignature> functions, List<TestCase> testCases) throws TException {
 
 			Executor.LOGGER.info(String.format("execute(language=%s, fragment=..., %d testCases: %s...)", language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
@@ -116,7 +132,7 @@ public final class Executor {
 					return results;
 				}
 
-				return codeExecutor.execute(fragment, testCases); //delegate execution call
+				return codeExecutor.execute(fragment, functions, testCases); //delegate execution call
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not execute the code fragment in language '%s'.", language);

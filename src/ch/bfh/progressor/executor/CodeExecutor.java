@@ -3,6 +3,7 @@ package ch.bfh.progressor.executor;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.Result;
 import ch.bfh.progressor.executor.thrift.TestCase;
 
@@ -21,6 +22,15 @@ public interface CodeExecutor {
 	String getLanguage();
 
 	/**
+	 * Gets the fragment(s) for the function signatures in the language the executor supports.
+	 *
+	 * @param functions function signatures to get fragment(s) for
+	 *
+	 * @return fragment(s) for the function signatures in the supported language
+	 */
+	String getFragment(List<FunctionSignature> functions);
+
+	/**
 	 * Gets the blacklist containing the strings not allowed in the code fragment.
 	 *
 	 * @return a {@link Collection} containing the strings not allowed in the code fragment
@@ -31,22 +41,24 @@ public interface CodeExecutor {
 	 * Executes a provided code fragment.
 	 *
 	 * @param codeFragment code fragment to execute
+	 * @param functions    function signatures to execute tests on
 	 * @param testCases    test cases to execute
 	 *
 	 * @return a {@link List} containing the {@link Result} for each test case
 	 */
-	List<Result> execute(String codeFragment, List<TestCase> testCases);
+	List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases);
 
 	/**
 	 * Executes a provided code fragment.
 	 *
 	 * @param codeFragment code fragment to execute
+	 * @param functions    function signatures to execute tests on
 	 * @param testCases    test cases to execute
 	 *
 	 * @return a {@link List} containing the {@link Result} for each test case
 	 */
-	default List<Result> execute(String codeFragment, TestCase... testCases) {
+	default List<Result> execute(String codeFragment, List<FunctionSignature> functions, TestCase... testCases) {
 
-		return this.execute(codeFragment, Arrays.asList(testCases));
+		return this.execute(codeFragment, functions, Arrays.asList(testCases));
 	}
 }

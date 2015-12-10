@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
+import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
 import ch.bfh.progressor.executor.thrift.Result;
 import ch.bfh.progressor.executor.thrift.TestCase;
@@ -117,7 +119,18 @@ public class JavaProcessExecutor implements CodeExecutor {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
+	public String getFragment(List<FunctionSignature> functions) {
+
+		try {
+			return getTestCaseSignatures(functions);
+
+		} catch (ExecutorException ex) {
+			return String.format("%s:%n%s", "Could not generate the test case code fragment(s).", ex);
+		}
+	}
+
+	@Override
+	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
 
 		List<Result> results = new ArrayList<>(testCases.size());
 		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
@@ -130,12 +143,12 @@ public class JavaProcessExecutor implements CodeExecutor {
 			//*********************
 			//*** GENERATE CODE ***
 			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, testCases);
+			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
 
 			//********************
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
-			long javacStart = System.currentTimeMillis();
+			long javacStart = System.nanoTime();
 			Process javacProcess = rnt.exec("javac *.java", null, codeDirectory);
 			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javacProcess.exitValue() != 0)
@@ -145,12 +158,12 @@ public class JavaProcessExecutor implements CodeExecutor {
 				javacProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException("Could not compile the user code in time.");
 			}
-			long javacEnd = System.currentTimeMillis();
+			long javacEnd = System.nanoTime();
 
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			long javaStart = System.currentTimeMillis();
+			long javaStart = System.nanoTime();
 			Process javaProcess = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, codeDirectory);
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
@@ -160,7 +173,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 				javaProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException("Could not execute the user code in time.");
 			}
-			long javaEnd = System.currentTimeMillis();
+			long javaEnd = System.nanoTime();
 
 			//****************************
 			//*** TEST CASE EVALUATION ***
@@ -171,7 +184,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"),
 																 res.substring(3),
-																 new PerformanceIndicators(Math.toIntExact(javaEnd - javaStart))));
+																 new PerformanceIndicators((javaEnd - javaStart) / 1e6)));
 				}
 			}
 
@@ -197,7 +210,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 	}
 
 	private boolean deleteRecursive(File file) {
-
+		/*
 		boolean ret = true;
 
 		File[] children; //recursively delete children
@@ -206,7 +219,8 @@ public class JavaProcessExecutor implements CodeExecutor {
 				ret &= this.deleteRecursive(child);
 
 		ret &= file.delete(); //delete file itself
-		return ret;
+		return ret;*/
+		return false;
 	}
 
 	private String readConsole(Process process) throws ExecutorException {
@@ -225,7 +239,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 		}
 	}
 
-	private void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
+	private void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -234,7 +248,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			code.replace(fragStart, fragStart + JavaProcessExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
 			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
+			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
 			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
 									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
@@ -244,28 +258,58 @@ public class JavaProcessExecutor implements CodeExecutor {
 		}
 	}
 
-	private String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
+	private String getTestCaseSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
-		final String NEWLINE = String.format("%n");
+		final String newLine = String.format("%n");
+
+		StringBuilder sb = new StringBuilder();
+		for (FunctionSignature function : functions) {
+
+			//validate input / output types & names
+			if (function.getInputTypesSize() != function.getInputNamesSize())
+				throw new ExecutorException("The same number of input types & names have to be defined.");
+			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
+				throw new ExecutorException("Exactly one output type has to be defined for a java sample.");
+
+			sb.append("public ").append(this.getJavaType(function.getOutputTypes().get(0))).append(' ');
+			sb.append(function.getName()).append('(');
+
+			for (int i = 0; i < function.getInputTypesSize(); i++) {
+				if (i > 0) sb.append(", ");
+				sb.append(this.getJavaType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+			}
+
+			sb.append(") {").append(newLine).append("\t").append(newLine).append('}').append(newLine);
+		}
+
+		return sb.toString();
+	}
+
+	private String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+
+		final String newLine = String.format("%n");
+
+		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, f -> f));
 
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
+			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
 
 			//validate input / output types & values
-			if (testCase.getInputValuesSize() != testCase.getInputTypesSize())
-				throw new ExecutorException("The same number of input values & types have to be defined..");
-			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != testCase.getOutputTypesSize())
+			if (testCase.getInputValuesSize() != function.getInputTypesSize())
+				throw new ExecutorException("The same number of input values & types have to be defined.");
+			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
 				throw new ExecutorException("Exactly one output value has to be defined for a java sample.");
 
-			sb.append("try {").append(NEWLINE); //begin test case block
+			sb.append("try {").append(newLine); //begin test case block
 
-			String oType = testCase.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getJavaClass(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
+			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
+			sb.append(this.getJavaType(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
 			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), testCase.getInputTypes().get(i)));
+				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
 			}
-			sb.append(");").append(NEWLINE);
+			sb.append(");").append(newLine);
 
 			sb.append("boolean suc = ret "); //begin validation of return value
 
@@ -296,14 +340,14 @@ public class JavaProcessExecutor implements CodeExecutor {
 			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
 				sb.append(')'); //close equality method parentheses
 
-			sb.append(';').append(NEWLINE); //finish validation of return value
+			sb.append(';').append(newLine); //finish validation of return value
 
-			sb.append("System.out.printf(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret);").append(NEWLINE); //print result to the console
+			sb.append("System.out.printf(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
 
-			sb.append("} catch (Exception ex) {").append(NEWLINE); //finish test case block / begin exception handling
+			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("System.out.print(\"ER:\");");
 			sb.append("ex.printStackTrace(System.out);");
-			sb.append('}').append(NEWLINE); //finish exception handling
+			sb.append('}').append(newLine); //finish exception handling
 		}
 
 		return sb.toString();
@@ -392,6 +436,38 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 			default:
 				throw new ExecutorException(String.format("Value type %s is not supported.", type));
+		}
+	}
+
+	private String getJavaType(String type) throws ExecutorException {
+
+		switch (type) { //switch over primitive types
+			case executorConstants.TypeCharacter:
+				return "char";
+
+			case executorConstants.TypeBoolean:
+				return "boolean";
+
+			case executorConstants.TypeByte:
+				return "byte";
+
+			case executorConstants.TypeShort:
+				return "short";
+
+			case executorConstants.TypeInteger:
+				return "int";
+
+			case executorConstants.TypeLong:
+				return "long";
+
+			case executorConstants.TypeSingle:
+				return "float";
+
+			case executorConstants.TypeDouble:
+				return "double";
+
+			default:
+				return getJavaClass(type);
 		}
 	}
 

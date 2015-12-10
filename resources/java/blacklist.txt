@@ -12,10 +12,6 @@ import
 interface
 native
 new
-package
-private
-protected
-public
 strictfp
 super
 synchronized
