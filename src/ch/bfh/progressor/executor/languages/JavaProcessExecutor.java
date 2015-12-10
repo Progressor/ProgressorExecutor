@@ -321,7 +321,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 				case executorConstants.TypeLong:
 				case executorConstants.TypeSingle:
 				case executorConstants.TypeDouble:
-					sb.append(" == "); //compare primitive types using equality operator
+					sb.append("== "); //compare primitive types using equality operator
 					break;
 
 				case executorConstants.TypeString:
@@ -345,7 +345,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("System.out.print(\"ER:\");");
-			sb.append("ex.printStackTrace(System.out);");
+			sb.append("ex.printStackTrace(System.out);").append(newLine);
 			sb.append('}').append(newLine); //finish exception handling
 		}
 
