@@ -210,7 +210,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 	}
 
 	private boolean deleteRecursive(File file) {
-		/*
+
 		boolean ret = true;
 
 		File[] children; //recursively delete children
@@ -219,8 +219,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 				ret &= this.deleteRecursive(child);
 
 		ret &= file.delete(); //delete file itself
-		return ret;*/
-		return false;
+		return ret;
 	}
 
 	private String readConsole(Process process) throws ExecutorException {
