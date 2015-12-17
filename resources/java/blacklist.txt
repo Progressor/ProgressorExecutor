@@ -11,7 +11,6 @@ implements
 import
 interface
 native
-new
 strictfp
 super
 synchronized
@@ -20,6 +19,9 @@ throws
 transient
 try
 volatile
+
+#methods
+getClass
 
 #classes (java.lang)
 Class
