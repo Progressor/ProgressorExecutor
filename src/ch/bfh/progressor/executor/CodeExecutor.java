@@ -27,15 +27,19 @@ public interface CodeExecutor {
 	 * @param functions function signatures to get fragment(s) for
 	 *
 	 * @return fragment(s) for the function signatures in the supported language
+	 *
+	 * @throws ExecutorException if the fragment could not be generated
 	 */
-	String getFragment(List<FunctionSignature> functions);
+	String getFragment(List<FunctionSignature> functions) throws ExecutorException;
 
 	/**
 	 * Gets the blacklist containing the strings not allowed in the code fragment.
 	 *
 	 * @return a {@link Collection} containing the strings not allowed in the code fragment
+	 *
+	 * @throws ExecutorException if the fragment could not be read
 	 */
-	Collection<String> getBlacklist();
+	Collection<String> getBlacklist() throws ExecutorException;
 
 	/**
 	 * Executes a provided code fragment.

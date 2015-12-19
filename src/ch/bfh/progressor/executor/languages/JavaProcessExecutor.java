@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +17,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -52,7 +55,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 	/**
 	 * Path to the file containing the blacklist for this language.
 	 */
-	protected static final Path CODE_BLACKLIST = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "blacklist.txt");
+	protected static final Path CODE_BLACKLIST = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "blacklist.json");
 
 	/**
 	 * Name of the class as defined in the template.
@@ -94,17 +97,29 @@ public class JavaProcessExecutor implements CodeExecutor {
 	}
 
 	@Override
-	public List<String> getBlacklist() {
+	public List<String> getBlacklist() throws ExecutorException {
 
 		if (this.blacklist == null)
 			try {
-				this.blacklist = Files.readAllLines(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET).stream() //read blacklist
-															.map(l -> JavaProcessExecutor.BLACKLIST_COMMENT_PATTERN.matcher(l).replaceAll("")) //remove comments
-															.filter(l -> !l.isEmpty()) //only add lines that actually contain information
-															.collect(Collectors.toList());
+				this.blacklist = new ArrayList<>();
+				JSONTokener tokener = new JSONTokener(Files.newBufferedReader(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET));
 
-			} catch (IOException ex) {
-				throw new UncheckedIOException(ex); //do not handle i/o exception
+				if (!tokener.more()) throw new JSONException("No root elements present.");
+				JSONArray groups = (JSONArray)tokener.nextValue();
+				if (!tokener.more()) throw new JSONException("Multiple root elements present.");
+
+				for (int i = 0; i < groups.length(); i++) {
+					JSONObject group = groups.getJSONObject(i);
+					JSONArray elements = group.getJSONArray("elements");
+
+					for (int j = 0; j < elements.length(); j++) {
+						JSONObject element = elements.getJSONObject(j);
+						this.blacklist.add(element.getString("keyword"));
+					}
+				}
+
+			} catch (IOException | JSONException | ClassCastException ex) {
+				throw new ExecutorException("Could not read the blacklist.", ex);
 			}
 
 		return Collections.unmodifiableList(this.blacklist);
@@ -119,14 +134,9 @@ public class JavaProcessExecutor implements CodeExecutor {
 	}
 
 	@Override
-	public String getFragment(List<FunctionSignature> functions) {
+	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
 
-		try {
-			return getTestCaseSignatures(functions);
-
-		} catch (ExecutorException ex) {
-			return String.format("%s:%n%s", "Could not generate the test case code fragment(s).", ex);
-		}
+		return this.getFunctionSignatures(functions);
 	}
 
 	@Override
@@ -249,7 +259,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write                                                           (Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
 									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -257,7 +267,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 		}
 	}
 
-	private String getTestCaseSignatures(List<FunctionSignature> functions) throws ExecutorException {
+	private String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
