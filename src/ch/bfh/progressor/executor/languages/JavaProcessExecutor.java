@@ -173,7 +173,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long javaStart = System.nanoTime();
-			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).start();
+			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
 					throw new ExecutorException("Could not execute the user code.", this.readConsole(javaProcess));
