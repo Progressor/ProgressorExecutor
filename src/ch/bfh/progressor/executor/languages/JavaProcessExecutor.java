@@ -144,7 +144,6 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 		List<Result> results = new ArrayList<>(testCases.size());
 		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
-		Runtime rnt = Runtime.getRuntime();
 
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
@@ -159,7 +158,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
 			long javacStart = System.nanoTime();
-			Process javacProcess = rnt.exec("javac *.java", null, codeDirectory);
+			Process javacProcess = new ProcessBuilder("javac", "*.java").directory(codeDirectory).redirectErrorStream(true).start();
 			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javacProcess.exitValue() != 0)
 					throw new ExecutorException("Could not compile the user code.", this.readConsole(javacProcess));
@@ -174,7 +173,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long javaStart = System.nanoTime();
-			Process javaProcess = rnt.exec(String.format("java %s", JavaProcessExecutor.CODE_CLASS_NAME), null, codeDirectory);
+			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).start();
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
 					throw new ExecutorException("Could not execute the user code.", this.readConsole(javaProcess));
@@ -320,7 +319,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("boolean suc = ret "); //begin validation of return value
+			sb.append("boolean suc = ret"); //begin validation of return value
 
 			switch (oType) {
 				case executorConstants.TypeCharacter:
@@ -331,7 +330,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 				case executorConstants.TypeLong:
 				case executorConstants.TypeSingle:
 				case executorConstants.TypeDouble:
-					sb.append("== "); //compare primitive types using equality operator
+					sb.append(" == "); //compare primitive types using equality operator
 					break;
 
 				case executorConstants.TypeString:
