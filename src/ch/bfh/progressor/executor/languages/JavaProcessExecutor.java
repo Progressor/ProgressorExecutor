@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,12 +49,12 @@ public class JavaProcessExecutor implements CodeExecutor {
 	/**
 	 * Path to the file containing the code template to put the fragment into.
 	 */
-	protected static final Path CODE_TEMPLATE = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "template-process.java");
+	protected static final String CODE_TEMPLATE = String.format("%s/template-process.java", JavaProcessExecutor.CODE_LANGUAGE);
 
 	/**
 	 * Path to the file containing the blacklist for this language.
 	 */
-	protected static final Path CODE_BLACKLIST = Paths.get("resources", JavaProcessExecutor.CODE_LANGUAGE, "blacklist.json");
+	protected static final String CODE_BLACKLIST = String.format("%s/blacklist.json", JavaProcessExecutor.CODE_LANGUAGE);
 
 	/**
 	 * Name of the class as defined in the template.
@@ -82,8 +81,6 @@ public class JavaProcessExecutor implements CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
-	private static final Pattern BLACKLIST_COMMENT_PATTERN = Pattern.compile("#.*");
-
 	private static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
 
 	private static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
@@ -100,9 +97,9 @@ public class JavaProcessExecutor implements CodeExecutor {
 	public List<String> getBlacklist() throws ExecutorException {
 
 		if (this.blacklist == null)
-			try {
+			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(JavaProcessExecutor.CODE_BLACKLIST), JavaProcessExecutor.CODE_CHARSET)) {
 				this.blacklist = new ArrayList<>();
-				JSONTokener tokener = new JSONTokener(Files.newBufferedReader(JavaProcessExecutor.CODE_BLACKLIST, JavaProcessExecutor.CODE_CHARSET));
+				JSONTokener tokener = new JSONTokener(reader);
 
 				if (!tokener.more()) throw new JSONException("No root elements present.");
 				JSONArray groups = (JSONArray)tokener.nextValue();
@@ -127,8 +124,15 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 	private StringBuilder getTemplate() throws IOException {
 
+		final String newLine = String.format("%n");
+
 		if (this.template == null)
-			this.template = new StringBuilder(new String(Files.readAllBytes(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET)); //read template to StringBuilder
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET))) {
+				this.template = new StringBuilder();
+				String line;
+				while ((line = reader.readLine()) != null) //read template to StringBuilder
+					this.template.append(line).append(newLine);
+			}
 
 		return new StringBuilder(this.template); //return a new string builder every time
 	}
@@ -233,12 +237,14 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 	private String readConsole(Process process) throws ExecutorException {
 
+		final String newLine = String.format("%n");
+
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), JavaProcessExecutor.CODE_CHARSET))) {
 			StringBuilder sb = new StringBuilder();
 
 			String line; //read every line
 			while ((line = reader.readLine()) != null)
-				sb.append(line).append(String.format("%n"));
+				sb.append(line).append(newLine);
 
 			return sb.toString(); //create concatenated string
 
