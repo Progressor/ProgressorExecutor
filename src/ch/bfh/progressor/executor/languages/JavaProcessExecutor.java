@@ -264,7 +264,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write                                                           (Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
 									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -402,7 +402,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - executorConstants.TypeContainerMap.length() - 2);
+			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
 			String[] kvTyps = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
 
 			if (kvTyps.length != 2) // validate type parameters
@@ -417,10 +417,10 @@ public class JavaProcessExecutor implements CodeExecutor {
 				if (kv.length != 2) //validate key/value pair
 					throw new ExecutorException("Map entries always need a key and a value.");
 
-				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[0], kvTyps[0])).append("); ");
+				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("); ");
 			}
 
-			return sb.append("}};").toString(); //finish initialisation and return literal
+			return sb.append("}}").toString(); //finish initialisation and return literal
 		}
 
 		switch (type) { //switch over basic types
@@ -501,8 +501,8 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - executorConstants.TypeContainerMap.length() - 2);
-			String[] typeParamsArray = typeParams.split(",\\s*");
+			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
+			String[] typeParamsArray = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
 
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException("Map type needs 2 type parameters.");
