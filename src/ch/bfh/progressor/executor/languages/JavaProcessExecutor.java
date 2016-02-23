@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -425,10 +427,13 @@ public class JavaProcessExecutor implements CodeExecutor {
 
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
-				return String.format("\"%s\"", value);
-
 			case executorConstants.TypeCharacter:
-				return String.format("'%s'", value);
+				ByteBuffer valueChars = JavaProcessExecutor.CODE_CHARSET.encode(value);
+				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
+																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
+
+				char separator = type == executorConstants.TypeCharacter ? '\'' : '"';
+				return String.format("%1$c%2$s%1$c", separator, valueSafe);
 
 			case executorConstants.TypeBoolean:
 				return Boolean.toString("true".equalsIgnoreCase(value));
@@ -437,7 +442,7 @@ public class JavaProcessExecutor implements CodeExecutor {
 			case executorConstants.TypeShort:
 			case executorConstants.TypeInteger:
 			case executorConstants.TypeDouble:
-				return String.format("%s", value);
+				return value;
 
 			case executorConstants.TypeLong:
 				return String.format("%sL", value);
