@@ -36,7 +36,7 @@ import ch.bfh.progressor.executor.thrift.executorConstants;
  *
  * @author strut1, touwm1 &amp; weidj1
  */
-public class JavaProcessExecutor implements CodeExecutor {
+public class JavaProcessExecutor extends CodeExecutor {
 
 	/**
 	 * Character set to use for the custom code.
@@ -48,30 +48,6 @@ public class JavaProcessExecutor implements CodeExecutor {
 	 */
 	public static final String CODE_LANGUAGE = "java";
 
-	/**
-	 * Path to the file containing the code template to put the fragment into.
-	 */
-	protected static final String CODE_TEMPLATE = String.format("%s/template-process.java", JavaProcessExecutor.CODE_LANGUAGE);
-
-	/**
-	 * Path to the file containing the blacklist for this language.
-	 */
-	protected static final String CODE_BLACKLIST = String.format("%s/blacklist.json", JavaProcessExecutor.CODE_LANGUAGE);
-
-	/**
-	 * Name of the class as defined in the template.
-	 */
-	protected static final String CODE_CLASS_NAME = "CustomClass";
-
-	/**
-	 * Placeholder for the custom code fragment as defined in the template.
-	 */
-	protected static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
-
-	/**
-	 * Placeholder for the test cases as defined in the template.
-	 */
-	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
@@ -83,61 +59,13 @@ public class JavaProcessExecutor implements CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
-	private static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
-
-	private static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
-
-	private List<String> blacklist;
-	private StringBuilder template;
 
 	@Override
 	public String getLanguage() {
 		return JavaProcessExecutor.CODE_LANGUAGE;
 	}
 
-	@Override
-	public List<String> getBlacklist() throws ExecutorException {
 
-		if (this.blacklist == null)
-			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(JavaProcessExecutor.CODE_BLACKLIST), JavaProcessExecutor.CODE_CHARSET)) {
-				this.blacklist = new ArrayList<>();
-				JSONTokener tokener = new JSONTokener(reader);
-
-				if (!tokener.more()) throw new JSONException("No root elements present.");
-				JSONArray groups = (JSONArray)tokener.nextValue();
-				if (!tokener.more()) throw new JSONException("Multiple root elements present.");
-
-				for (int i = 0; i < groups.length(); i++) {
-					JSONObject group = groups.getJSONObject(i);
-					JSONArray elements = group.getJSONArray("elements");
-
-					for (int j = 0; j < elements.length(); j++) {
-						JSONObject element = elements.getJSONObject(j);
-						this.blacklist.add(element.getString("keyword"));
-					}
-				}
-
-			} catch (IOException | JSONException | ClassCastException ex) {
-				throw new ExecutorException("Could not read the blacklist.", ex);
-			}
-
-		return Collections.unmodifiableList(this.blacklist);
-	}
-
-	private StringBuilder getTemplate() throws IOException {
-
-		final String newLine = String.format("%n");
-
-		if (this.template == null)
-			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(JavaProcessExecutor.CODE_TEMPLATE), JavaProcessExecutor.CODE_CHARSET))) {
-				this.template = new StringBuilder();
-				String line;
-				while ((line = reader.readLine()) != null) //read template to StringBuilder
-					this.template.append(line).append(newLine);
-			}
-
-		return new StringBuilder(this.template); //return a new string builder every time
-	}
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
@@ -222,37 +150,6 @@ public class JavaProcessExecutor implements CodeExecutor {
 		}
 
 		return results;
-	}
-
-	private boolean deleteRecursive(File file) {
-
-		boolean ret = true;
-
-		File[] children; //recursively delete children
-		if (file.isDirectory() && (children = file.listFiles()) != null)
-			for (File child : children)
-				ret &= this.deleteRecursive(child);
-
-		ret &= file.delete(); //delete file itself
-		return ret;
-	}
-
-	private String readConsole(Process process) throws ExecutorException {
-
-		final String newLine = String.format("%n");
-
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), JavaProcessExecutor.CODE_CHARSET))) {
-			StringBuilder sb = new StringBuilder();
-
-			String line; //read every line
-			while ((line = reader.readLine()) != null)
-				sb.append(line).append(newLine);
-
-			return sb.toString(); //create concatenated string
-
-		} catch (IOException ex) {
-			throw new ExecutorException("Could not read the console output.", ex);
-		}
 	}
 
 	private void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
