@@ -1,27 +1,19 @@
 package ch.bfh.progressor.executor.languages;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -48,7 +40,6 @@ public class JavaProcessExecutor extends CodeExecutor {
 	 */
 	public static final String CODE_LANGUAGE = "java";
 
-
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
@@ -59,13 +50,10 @@ public class JavaProcessExecutor extends CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
-
 	@Override
 	public String getLanguage() {
 		return JavaProcessExecutor.CODE_LANGUAGE;
 	}
-
-
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
@@ -89,7 +77,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
 
 			//********************
-			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
+			//*** ELEMENT_SEPARATOR_PATTERN CODE ***
 			//********************
 			long javacStart = System.nanoTime();
 			Process javacProcess = new ProcessBuilder("javac", "*.java").directory(codeDirectory).redirectErrorStream(true).start();
@@ -279,7 +267,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
 			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
+			if (JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
@@ -291,7 +279,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 				sb.append(String.format("new HashSet<%1$s>(Arrays.<%1$s>asList(", this.getJavaClass(elmTyp)));
 
 			boolean first = true; //generate collection elements
-			for (String elm : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+			for (String elm : JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(value)) {
 				if (first) first = false;
 				else sb.append(", ");
 				sb.append(this.getValueLiteral(elm, elmTyp));
@@ -302,7 +290,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] kvTyps = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
+			String[] kvTyps = JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(elmTyp);
 
 			if (kvTyps.length != 2) // validate type parameters
 				throw new ExecutorException("Map type needs 2 type parameters.");
@@ -310,7 +298,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
 			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getJavaClass(kvTyps[0]), this.getJavaClass(kvTyps[1])));
 
-			for (String ety : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+			for (String ety : JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
 				String[] kv = JavaProcessExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
 				if (kv.length != 2) //validate key/value pair
@@ -396,7 +384,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 		if (isArr || isLst || isSet) {
 			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
+			if (JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
 
 			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getJavaClass(typeParam)); //return class name
@@ -404,7 +392,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] typeParamsArray = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
+			String[] typeParamsArray = JavaProcessExecutor.ELEMENT_SEPARATOR_PATTERN.split(typeParams);
 
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException("Map type needs 2 type parameters.");
