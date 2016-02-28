@@ -9,7 +9,6 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -89,7 +88,7 @@ public abstract class CodeExecutor {
 	 * @return path to the code template resource
 	 */
 	protected String getCodeTemplatePath() {
-		return String.format("%s/template.txt", getLanguage());
+		return String.format("%s/template.txt", this.getLanguage());
 	}
 
 	/**
@@ -98,7 +97,7 @@ public abstract class CodeExecutor {
 	 * @return path to the code blacklist resource
 	 */
 	protected String getCodeBlacklistPath() {
-		return String.format("%s/blacklist.json", getLanguage());
+		return String.format("%s/blacklist.json", this.getLanguage());
 	}
 
 	/**
@@ -115,14 +114,14 @@ public abstract class CodeExecutor {
 	/**
 	 * Gets the blacklist containing the strings not allowed in the code fragment.
 	 *
-	 * @return a {@link Collection} containing the strings not allowed in the code fragment
+	 * @return a {@link List} containing the strings not allowed in the code fragment
 	 *
 	 * @throws ExecutorException if the fragment could not be read
 	 */
-	public Collection<String> getBlacklist() throws ExecutorException {
+	public List<String> getBlacklist() throws ExecutorException {
 
 		if (this.blacklist == null)
-			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(getCodeBlacklistPath()), RESOURCE_CHARSET)) {
+			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(this.getCodeBlacklistPath()), CodeExecutor.RESOURCE_CHARSET)) {
 				this.blacklist = new ArrayList<>();
 				JSONTokener tokener = new JSONTokener(reader);
 
@@ -159,7 +158,7 @@ public abstract class CodeExecutor {
 		final String newLine = String.format("%n");
 
 		if (this.template == null)
-			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(getCodeTemplatePath()), RESOURCE_CHARSET))) {
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(this.getCodeTemplatePath()), CodeExecutor.RESOURCE_CHARSET))) {
 				this.template = new StringBuilder();
 				String line;
 				while ((line = reader.readLine()) != null) //read template to StringBuilder
@@ -227,7 +226,7 @@ public abstract class CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CONSOLE_CHARSET))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CodeExecutor.CONSOLE_CHARSET))) {
 			StringBuilder sb = new StringBuilder();
 
 			String line; //read every line
