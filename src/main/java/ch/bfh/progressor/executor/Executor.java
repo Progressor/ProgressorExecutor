@@ -1,6 +1,7 @@
 package ch.bfh.progressor.executor;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +90,8 @@ public final class Executor {
 			Executor.LOGGER.info(String.format("getBlacklist(language=%s)", language));
 
 			try {
-				return this.getCodeExecutor(language).getBlacklist(); //delegate call
+				Collection<String> list = this.getCodeExecutor(language).getBlacklist(); //delegate call
+				return list instanceof List ? (List<String>)list : new ArrayList<>(list);
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not fetch the blacklist for language '%s'.", language);
