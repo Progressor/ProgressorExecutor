@@ -2,6 +2,7 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -215,6 +216,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 
 			sb.append("boolean suc = ret"); //begin validation of return value
 
+			boolean useEquals = false;
 			switch (oType) {
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
@@ -230,6 +232,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 				case executorConstants.TypeString:
 				case executorConstants.TypeDecimal:
 				default:
+					useEquals = true;
 					sb.append(".equals("); //compare objects using equality method
 					break;
 
@@ -239,7 +242,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
 
-			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
+			if (useEquals)
 				sb.append(')'); //close equality method parentheses
 
 			sb.append(';').append(newLine); //finish validation of return value
@@ -325,19 +328,25 @@ public class JavaProcessExecutor extends CodeExecutor {
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
 			case executorConstants.TypeByte:
+				return Byte.toString(Byte.parseByte(value));
+
 			case executorConstants.TypeShort:
+				return Short.toString(Short.parseShort(value));
+
 			case executorConstants.TypeInteger:
-			case executorConstants.TypeDouble:
-				return value;
+				return Integer.toString(Integer.parseInt(value));
 
 			case executorConstants.TypeLong:
-				return String.format("%sL", value);
+				return String.format("%dL", Long.parseLong(value));
 
 			case executorConstants.TypeSingle:
-				return String.format("%sf", value);
+				return String.format("%ff", Float.parseFloat(value));
+
+			case executorConstants.TypeDouble:
+				return Double.toString(Double.parseDouble(value));
 
 			case executorConstants.TypeDecimal:
-				return String.format("new BigDecimal(\"%s\")", value);
+				return String.format("new BigDecimal(\"%s\")", new BigDecimal(value).toPlainString());
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
