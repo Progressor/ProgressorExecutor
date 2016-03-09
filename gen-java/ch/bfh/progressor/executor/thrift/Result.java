@@ -39,8 +39,9 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Result");
 
   private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.BOOL, (short)1);
-  private static final org.apache.thrift.protocol.TField RESULT_FIELD_DESC = new org.apache.thrift.protocol.TField("result", org.apache.thrift.protocol.TType.STRING, (short)2);
-  private static final org.apache.thrift.protocol.TField PERFORMANCE_FIELD_DESC = new org.apache.thrift.protocol.TField("performance", org.apache.thrift.protocol.TType.STRUCT, (short)3);
+  private static final org.apache.thrift.protocol.TField FATAL_FIELD_DESC = new org.apache.thrift.protocol.TField("fatal", org.apache.thrift.protocol.TType.BOOL, (short)2);
+  private static final org.apache.thrift.protocol.TField RESULT_FIELD_DESC = new org.apache.thrift.protocol.TField("result", org.apache.thrift.protocol.TType.STRING, (short)3);
+  private static final org.apache.thrift.protocol.TField PERFORMANCE_FIELD_DESC = new org.apache.thrift.protocol.TField("performance", org.apache.thrift.protocol.TType.STRUCT, (short)4);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -49,14 +50,16 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
   }
 
   public boolean success; // required
+  public boolean fatal; // required
   public String result; // required
   public PerformanceIndicators performance; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
     SUCCESS((short)1, "success"),
-    RESULT((short)2, "result"),
-    PERFORMANCE((short)3, "performance");
+    FATAL((short)2, "fatal"),
+    RESULT((short)3, "result"),
+    PERFORMANCE((short)4, "performance");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -73,9 +76,11 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
       switch(fieldId) {
         case 1: // SUCCESS
           return SUCCESS;
-        case 2: // RESULT
+        case 2: // FATAL
+          return FATAL;
+        case 3: // RESULT
           return RESULT;
-        case 3: // PERFORMANCE
+        case 4: // PERFORMANCE
           return PERFORMANCE;
         default:
           return null;
@@ -118,11 +123,14 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
 
   // isset id assignments
   private static final int __SUCCESS_ISSET_ID = 0;
+  private static final int __FATAL_ISSET_ID = 1;
   private byte __isset_bitfield = 0;
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
+    tmpMap.put(_Fields.FATAL, new org.apache.thrift.meta_data.FieldMetaData("fatal", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
     tmpMap.put(_Fields.RESULT, new org.apache.thrift.meta_data.FieldMetaData("result", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
@@ -137,12 +145,15 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
 
   public Result(
     boolean success,
+    boolean fatal,
     String result,
     PerformanceIndicators performance)
   {
     this();
     this.success = success;
     setSuccessIsSet(true);
+    this.fatal = fatal;
+    setFatalIsSet(true);
     this.result = result;
     this.performance = performance;
   }
@@ -153,6 +164,7 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
   public Result(Result other) {
     __isset_bitfield = other.__isset_bitfield;
     this.success = other.success;
+    this.fatal = other.fatal;
     if (other.isSetResult()) {
       this.result = other.result;
     }
@@ -169,6 +181,8 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
   public void clear() {
     setSuccessIsSet(false);
     this.success = false;
+    setFatalIsSet(false);
+    this.fatal = false;
     this.result = null;
     this.performance = null;
   }
@@ -194,6 +208,29 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
 
   public void setSuccessIsSet(boolean value) {
     __isset_bitfield = EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
+  }
+
+  public boolean isFatal() {
+    return this.fatal;
+  }
+
+  public Result setFatal(boolean fatal) {
+    this.fatal = fatal;
+    setFatalIsSet(true);
+    return this;
+  }
+
+  public void unsetFatal() {
+    __isset_bitfield = EncodingUtils.clearBit(__isset_bitfield, __FATAL_ISSET_ID);
+  }
+
+  /** Returns true if field fatal is set (has been assigned a value) and false otherwise */
+  public boolean isSetFatal() {
+    return EncodingUtils.testBit(__isset_bitfield, __FATAL_ISSET_ID);
+  }
+
+  public void setFatalIsSet(boolean value) {
+    __isset_bitfield = EncodingUtils.setBit(__isset_bitfield, __FATAL_ISSET_ID, value);
   }
 
   public String getResult() {
@@ -254,6 +291,14 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
       }
       break;
 
+    case FATAL:
+      if (value == null) {
+        unsetFatal();
+      } else {
+        setFatal((Boolean)value);
+      }
+      break;
+
     case RESULT:
       if (value == null) {
         unsetResult();
@@ -278,6 +323,9 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
     case SUCCESS:
       return isSuccess();
 
+    case FATAL:
+      return isFatal();
+
     case RESULT:
       return getResult();
 
@@ -297,6 +345,8 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
     switch (field) {
     case SUCCESS:
       return isSetSuccess();
+    case FATAL:
+      return isSetFatal();
     case RESULT:
       return isSetResult();
     case PERFORMANCE:
@@ -324,6 +374,15 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
       if (!(this_present_success && that_present_success))
         return false;
       if (this.success != that.success)
+        return false;
+    }
+
+    boolean this_present_fatal = true;
+    boolean that_present_fatal = true;
+    if (this_present_fatal || that_present_fatal) {
+      if (!(this_present_fatal && that_present_fatal))
+        return false;
+      if (this.fatal != that.fatal)
         return false;
     }
 
@@ -357,6 +416,11 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
     if (present_success)
       list.add(success);
 
+    boolean present_fatal = true;
+    list.add(present_fatal);
+    if (present_fatal)
+      list.add(fatal);
+
     boolean present_result = true && (isSetResult());
     list.add(present_result);
     if (present_result)
@@ -384,6 +448,16 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
     }
     if (isSetSuccess()) {
       lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetFatal()).compareTo(other.isSetFatal());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetFatal()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.fatal, other.fatal);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -430,6 +504,10 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
 
     sb.append("success:");
     sb.append(this.success);
+    first = false;
+    if (!first) sb.append(", ");
+    sb.append("fatal:");
+    sb.append(this.fatal);
     first = false;
     if (!first) sb.append(", ");
     sb.append("result:");
@@ -500,7 +578,15 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
             }
             break;
-          case 2: // RESULT
+          case 2: // FATAL
+            if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) {
+              struct.fatal = iprot.readBool();
+              struct.setFatalIsSet(true);
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+            }
+            break;
+          case 3: // RESULT
             if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
               struct.result = iprot.readString();
               struct.setResultIsSet(true);
@@ -508,7 +594,7 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
             }
             break;
-          case 3: // PERFORMANCE
+          case 4: // PERFORMANCE
             if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
               struct.performance = new PerformanceIndicators();
               struct.performance.read(iprot);
@@ -534,6 +620,9 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
       oprot.writeStructBegin(STRUCT_DESC);
       oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
       oprot.writeBool(struct.success);
+      oprot.writeFieldEnd();
+      oprot.writeFieldBegin(FATAL_FIELD_DESC);
+      oprot.writeBool(struct.fatal);
       oprot.writeFieldEnd();
       if (struct.result != null) {
         oprot.writeFieldBegin(RESULT_FIELD_DESC);
@@ -566,15 +655,21 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
       if (struct.isSetSuccess()) {
         optionals.set(0);
       }
-      if (struct.isSetResult()) {
+      if (struct.isSetFatal()) {
         optionals.set(1);
       }
-      if (struct.isSetPerformance()) {
+      if (struct.isSetResult()) {
         optionals.set(2);
       }
-      oprot.writeBitSet(optionals, 3);
+      if (struct.isSetPerformance()) {
+        optionals.set(3);
+      }
+      oprot.writeBitSet(optionals, 4);
       if (struct.isSetSuccess()) {
         oprot.writeBool(struct.success);
+      }
+      if (struct.isSetFatal()) {
+        oprot.writeBool(struct.fatal);
       }
       if (struct.isSetResult()) {
         oprot.writeString(struct.result);
@@ -587,16 +682,20 @@ public class Result implements org.apache.thrift.TBase<Result, Result._Fields>, 
     @Override
     public void read(org.apache.thrift.protocol.TProtocol prot, Result struct) throws org.apache.thrift.TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
-      BitSet incoming = iprot.readBitSet(3);
+      BitSet incoming = iprot.readBitSet(4);
       if (incoming.get(0)) {
         struct.success = iprot.readBool();
         struct.setSuccessIsSet(true);
       }
       if (incoming.get(1)) {
+        struct.fatal = iprot.readBool();
+        struct.setFatalIsSet(true);
+      }
+      if (incoming.get(2)) {
         struct.result = iprot.readString();
         struct.setResultIsSet(true);
       }
-      if (incoming.get(2)) {
+      if (incoming.get(3)) {
         struct.performance = new PerformanceIndicators();
         struct.performance.read(iprot);
         struct.setPerformanceIsSet(true);

@@ -38,8 +38,9 @@ struct TestCase {
 
 struct Result {
 	1: bool success,
-	2: string result,
-	3: PerformanceIndicators performance
+	2: bool fatal,
+	3: string result,
+	4: PerformanceIndicators performance
 }
 
 struct PerformanceIndicators {

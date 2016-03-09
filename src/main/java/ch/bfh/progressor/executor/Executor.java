@@ -125,7 +125,7 @@ public final class Executor {
 
 				List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
 				if (!blacklist.isEmpty()) { //validate fragment against blacklist
-					Result result = new Result(false, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
+					Result result = new Result(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
 					List<Result> results = new ArrayList<>(testCases.size());
 					while (results.size() < testCases.size())
 						results.add(result);

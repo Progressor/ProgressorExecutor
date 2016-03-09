@@ -37,7 +37,7 @@ public abstract class CodeExecutor {
 	/**
 	 * Character set to use for the console output.
 	 */
-	public static final Charset CONSOLE_CHARSET ;
+	public static final Charset CONSOLE_CHARSET;
 
 	/**
 	 * Name of the class as defined in the template.
@@ -54,7 +54,6 @@ public abstract class CodeExecutor {
 	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
-
 	public static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
 
 	public static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
@@ -64,13 +63,12 @@ public abstract class CodeExecutor {
 
 	static {
 
-		try (OutputStreamWriter osw = new OutputStreamWriter(System.out)){
-		CONSOLE_CHARSET = Charset.forName(osw.getEncoding());
+		try (OutputStreamWriter osw = new OutputStreamWriter(System.out)) {
+			CONSOLE_CHARSET = Charset.forName(osw.getEncoding());
 		} catch (IOException ex) {
 			throw new UncheckedIOException(ex);
 		}
 	}
-
 
 	/**
 	 * Gets the unique name of the language the executor supports.
@@ -79,11 +77,11 @@ public abstract class CodeExecutor {
 	 */
 	public abstract String getLanguage();
 
-	protected String getCodeTemplatePath(){
+	protected String getCodeTemplatePath() {
 		return String.format("%s/template.txt", getLanguage());
 	}
 
-	protected String getCodeBlacklistPath(){
+	protected String getCodeBlacklistPath() {
 		return String.format("%s/blacklist.json", getLanguage());
 	}
 
@@ -107,32 +105,31 @@ public abstract class CodeExecutor {
 	 */
 	public Collection<String> getBlacklist() throws ExecutorException {
 
+		if (this.blacklist == null)
+			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(getCodeBlacklistPath()), RESOURCE_CHARSET)) {
+				this.blacklist = new ArrayList<>();
+				JSONTokener tokener = new JSONTokener(reader);
 
-			if (this.blacklist == null)
-				try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(getCodeBlacklistPath()), RESOURCE_CHARSET)) {
-					this.blacklist = new ArrayList<>();
-					JSONTokener tokener = new JSONTokener(reader);
+				if (!tokener.more()) throw new JSONException("No root elements present.");
+				JSONArray groups = (JSONArray)tokener.nextValue();
+				if (!tokener.more()) throw new JSONException("Multiple root elements present.");
 
-					if (!tokener.more()) throw new JSONException("No root elements present.");
-					JSONArray groups = (JSONArray)tokener.nextValue();
-					if (!tokener.more()) throw new JSONException("Multiple root elements present.");
+				for (int i = 0; i < groups.length(); i++) {
+					JSONObject group = groups.getJSONObject(i);
+					JSONArray elements = group.getJSONArray("elements");
 
-					for (int i = 0; i < groups.length(); i++) {
-						JSONObject group = groups.getJSONObject(i);
-						JSONArray elements = group.getJSONArray("elements");
-
-						for (int j = 0; j < elements.length(); j++) {
-							JSONObject element = elements.getJSONObject(j);
-							this.blacklist.add(element.getString("keyword"));
-						}
+					for (int j = 0; j < elements.length(); j++) {
+						JSONObject element = elements.getJSONObject(j);
+						this.blacklist.add(element.getString("keyword"));
 					}
-
-				} catch (IOException | JSONException | ClassCastException ex) {
-					throw new ExecutorException("Could not read the blacklist.", ex);
 				}
 
-			return Collections.unmodifiableList(this.blacklist);
-		}
+			} catch (IOException | JSONException | ClassCastException ex) {
+				throw new ExecutorException(true, "Could not read the blacklist.", ex);
+			}
+
+		return Collections.unmodifiableList(this.blacklist);
+	}
 
 	protected StringBuilder getTemplate() throws IOException {
 
@@ -148,7 +145,6 @@ public abstract class CodeExecutor {
 
 		return new StringBuilder(this.template); //return a new string builder every time
 	}
-
 
 	/**
 	 * Executes a provided code fragment.
@@ -175,7 +171,6 @@ public abstract class CodeExecutor {
 		return this.execute(codeFragment, functions, Arrays.asList(testCases));
 	}
 
-
 	protected boolean deleteRecursive(File file) {
 
 		boolean ret = true;
@@ -188,7 +183,6 @@ public abstract class CodeExecutor {
 		ret &= file.delete(); //delete file itself
 		return ret;
 	}
-
 
 	protected String readConsole(Process process) throws ExecutorException {
 
@@ -204,10 +198,7 @@ public abstract class CodeExecutor {
 			return sb.toString(); //create concatenated string
 
 		} catch (IOException ex) {
-			throw new ExecutorException("Could not read the console output.", ex);
+			throw new ExecutorException(false, "Could not read the console output.", ex);
 		}
 	}
-
 }
-
-

@@ -1,27 +1,19 @@
 package ch.bfh.progressor.executor.languages;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -58,12 +50,10 @@ public class CPlusPlusExecutor extends CodeExecutor {
 	 */
 	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
 
-
 	@Override
 	public String getLanguage() {
 		return CPlusPlusExecutor.CODE_LANGUAGE;
 	}
-
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
@@ -79,7 +69,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
-				throw new ExecutorException("Could not create a temporary directory for the user code.");
+				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
 
 			//*********************
 			//*** GENERATE CODE ***
@@ -93,11 +83,11 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			Process cppProcess = new ProcessBuilder("g++", "*.cpp -o executeCode.exe").directory(codeDirectory).redirectErrorStream(true).start();
 			if (cppProcess.waitFor(CPlusPlusExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cppProcess.exitValue() != 0)
-					throw new ExecutorException("Could not compile the user code.", this.readConsole(cppProcess));
+					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cppProcess));
 
 			} else {
 				cppProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException("Could not compile the user code in time.");
+				throw new ExecutorException(true, "Could not compile the user code in time.");
 			}
 			long cppcEnd = System.nanoTime();
 
@@ -108,14 +98,13 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			cppProcess = new ProcessBuilder("cpp", CPlusPlusExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cppProcess.waitFor(CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cppProcess.exitValue() != 0)
-					throw new ExecutorException("Could not execute the user code.", this.readConsole(cppProcess));
+					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(cppProcess));
 
 			} else {
 				cppProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException("Could not execute the user code in time.");
+				throw new ExecutorException(true, "Could not execute the user code in time.");
 			}
 			long cppEnd = System.nanoTime();
-
 
 			//****************************
 			//*** TEST CASE EVALUATION ***
@@ -124,7 +113,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 																				CPlusPlusExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) {
 					String res = outStm.next(); //get output lines of next test case
-					results.add(new Result(res.startsWith("OK"),
+					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
 																 new PerformanceIndicators((cppcEnd - cppcStart) / 1e6)));
 				}
@@ -134,9 +123,10 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//*** EXCEPTION HANDLING ***
 			//**************************
 		} catch (Exception ex) {
-			Result res = new Result().setSuccess(false);
-			if (ex instanceof ExecutorException && ((ExecutorException)ex).getOutput() != null)
-				res.setResult(String.format("%s:%n%s", ex.getMessage(), ((ExecutorException)ex).getOutput()));
+			ExecutorException exEx;
+			Result res = new Result().setSuccess(false).setFatal(false);
+			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
+				res.setFatal(exEx.isFatal()).setResult(String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()));
 			else
 				res.setResult(String.format("%s:%n%s", "Could not invoke the user code.", ex));
 
@@ -150,7 +140,6 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 		return results;
 	}
-
 
 	private void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
@@ -167,7 +156,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 									code.toString().getBytes(CPlusPlusExecutor.CODE_CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
-			throw new ExecutorException("Could not generate the code file.", ex);
+			throw new ExecutorException(true, "Could not generate the code file.", ex);
 		}
 	}
 
@@ -180,9 +169,9 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 			//validate input / output types & names
 			if (function.getInputTypesSize() != function.getInputNamesSize())
-				throw new ExecutorException("The same number of input types & names have to be defined.");
+				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
-				throw new ExecutorException("Exactly one output type has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output type has to be defined for a java sample.");
 
 			sb.append("public ").append(this.getJavaType(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
@@ -210,9 +199,9 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 			//validate input / output types & values
 			if (testCase.getInputValuesSize() != function.getInputTypesSize())
-				throw new ExecutorException("The same number of input values & types have to be defined.");
+				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
-				throw new ExecutorException("Exactly one output value has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output value has to be defined for a java sample.");
 
 			sb.append("try {").append(newLine); //begin test case block
 
@@ -280,7 +269,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
 
 			if (CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
-				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
+				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
@@ -305,7 +294,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			String[] kvTyps = CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
 
 			if (kvTyps.length != 2) // validate type parameters
-				throw new ExecutorException("Map type needs 2 type parameters.");
+				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
 			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getJavaClass(kvTyps[0]), this.getJavaClass(kvTyps[1])));
@@ -314,7 +303,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				String[] kv = CPlusPlusExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
 				if (kv.length != 2) //validate key/value pair
-					throw new ExecutorException("Map entries always need a key and a value.");
+					throw new ExecutorException(true, "Map entries always need a key and a value.");
 
 				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("); ");
 			}
@@ -351,7 +340,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				return String.format("new BigDecimal(\"%s\")", value);
 
 			default:
-				throw new ExecutorException(String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
 		}
 	}
 
@@ -397,7 +386,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
 
 			if (CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
-				throw new ExecutorException("Array, List & Set types need 1 type parameter.");
+				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getJavaClass(typeParam)); //return class name
 
@@ -407,7 +396,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			String[] typeParamsArray = CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
 
 			if (typeParamsArray.length != 2) // validate type parameters
-				throw new ExecutorException("Map type needs 2 type parameters.");
+				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			return String.format("Map<%s, %s>", this.getJavaClass(typeParamsArray[0]), this.getJavaClass(typeParamsArray[1])); //return class name
 		}
@@ -444,7 +433,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				return "BigDecimal";
 
 			default:
-				throw new ExecutorException(String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
 		}
 	}
 }
