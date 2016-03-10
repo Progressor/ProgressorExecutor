@@ -1,1 +1,16 @@
-#include <studio.h> int main() {  p; }
+#include <iostream>
+#include <string>
+#include <map>
+#include <set>
+#include <array>
+#include <list>
+using namespace std;
+
+$CustomCode$
+
+int main() {
+
+	$TestCases$
+
+  return 0;
+};

@@ -1,7 +1,11 @@
 package ch.bfh.progressor.executor.languages;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -39,6 +43,11 @@ public class CPlusPlusExecutor extends CodeExecutor {
 	 * Unique name of the language this executor supports.
 	 */
 	public static final String CODE_LANGUAGE = "cpp";
+
+	/**
+	 * Name the .exe file for compiled code
+	 */
+	public static final String EXECUTE_NAME = "ExecuteCode";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
@@ -80,7 +89,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
 			long cppcStart = System.nanoTime();
-			Process cppProcess = new ProcessBuilder("g++", "*.cpp -o executeCode.exe").directory(codeDirectory).redirectErrorStream(true).start();
+			Process cppProcess = new ProcessBuilder("g++","*.cpp","-std=c++11","-o",EXECUTE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cppProcess.waitFor(CPlusPlusExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cppProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cppProcess));
@@ -95,13 +104,13 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long cppStart = System.nanoTime();
-			cppProcess = new ProcessBuilder("cpp", CPlusPlusExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
-			if (cppProcess.waitFor(CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (cppProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(cppProcess));
+			Process cppExecuteProcess = new ProcessBuilder(codeDirectory + "\\" + EXECUTE_NAME + ".exe").directory(codeDirectory).redirectErrorStream(true).start();
+			if (cppExecuteProcess.waitFor(CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				if (cppExecuteProcess.exitValue() != 0)
+					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(cppExecuteProcess));
 
 			} else {
-				cppProcess.destroyForcibly(); //destroy()
+				cppExecuteProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException(true, "Could not execute the user code in time.");
 			}
 			long cppEnd = System.nanoTime();
@@ -109,7 +118,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(cppProcess.getInputStream(), //create a scanner to read the console output case by case
+			try (Scanner outStm = new Scanner(cppExecuteProcess.getInputStream(), //create a scanner to read the console output case by case
 																				CPlusPlusExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) {
 					String res = outStm.next(); //get output lines of next test case
@@ -152,7 +161,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			int caseStart = code.indexOf(CPlusPlusExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CPlusPlusExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", CPlusPlusExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), "main.cpp"), //create a c++ source file in the temporary directory
 									code.toString().getBytes(CPlusPlusExecutor.CODE_CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -173,12 +182,12 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a java sample.");
 
-			sb.append("public ").append(this.getJavaType(function.getOutputTypes().get(0))).append(' ');
+			sb.append("public ").append(this.getCppType(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getJavaType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+				sb.append(this.getCppType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
 			sb.append(") {").append(newLine).append("\t").append(newLine).append('}').append(newLine);
@@ -206,15 +215,16 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			sb.append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getJavaType(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
+			sb.append(this.getCppType(oType)).append(" ret = ").append(testCase.getFunctionName()).append('(');
 			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("boolean suc = ret"); //begin validation of return value
+			sb.append("bool suc = ret"); //begin validation of return value
 
+			boolean useCompare=false;
 			switch (oType) {
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
@@ -224,13 +234,14 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				case executorConstants.TypeLong:
 				case executorConstants.TypeSingle:
 				case executorConstants.TypeDouble:
+				case executorConstants.TypeString:
 					sb.append(" == "); //compare primitive types using equality operator
 					break;
 
-				case executorConstants.TypeString:
 				case executorConstants.TypeDecimal:
 				default:
-					sb.append(".equals("); //compare objects using equality method
+					useCompare = true;
+					sb.append(".compare("); //compare objects using compare method
 					break;
 
 				//default:
@@ -239,16 +250,16 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
 
-			if (oType.equals(executorConstants.TypeString) || oType.equals(executorConstants.TypeDecimal))
+			if (useCompare)
 				sb.append(')'); //close equality method parentheses
 
 			sb.append(';').append(newLine); //finish validation of return value
 
-			sb.append("System.out.printf(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
-
-			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
-			sb.append("System.out.print(\"ER:\");");
-			sb.append("ex.printStackTrace(System.out);").append(newLine);
+			sb.append("cout << (suc ? \"OK\" : \"ER\") << \":\" << ret << endl << endl;").append(newLine); //print result to the console
+			sb.append("} catch (const exception &exc) {").append(newLine); //finish test case block / begin exception handling
+			sb.append("cout << \"ER:\" << exc.what() << endl << endl;").append(newLine);
+			sb.append("} catch (...) {").append(newLine); //finish first catch block and start second
+			sb.append("cout << \"ER:unknown exception\" << endl << endl;").append(newLine);
 			sb.append('}').append(newLine); //finish exception handling
 		}
 
@@ -271,22 +282,24 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
+			String[] elms =	CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(value);
+
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getJavaClass(elmTyp)).append("[] { ");
+				sb.append("new " ).append(this.getCppType(elmTyp)).append('[').append(elms.length).append("] { ");
 			else if (isLst) //begin list initialisation using helper method
-				sb.append(String.format("Arrays.<%s>asList(", this.getJavaClass(elmTyp)));
+				sb.append(String.format("list<%s>(", this.getCppType(elmTyp)));
 			else //begin set initialisation using constructor and helper method
-				sb.append(String.format("new HashSet<%1$s>(Arrays.<%1$s>asList(", this.getJavaClass(elmTyp)));
+				sb.append(String.format("set<%s>{", this.getCppType(elmTyp)));
 
 			boolean first = true; //generate collection elements
-			for (String elm : CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+			for (String elm : elms) {
 				if (first) first = false;
 				else sb.append(", ");
 				sb.append(this.getValueLiteral(elm, elmTyp));
 			}
 
-			return sb.append(isArr ? " }" : isLst ? ')' : "))").toString(); //finish collection initialisation and return literal
+			return sb.append(" }" ).toString(); //finish collection initialisation and return literal
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
@@ -297,7 +310,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
-			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getJavaClass(kvTyps[0]), this.getJavaClass(kvTyps[1])));
+			sb.append(String.format("map<%s, %s> { ", this.getCppType(kvTyps[0]), this.getCppType(kvTyps[1])));
 
 			for (String ety : CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
 				String[] kv = CPlusPlusExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
@@ -305,10 +318,10 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				if (kv.length != 2) //validate key/value pair
 					throw new ExecutorException(true, "Map entries always need a key and a value.");
 
-				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("); ");
+				sb.append('{').append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("}, ");
 			}
 
-			return sb.append("}}").toString(); //finish initialisation and return literal
+			return sb.append("}").toString(); //finish initialisation and return literal
 		}
 
 		switch (type) { //switch over basic types
@@ -325,58 +338,33 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
 			case executorConstants.TypeByte:
+				return Byte.toString(Byte.parseByte(value));
+
 			case executorConstants.TypeShort:
+				return Short.toString(Short.parseShort(value));
+
 			case executorConstants.TypeInteger:
-			case executorConstants.TypeDouble:
-				return value;
+				return String.format("%dL",Integer.parseInt(value));
 
 			case executorConstants.TypeLong:
-				return String.format("%sL", value);
+				return String.format("%dLL", Long.parseLong(value));
 
 			case executorConstants.TypeSingle:
-				return String.format("%sf", value);
+				return String.format("%fF", Float.parseFloat(value));
+
+			case executorConstants.TypeDouble:
+				return Double.toString(Double.parseDouble(value));
 
 			case executorConstants.TypeDecimal:
-				return String.format("new BigDecimal(\"%s\")", value);
+				return String.format("%fL", new BigDecimal(value).toPlainString());
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
 		}
 	}
 
-	private String getJavaType(String type) throws ExecutorException {
 
-		switch (type) { //switch over primitive types
-			case executorConstants.TypeCharacter:
-				return "char";
-
-			case executorConstants.TypeBoolean:
-				return "boolean";
-
-			case executorConstants.TypeByte:
-				return "byte";
-
-			case executorConstants.TypeShort:
-				return "short";
-
-			case executorConstants.TypeInteger:
-				return "int";
-
-			case executorConstants.TypeLong:
-				return "long";
-
-			case executorConstants.TypeSingle:
-				return "float";
-
-			case executorConstants.TypeDouble:
-				return "double";
-
-			default:
-				return getJavaClass(type);
-		}
-	}
-
-	private String getJavaClass(String type) throws ExecutorException {
+	private String getCppType(String type) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
@@ -388,7 +376,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (CPlusPlusExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getJavaClass(typeParam)); //return class name
+			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getCppType(typeParam)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
@@ -398,42 +386,43 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
-			return String.format("Map<%s, %s>", this.getJavaClass(typeParamsArray[0]), this.getJavaClass(typeParamsArray[1])); //return class name
+			return String.format("map<%s, %s>", this.getCppType(typeParamsArray[0]), this.getCppType(typeParamsArray[1])); //return class name
 		}
 
-		switch (type) { //switch over basic types
+		switch (type) { //switch over primitive types
 			case executorConstants.TypeString:
-				return "String";
+				return "string";
 
 			case executorConstants.TypeCharacter:
-				return "Character";
+				return "char";
 
 			case executorConstants.TypeBoolean:
-				return "Boolean";
+				return "bool";
 
 			case executorConstants.TypeByte:
-				return "Byte";
+				return "signed char";
 
 			case executorConstants.TypeShort:
-				return "Short";
+				return "int";
 
 			case executorConstants.TypeInteger:
-				return "Integer";
+				return "long int";
 
 			case executorConstants.TypeLong:
-				return "Long";
+				return "long long int";
 
 			case executorConstants.TypeSingle:
-				return "Float";
+				return "float";
 
 			case executorConstants.TypeDouble:
-				return "Double";
+				return "double";
 
 			case executorConstants.TypeDecimal:
-				return "BigDecimal";
+				return "long double";
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
 		}
 	}
+
 }
