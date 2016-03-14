@@ -62,7 +62,6 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
-
 		return this.getFunctionSignatures(functions);
 	}
 

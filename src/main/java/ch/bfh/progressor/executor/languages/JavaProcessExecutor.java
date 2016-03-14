@@ -58,7 +58,6 @@ public class JavaProcessExecutor extends CodeExecutor {
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
-
 		return this.getFunctionSignatures(functions);
 	}
 
@@ -96,7 +95,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long javaStart = System.nanoTime();
-			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			Process javaProcess = new ProcessBuilder("java", CodeExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(javaProcess));
@@ -147,13 +146,13 @@ public class JavaProcessExecutor extends CodeExecutor {
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
 
-			int fragStart = code.indexOf(JavaProcessExecutor.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + JavaProcessExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
+			int fragStart = code.indexOf(CodeExecutor.CODE_CUSTOM_FRAGMENT); //place fragment in template
+			code.replace(fragStart, fragStart + CodeExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
-			int caseStart = code.indexOf(JavaProcessExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + JavaProcessExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
+			int caseStart = code.indexOf(CodeExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
+			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.java", CodeExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
 									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -182,7 +181,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 				sb.append(this.getJavaType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
-			sb.append(") {").append(newLine).append("\t").append(newLine).append('}').append(newLine);
+			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
 		}
 
 		return sb.toString();
@@ -271,7 +270,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
 			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
+			if (CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
@@ -283,7 +282,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 				sb.append(String.format("new HashSet<%1$s>(Arrays.<%1$s>asList(", this.getJavaClass(elmTyp)));
 
 			boolean first = true; //generate collection elements
-			for (String elm : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+			for (String elm : CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
 				if (first) first = false;
 				else sb.append(", ");
 				sb.append(this.getValueLiteral(elm, elmTyp));
@@ -294,7 +293,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] kvTyps = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
+			String[] kvTyps = CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
 
 			if (kvTyps.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
@@ -302,8 +301,8 @@ public class JavaProcessExecutor extends CodeExecutor {
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
 			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getJavaClass(kvTyps[0]), this.getJavaClass(kvTyps[1])));
 
-			for (String ety : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
-				String[] kv = JavaProcessExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
+			for (String ety : CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+				String[] kv = CodeExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
 				if (kv.length != 2) //validate key/value pair
 					throw new ExecutorException(true, "Map entries always need a key and a value.");
@@ -394,7 +393,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 		if (isArr || isLst || isSet) {
 			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
+			if (CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getJavaClass(typeParam)); //return class name
@@ -402,7 +401,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] typeParamsArray = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
+			String[] typeParamsArray = CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
 
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
