@@ -321,7 +321,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				char separator = type == executorConstants.TypeCharacter ? '\'' : '"';
+				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';
 				return String.format("%1$c%2$s%1$c", separator, valueSafe);
 
 			case executorConstants.TypeBoolean:
