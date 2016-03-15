@@ -341,13 +341,13 @@ public class CSharpExecutor extends CodeExecutor {
 				return String.format("%dL", Long.parseLong(value));
 
 			case executorConstants.TypeSingle:
-				return String.format("%ff", Float.parseFloat(value));
+				return String.format("%F", Float.parseFloat(value));
 
 			case executorConstants.TypeDouble:
 				return Double.toString(Double.parseDouble(value));
 
 			case executorConstants.TypeDecimal:
-				return String.format("new BigDecimal(\"%s\")", new BigDecimal(value).toPlainString());
+				return String.format("new BigInteger(\"%s\")", new BigDecimal(value).toPlainString());
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
