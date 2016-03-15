@@ -2,33 +2,27 @@
 	{
 		"group": "keywords",
 		"elements": [
-			{"keyword":"include"},
-			{"keyword": "assert"},
+			{"keyword":"#include"},
 			{"keyword": "catch"},
 			{"keyword": "class"},
 			{"keyword": "const"},
 			{"keyword": "enum"},
-			{"keyword": "extends"},
-			{"keyword": "finally"},
 			{"keyword": "goto"},
 			{"keyword": "implements"},
-			{"keyword": "import"},
-			{"keyword": "interface"},
-			{"keyword": "native"},
-			{"keyword": "strictfp"},
-			{"keyword": "super"},
-			{"keyword": "synchronized"},
+			{"keyword": "mutable"},
+			{"keyword": "operator"},
+			{"keyword": "switch"},
+			{"keyword": "thread_local"},
 			{"keyword": "throw"},
-			{"keyword": "throws"},
-			{"keyword": "transient"},
 			{"keyword": "try"},
+			{"keyword": "virtual"},
 			{"keyword": "volatile"}
 		]
 	},
 	{
-		"group": "methods",
+		"group": "functions",
 		"elements": [
-			{"keyword": "getClass"}
+			{"keyword": "memset"}
 		]
 	},
 	{
