@@ -1,0 +1,10 @@
+using System;using System.Collections.Generic;namespace CustomClass { class CustomClass { $CustomCode$
+
+		static void Main(string[] args){
+				CustomClass inst = new CustomClass();
+
+ 				$TestCases$
+
+  	}
+  }
+}
