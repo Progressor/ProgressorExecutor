@@ -24,7 +24,9 @@ import ch.bfh.progressor.executor.thrift.TestCase;
 import ch.bfh.progressor.executor.thrift.executorConstants;
 
 /**
- * Created by janick Weidmann on 14.03.2016.
+ * Code execution engine for C# code.
+ *
+ * @author strut1, touwm1 &amp; weidj1
  */
 public class CSharpExecutor extends CodeExecutor {
 
@@ -39,9 +41,9 @@ public class CSharpExecutor extends CodeExecutor {
 	public static final String CODE_LANGUAGE = "csharp";
 
 	/**
-	 * Name the .exe file for compiled code
+	 * Name of the executable.
 	 */
-	public static final String EXECUTE_NAME = "ExecuteCode";
+	public static final String EXECUTABLE_NAME = "main";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
@@ -60,7 +62,6 @@ public class CSharpExecutor extends CodeExecutor {
 
 	@Override
 	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
-
 		return this.getFunctionSignatures(functions);
 	}
 
@@ -82,43 +83,43 @@ public class CSharpExecutor extends CodeExecutor {
 			//********************
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
-			long cSharpc = System.nanoTime();
-			Process cSharpProcess = new ProcessBuilder("csc","/out:" + EXECUTE_NAME + ".exe","*.cs").directory(codeDirectory).redirectErrorStream(true).start();
-			if (cSharpProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (cSharpProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cSharpProcess));
+			long cscStart = System.nanoTime();
+			Process cscProcess = new ProcessBuilder("csc", String.format("/out:%s.exe", CSharpExecutor.EXECUTABLE_NAME), "*.cs").directory(codeDirectory).redirectErrorStream(true).start();
+			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				if (cscProcess.exitValue() != 0)
+					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
 
 			} else {
-				cSharpProcess.destroyForcibly(); //destroy()
+				cscProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException(true, "Could not compile the user code in time.");
 			}
-			long cppcEnd = System.nanoTime();
+			long cscEnd = System.nanoTime();
 
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			long cSharpStart = System.nanoTime();
-			Process cSharpExecuteProcess = new ProcessBuilder(codeDirectory.getAbsolutePath() + "\\" + EXECUTE_NAME + ".exe").redirectErrorStream(true).start();
-			if (cSharpExecuteProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (cSharpExecuteProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(cSharpExecuteProcess));
+			long csStart = System.nanoTime();
+			Process csProcess = new ProcessBuilder(CSharpExecutor.EXECUTABLE_NAME).redirectErrorStream(true).start();
+			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				if (csProcess.exitValue() != 0)
+					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
 
 			} else {
-				cSharpExecuteProcess.destroyForcibly(); //destroy()
+				csProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException(true, "Could not execute the user code in time.");
 			}
-			long cSharpEnd = System.nanoTime();
+			long csEnd = System.nanoTime();
 
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(cSharpExecuteProcess.getInputStream(), //create a scanner to read the console output case by case
+			try (Scanner outStm = new Scanner(csProcess.getInputStream(), //create a scanner to read the console output case by case
 																				CSharpExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((cppcEnd - cSharpc) / 1e6)));
+																 new PerformanceIndicators((cscEnd - cscStart) / 1e6)));
 				}
 			}
 
@@ -149,11 +150,11 @@ public class CSharpExecutor extends CodeExecutor {
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
 
-			int fragStart = code.indexOf(CSharpExecutor.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + CSharpExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
+			int fragStart = code.indexOf(CodeExecutor.CODE_CUSTOM_FRAGMENT); //place fragment in template
+			code.replace(fragStart, fragStart + CodeExecutor.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
-			int caseStart = code.indexOf(CSharpExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CSharpExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
+			int caseStart = code.indexOf(CodeExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
+			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
 			Files.write(Paths.get(directory.getPath(), "main.cs"), //create a c++ source file in the temporary directory
 									code.toString().getBytes(CSharpExecutor.CODE_CHARSET)); //and write the generated code in it
@@ -162,6 +163,7 @@ public class CSharpExecutor extends CodeExecutor {
 			throw new ExecutorException(true, "Could not generate the code file.", ex);
 		}
 	}
+
 	private String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -173,17 +175,17 @@ public class CSharpExecutor extends CodeExecutor {
 			if (function.getInputTypesSize() != function.getInputNamesSize())
 				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
-				throw new ExecutorException(true, "Exactly one output type has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output type has to be defined for a C# sample.");
 
-			sb.append("public static").append(this.getCSharpType(function.getOutputTypes().get(0))).append(' ');
+			sb.append("public static").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getCSharpType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+				sb.append(this.getTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
-			sb.append(") {").append(newLine).append("\t").append(newLine).append('}').append(newLine);
+			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
 		}
 
 		return sb.toString();
@@ -203,12 +205,12 @@ public class CSharpExecutor extends CodeExecutor {
 			if (testCase.getInputValuesSize() != function.getInputTypesSize())
 				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output value has to be defined for a C# sample.");
 
 			sb.append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getCSharpType(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
+			sb.append(this.getTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
 			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
@@ -219,19 +221,19 @@ public class CSharpExecutor extends CodeExecutor {
 
 			boolean useEquals = false;
 			switch (oType) {
+				case executorConstants.TypeString:
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
-				case executorConstants.TypeByte:
-				case executorConstants.TypeShort:
-				case executorConstants.TypeInteger:
-				case executorConstants.TypeLong:
-				case executorConstants.TypeSingle:
-				case executorConstants.TypeDouble:
+				case executorConstants.TypeInt8:
+				case executorConstants.TypeInt16:
+				case executorConstants.TypeInt32:
+				case executorConstants.TypeInt64:
+				case executorConstants.TypeFloat32:
+				case executorConstants.TypeFloat64:
+				case executorConstants.TypeDecimal:
 					sb.append(" == "); //compare primitive types using equality operator
 					break;
 
-				case executorConstants.TypeString:
-				case executorConstants.TypeDecimal:
 				default:
 					useEquals = true;
 					sb.append(".Equals("); //compare objects using equality method
@@ -272,19 +274,19 @@ public class CSharpExecutor extends CodeExecutor {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
 			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
+			if (CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getCSharpClass(elmTyp)).append("[] { ");
+				sb.append("new ").append(this.getTypeName(elmTyp)).append("[] { ");
 			else if (isLst) //begin list initialisation using helper method
-				sb.append(String.format("List<%s> {", this.getCSharpClass(elmTyp)));
+				sb.append(String.format("List<%s> {", this.getTypeName(elmTyp)));
 			else //begin set initialisation using constructor and helper method
-				sb.append(String.format("new HashSet<%1$s>(new List<%1$s>{", this.getCSharpClass(elmTyp)));
+				sb.append(String.format("new HashSet<%1$s>(new List<%1$s>{", this.getTypeName(elmTyp)));
 
 			boolean first = true; //generate collection elements
-			for (String elm : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+			for (String elm : CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) {
 				if (first) first = false;
 				else sb.append(", ");
 				sb.append(this.getValueLiteral(elm, elmTyp));
@@ -295,16 +297,16 @@ public class CSharpExecutor extends CodeExecutor {
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] kvTyps = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
+			String[] kvTyps = CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
 
 			if (kvTyps.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
-			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getCSharpClass(kvTyps[0]), this.getCSharpClass(kvTyps[1])));
+			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getTypeName(kvTyps[0]), this.getTypeName(kvTyps[1])));
 
-			for (String ety : JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
-				String[] kv = JavaProcessExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
+			for (String ety : CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+				String[] kv = CodeExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
 				if (kv.length != 2) //validate key/value pair
 					throw new ExecutorException(true, "Map entries always need a key and a value.");
@@ -318,7 +320,7 @@ public class CSharpExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = JavaProcessExecutor.CODE_CHARSET.encode(value);
+				ByteBuffer valueChars = CSharpExecutor.CODE_CHARSET.encode(value);
 				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
@@ -328,65 +330,33 @@ public class CSharpExecutor extends CodeExecutor {
 			case executorConstants.TypeBoolean:
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
-			case executorConstants.TypeByte:
+			case executorConstants.TypeInt8:
 				return Byte.toString(Byte.parseByte(value));
 
-			case executorConstants.TypeShort:
+			case executorConstants.TypeInt16:
 				return Short.toString(Short.parseShort(value));
 
-			case executorConstants.TypeInteger:
+			case executorConstants.TypeInt32:
 				return Integer.toString(Integer.parseInt(value));
 
-			case executorConstants.TypeLong:
+			case executorConstants.TypeInt64:
 				return String.format("%dL", Long.parseLong(value));
 
-			case executorConstants.TypeSingle:
+			case executorConstants.TypeFloat32:
 				return String.format("%F", Float.parseFloat(value));
 
-			case executorConstants.TypeDouble:
+			case executorConstants.TypeFloat64:
 				return Double.toString(Double.parseDouble(value));
 
 			case executorConstants.TypeDecimal:
-				return String.format("new BigInteger(\"%s\")", new BigDecimal(value).toPlainString());
+				return String.format("%sm", new BigDecimal(value).toPlainString());
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
 		}
 	}
 
-	private String getCSharpType(String type) throws ExecutorException {
-
-		switch (type) { //switch over primitive types
-			case executorConstants.TypeCharacter:
-				return "char";
-
-			case executorConstants.TypeBoolean:
-				return "Boolean";
-
-			case executorConstants.TypeByte:
-				return "byte";
-
-			case executorConstants.TypeShort:
-				return "short";
-
-			case executorConstants.TypeInteger:
-				return "int";
-
-			case executorConstants.TypeLong:
-				return "long";
-
-			case executorConstants.TypeSingle:
-				return "float";
-
-			case executorConstants.TypeDouble:
-				return "double";
-
-			default:
-				return getCSharpClass(type);
-		}
-	}
-
-	private String getCSharpClass(String type) throws ExecutorException {
+	private String getTypeName(String type) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
@@ -395,20 +365,20 @@ public class CSharpExecutor extends CodeExecutor {
 		if (isArr || isLst || isSet) {
 			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
 
-			if (JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
+			if (CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getCSharpClass(typeParam)); //return class name
+			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getTypeName(typeParam)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
 			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] typeParamsArray = JavaProcessExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
+			String[] typeParamsArray = CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
 
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
-			return String.format("Map<%s, %s>", this.getCSharpClass(typeParamsArray[0]), this.getCSharpClass(typeParamsArray[1])); //return class name
+			return String.format("Map<%s, %s>", this.getTypeName(typeParamsArray[0]), this.getTypeName(typeParamsArray[1])); //return class name
 		}
 
 		switch (type) { //switch over basic types
@@ -416,31 +386,31 @@ public class CSharpExecutor extends CodeExecutor {
 				return "String";
 
 			case executorConstants.TypeCharacter:
-				return "Character";
+				return "char";
 
 			case executorConstants.TypeBoolean:
-				return "Boolean";
+				return "bool";
 
-			case executorConstants.TypeByte:
-				return "Byte";
+			case executorConstants.TypeInt8:
+				return "sbyte";
 
-			case executorConstants.TypeShort:
-				return "Short";
+			case executorConstants.TypeInt16:
+				return "short";
 
-			case executorConstants.TypeInteger:
-				return "Integer";
+			case executorConstants.TypeInt32:
+				return "int";
 
-			case executorConstants.TypeLong:
-				return "Long";
+			case executorConstants.TypeInt64:
+				return "long";
 
-			case executorConstants.TypeSingle:
-				return "Float";
+			case executorConstants.TypeFloat32:
+				return "float";
 
-			case executorConstants.TypeDouble:
-				return "Double";
+			case executorConstants.TypeFloat64:
+				return "double";
 
 			case executorConstants.TypeDecimal:
-				return "BigInteger";
+				return "decimal";
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));

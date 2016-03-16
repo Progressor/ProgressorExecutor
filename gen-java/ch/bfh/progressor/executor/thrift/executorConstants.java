@@ -50,17 +50,17 @@ public class executorConstants {
 
   public static final String TypeBoolean = "bool";
 
-  public static final String TypeByte = "byte";
+  public static final String TypeInt8 = "int8";
 
-  public static final String TypeShort = "short";
+  public static final String TypeInt16 = "int16";
 
-  public static final String TypeInteger = "int";
+  public static final String TypeInt32 = "int32";
 
-  public static final String TypeLong = "long";
+  public static final String TypeInt64 = "int64";
 
-  public static final String TypeSingle = "single";
+  public static final String TypeFloat32 = "float32";
 
-  public static final String TypeDouble = "double";
+  public static final String TypeFloat64 = "float64";
 
   public static final String TypeDecimal = "decimal";
 

@@ -5,6 +5,8 @@
 # .\thrift\thrift-0.9.3.exe -gen js:node .\thrift\executor.thrift
 
 namespace java ch.bfh.progressor.executor.thrift
+namespace cpp progressor.executor.thrift
+namespace csharp Progressor.Executor.Thrift
 
 const string TypeContainerArray = "array"; #e.g. array<string>   --> asdf,temp, qwertz
 const string TypeContainerList = "list"; #e.g. list<string>      --> asdf, temp,qwertz
@@ -14,12 +16,12 @@ const string TypeContainerMap = "map"; #e.g. map<string, string> --> asdf:temp,q
 const string TypeString = "string";
 const string TypeCharacter = "char";
 const string TypeBoolean = "bool";
-const string TypeByte = "byte";
-const string TypeShort = "short";
-const string TypeInteger = "int";
-const string TypeLong = "long";
-const string TypeSingle = "single";
-const string TypeDouble = "double";
+const string TypeInt8 = "int8";
+const string TypeInt16 = "int16";
+const string TypeInt32 = "int32";
+const string TypeInt64 = "int64";
+const string TypeFloat32 = "float32";
+const string TypeFloat64 = "float64";
 const string TypeDecimal = "decimal";
 
 struct FunctionSignature {

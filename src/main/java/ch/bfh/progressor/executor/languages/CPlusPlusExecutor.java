@@ -177,12 +177,12 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a C++ sample.");
 
-			sb.append("public ").append(this.getCppType(function.getOutputTypes().get(0))).append(' ');
+			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getCppType(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+				sb.append(this.getTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
 			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
@@ -210,7 +210,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			sb.append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getCppType(oType)).append(" ret = ").append(testCase.getFunctionName()).append('(');
+			sb.append(this.getTypeName(oType)).append(" ret = ").append(testCase.getFunctionName()).append('(');
 			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
@@ -253,11 +253,11 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getCppType(elmTyp)).append('[').append(elms.length).append("] { ");
+				sb.append("new ").append(this.getTypeName(elmTyp)).append('[').append(elms.length).append("] { ");
 			else if (isLst) //begin list initialisation using helper method
-				sb.append(String.format("list<%s>(", this.getCppType(elmTyp)));
+				sb.append(String.format("list<%s>(", this.getTypeName(elmTyp)));
 			else //begin set initialisation using constructor and helper method
-				sb.append(String.format("set<%s>{", this.getCppType(elmTyp)));
+				sb.append(String.format("set<%s>{", this.getTypeName(elmTyp)));
 
 			boolean first = true; //generate collection elements
 			for (String elm : elms) {
@@ -277,7 +277,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation
-			sb.append(String.format("map<%s, %s> { ", this.getCppType(kvTyps[0]), this.getCppType(kvTyps[1])));
+			sb.append(String.format("map<%s, %s> { ", this.getTypeName(kvTyps[0]), this.getTypeName(kvTyps[1])));
 
 			for (String ety : CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
 				String[] kv = CodeExecutor.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
@@ -304,22 +304,22 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			case executorConstants.TypeBoolean:
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
-			case executorConstants.TypeByte:
+			case executorConstants.TypeInt8:
 				return Byte.toString(Byte.parseByte(value));
 
-			case executorConstants.TypeShort:
+			case executorConstants.TypeInt16:
 				return Short.toString(Short.parseShort(value));
 
-			case executorConstants.TypeInteger:
+			case executorConstants.TypeInt32:
 				return String.format("%dL", Integer.parseInt(value));
 
-			case executorConstants.TypeLong:
+			case executorConstants.TypeInt64:
 				return String.format("%dLL", Long.parseLong(value));
 
-			case executorConstants.TypeSingle:
+			case executorConstants.TypeFloat32:
 				return String.format("%fF", Float.parseFloat(value));
 
-			case executorConstants.TypeDouble:
+			case executorConstants.TypeFloat64:
 				return Double.toString(Double.parseDouble(value));
 
 			case executorConstants.TypeDecimal:
@@ -330,7 +330,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 		}
 	}
 
-	private String getCppType(String type) throws ExecutorException {
+	private String getTypeName(String type) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
@@ -342,7 +342,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (CodeExecutor.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getCppType(typeParam)); //return class name
+			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getTypeName(typeParam)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
@@ -352,7 +352,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
-			return String.format("map<%s, %s>", this.getCppType(typeParamsArray[0]), this.getCppType(typeParamsArray[1])); //return class name
+			return String.format("map<%s, %s>", this.getTypeName(typeParamsArray[0]), this.getTypeName(typeParamsArray[1])); //return class name
 		}
 
 		switch (type) { //switch over primitive types
@@ -365,22 +365,22 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			case executorConstants.TypeBoolean:
 				return "bool";
 
-			case executorConstants.TypeByte:
+			case executorConstants.TypeInt8:
 				return "signed char";
 
-			case executorConstants.TypeShort:
+			case executorConstants.TypeInt16:
 				return "int";
 
-			case executorConstants.TypeInteger:
+			case executorConstants.TypeInt32:
 				return "long int";
 
-			case executorConstants.TypeLong:
+			case executorConstants.TypeInt64:
 				return "long long int";
 
-			case executorConstants.TypeSingle:
+			case executorConstants.TypeFloat32:
 				return "float";
 
-			case executorConstants.TypeDouble:
+			case executorConstants.TypeFloat64:
 				return "double";
 
 			case executorConstants.TypeDecimal:
