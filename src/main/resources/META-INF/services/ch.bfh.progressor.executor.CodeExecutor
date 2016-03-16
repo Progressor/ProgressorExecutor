@@ -1,1 +1,3 @@
 ch.bfh.progressor.executor.languages.JavaProcessExecutor
+ch.bfh.progressor.executor.languages.CPlusPlusExecutor
+ch.bfh.progressor.executor.languages.CSharpExecutor
