@@ -84,7 +84,14 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
 			long gccStart = System.nanoTime();
-			Process gccProcess = new ProcessBuilder("g++", "*.cpp", "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			String [] compileArguments;
+			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
+				compileArguments = new String [] {"cmd.exe","/C","g++","*.cpp","-std=c++11","-o", CPlusPlusExecutor.EXECUTABLE_NAME} ;
+			}
+			else {
+				compileArguments = new String [] {"g++","*.cpp","-std=c++11","-o", CPlusPlusExecutor.EXECUTABLE_NAME};
+			}
+			Process gccProcess = new ProcessBuilder(compileArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (gccProcess.waitFor(CPlusPlusExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (gccProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(gccProcess));
@@ -99,7 +106,14 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long cppStart = System.nanoTime();
-			Process cppProcess = new ProcessBuilder(CPlusPlusExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			String [] executeArguments;
+			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
+				executeArguments = new String [] {"cmd.exe","/C", CPlusPlusExecutor.EXECUTABLE_NAME} ;
+			}
+			else {
+				executeArguments = new String [] {CPlusPlusExecutor.EXECUTABLE_NAME};
+			}
+			Process cppProcess = new ProcessBuilder(executeArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cppProcess.waitFor(CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cppProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(cppProcess));

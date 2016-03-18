@@ -67,7 +67,7 @@
 				<artifactId>maven-thrift-plugin</artifactId>
 				<version>0.1.11</version>
 				<configuration>
-					<thriftExecutable>${project.basedir}/thrift/thrift-0.9.3</thriftExecutable>
+					<thriftExecutable>${project.basedir}/thrift/${thrift.executable}</thriftExecutable>
 					<thriftSourceRoot>${project.basedir}/thrift</thriftSourceRoot>
 				</configuration>
 				<executions>
@@ -103,4 +103,28 @@
 			<version>1.7.13</version>
 		</dependency>
 	</dependencies>
+	<profiles>
+		<profile>
+			<id>Windows</id>
+			<activation>
+				<os>
+					<family>Windows</family>
+				</os>
+			</activation>
+			<properties>
+				<thrift.executable>thrift-0.9.3.exe</thrift.executable>
+			</properties>
+		</profile>
+		<profile>
+			<id>Unix</id>
+			<activation>
+				<os>
+					<family>unix</family>
+				</os>
+			</activation>
+			<properties>
+				<thrift.executable>thrift</thrift.executable>
+			</properties>
+		</profile>
+	</profiles>
 </project>

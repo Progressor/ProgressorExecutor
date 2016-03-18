@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.omg.SendingContext.RunTime;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -84,7 +85,15 @@ public class CSharpExecutor extends CodeExecutor {
 			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
 			//********************
 			long cscStart = System.nanoTime();
-			Process cscProcess = new ProcessBuilder("csc", String.format("/out:%s.exe", CSharpExecutor.EXECUTABLE_NAME), "*.cs").directory(codeDirectory).redirectErrorStream(true).start();
+			String [] compileArguments;
+			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
+				compileArguments =  new String [] {"cmd.exe","/C","msc","*.cs"};
+			}
+			else {
+				compileArguments =  new String [] {"msc","*.cs"};
+			}
+			//Process cscProcess = new ProcessBuilder("cmd.exe","/C","mcs","*.cs").directory(codeDirectory).redirectErrorStream(true).start();
+			Process cscProcess = new ProcessBuilder(compileArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cscProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
@@ -99,7 +108,16 @@ public class CSharpExecutor extends CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long csStart = System.nanoTime();
-			Process csProcess = new ProcessBuilder(CSharpExecutor.EXECUTABLE_NAME).redirectErrorStream(true).start();
+			//String [] strs = new String [] {"cmd.exe","/C",CSharpExecutor.EXECUTABLE_NAME};
+			String [] executeArguments;
+			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
+				executeArguments = new String[] {"cmd.exe","/C","mono",CSharpExecutor.EXECUTABLE_NAME+".exe"};
+			}
+			else{
+				executeArguments = new String[] {"mono",CSharpExecutor.EXECUTABLE_NAME};
+			}
+			Process csProcess = new ProcessBuilder(executeArguments).directory(codeDirectory).redirectErrorStream(true).start();
+			//Process csProcess = Runtime.getRuntime().exec(strs,null,codeDirectory);
 			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (csProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
@@ -250,7 +268,7 @@ public class CSharpExecutor extends CodeExecutor {
 
 			sb.append(';').append(newLine); //finish validation of return value
 
-			sb.append("Console.Write(\"{0}:{1}%n%n\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
+			sb.append("Console.Write(\"{0}:{1}\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("Console.Write(\"ER:\");");
