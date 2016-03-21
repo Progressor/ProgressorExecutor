@@ -2,9 +2,7 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -30,11 +28,6 @@ import ch.bfh.progressor.executor.thrift.executorConstants;
  * @author strut1, touwm1 &amp; weidj1
  */
 public class JavaProcessExecutor extends CodeExecutor {
-
-	/**
-	 * Character set to use for the custom code.
-	 */
-	public static final Charset CODE_CHARSET = Charset.forName("UTF-8");
 
 	/**
 	 * Unique name of the language this executor supports.
@@ -77,7 +70,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
 
 			//********************
-			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
+			//*** COMPILE CODE ***
 			//********************
 			long javacStart = System.nanoTime();
 			Process javacProcess = new ProcessBuilder("javac", "*.java").directory(codeDirectory).redirectErrorStream(true).start();
@@ -109,9 +102,8 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(javaProcess.getInputStream(), //create a scanner to read the console output case by case
-																				JavaProcessExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
-				while (outStm.hasNext()) {
+			try (Scanner outStm = new Scanner(javaProcess.getInputStream(), CodeExecutor.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
@@ -153,7 +145,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
 			Files.write(Paths.get(directory.getPath(), String.format("%s.java", CodeExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
-									code.toString().getBytes(JavaProcessExecutor.CODE_CHARSET)); //and write the generated code in it
+									code.toString().getBytes(CodeExecutor.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
 			throw new ExecutorException(true, "Could not generate the code file.", ex);
@@ -203,7 +195,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
 				throw new ExecutorException(true, "Exactly one output value has to be defined for a java sample.");
 
-			sb.append("try {").append(newLine); //begin test case block
+			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
 			sb.append(this.getTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
@@ -251,7 +243,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("System.out.print(\"ER:\");");
 			sb.append("ex.printStackTrace(System.out);").append(newLine);
-			sb.append('}').append(newLine); //finish exception handling
+			sb.append('}'); //finish exception handling
 		}
 
 		return sb.toString();
@@ -316,7 +308,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = JavaProcessExecutor.CODE_CHARSET.encode(value);
+				ByteBuffer valueChars = CodeExecutor.CHARSET.encode(value);
 				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
@@ -327,25 +319,42 @@ public class JavaProcessExecutor extends CodeExecutor {
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
 			case executorConstants.TypeInt8:
-				return Byte.toString(Byte.parseByte(value));
-
 			case executorConstants.TypeInt16:
-				return Short.toString(Short.parseShort(value));
-
 			case executorConstants.TypeInt32:
-				return Integer.toString(Integer.parseInt(value));
-
 			case executorConstants.TypeInt64:
-				return String.format("%dL", Long.parseLong(value));
+				if (!CodeExecutor.NUMERIC_INTEGER_PATTERN.matcher(value).matches())
+					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
+
+				switch (type) {
+					case executorConstants.TypeInt8:
+					case executorConstants.TypeInt16:
+						return String.format("(%s)%s", this.getTypeName(type), value);
+
+					case executorConstants.TypeInt32:
+						return value;
+
+					case executorConstants.TypeInt64:
+					default:
+						return String.format("%sL", value);
+				}
 
 			case executorConstants.TypeFloat32:
-				return String.format("%ff", Float.parseFloat(value));
-
 			case executorConstants.TypeFloat64:
-				return Double.toString(Double.parseDouble(value));
-
 			case executorConstants.TypeDecimal:
-				return String.format("new BigDecimal(\"%s\")", new BigDecimal(value).toPlainString());
+				if (!CodeExecutor.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value).matches())
+					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
+
+				switch (type) {
+					case executorConstants.TypeFloat32:
+						return String.format("%sF", value);
+
+					case executorConstants.TypeFloat64:
+						return value;
+
+					case executorConstants.TypeDecimal:
+					default:
+						return String.format("new BigDecimal(\"%s\")", value);
+				}
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));

@@ -1,10 +1,8 @@
-using System;using System.Collections.Generic;namespace CustomClass { class CustomClass { $CustomCode$
+using System; using System.Collections.Generic; class CustomClass { $CustomCode$
 
-		static void Main(string[] args){
-				CustomClass inst = new CustomClass();
+	static void Main(params string[] args){
 
- 				$TestCases$
-
-  	}
-  }
+		CustomClass inst = new CustomClass();
+		$TestCases$
+	}
 }

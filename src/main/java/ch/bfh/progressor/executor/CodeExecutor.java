@@ -4,11 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -30,14 +27,9 @@ import ch.bfh.progressor.executor.thrift.TestCase;
 public abstract class CodeExecutor {
 
 	/**
-	 * Character set to use for the custom code.
+	 * Character set to use for general operations.
 	 */
-	public static final Charset RESOURCE_CHARSET = Charset.forName("UTF-8");
-
-	/**
-	 * Character set to use for the console output.
-	 */
-	public static final Charset CONSOLE_CHARSET;
+	protected static final Charset CHARSET = Charset.forName("UTF-8");
 
 	/**
 	 * Name of the class as defined in the template.
@@ -54,21 +46,34 @@ public abstract class CodeExecutor {
 	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
-	public static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
+	/**
+	 * Regular expression pattern for parameter separation.
+	 */
+	protected static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
 
-	public static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
+	/**
+	 * Regular expression pattern for key-value pair separation.
+	 */
+	protected static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
+
+	/**
+	 * Regular expression pattern for numeric integer literals.
+	 */
+	protected static final Pattern NUMERIC_INTEGER_PATTERN = Pattern.compile("[-+]?[0-9]+");
+
+	/**
+	 * Regular expression pattern for numeric floating-point or decimal literals without exponent.
+	 */
+	protected static final Pattern NUMERIC_FLOATING_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?");
+
+	/**
+	 * Regular expression pattern for numeric floating-point or decimal literals. <br>
+	 * This pattern does support literals in exponential form (e.g. {@code 1.25e-2}).
+	 */
+	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
 	private List<String> blacklist;
 	private StringBuilder template;
-
-	static {
-
-		try (OutputStreamWriter osw = new OutputStreamWriter(System.out)) {
-			CONSOLE_CHARSET = Charset.forName(osw.getEncoding());
-		} catch (IOException ex) {
-			throw new UncheckedIOException(ex);
-		}
-	}
 
 	/**
 	 * Gets the unique name of the language the executor supports.
@@ -76,14 +81,6 @@ public abstract class CodeExecutor {
 	 * @return unique name of the supported language
 	 */
 	public abstract String getLanguage();
-
-	protected String getCodeTemplatePath() {
-		return String.format("%s/template.txt", getLanguage());
-	}
-
-	protected String getCodeBlacklistPath() {
-		return String.format("%s/blacklist.json", getLanguage());
-	}
 
 	/**
 	 * Gets the fragment(s) for the function signatures in the language the executor supports.
@@ -101,12 +98,12 @@ public abstract class CodeExecutor {
 	 *
 	 * @return a {@link Collection} containing the strings not allowed in the code fragment
 	 *
-	 * @throws ExecutorException if the fragment could not be read
+	 * @throws ExecutorException if the blacklist could not be read
 	 */
 	public Collection<String> getBlacklist() throws ExecutorException {
 
 		if (this.blacklist == null)
-			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(getCodeBlacklistPath()), RESOURCE_CHARSET)) {
+			try (InputStreamReader reader = new InputStreamReader(this.getClass().getResourceAsStream(String.format("%s/blacklist.json", this.getLanguage())), CodeExecutor.CHARSET)) {
 				this.blacklist = new ArrayList<>();
 				JSONTokener tokener = new JSONTokener(reader);
 
@@ -131,16 +128,26 @@ public abstract class CodeExecutor {
 		return Collections.unmodifiableList(this.blacklist);
 	}
 
-	protected StringBuilder getTemplate() throws IOException {
+	/**
+	 * Gets the code template for this language.
+	 *
+	 * @return code template for this language
+	 *
+	 * @throws ExecutorException if the code template could not be read
+	 */
+	protected StringBuilder getTemplate() throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
 		if (this.template == null)
-			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(getCodeTemplatePath()), RESOURCE_CHARSET))) {
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(String.format("%s/template.txt", this.getLanguage())), CodeExecutor.CHARSET))) {
 				this.template = new StringBuilder();
 				String line;
 				while ((line = reader.readLine()) != null) //read template to StringBuilder
 					this.template.append(line).append(newLine);
+
+			} catch (IOException ex) {
+				throw new ExecutorException(true, "Could not read the code template.", ex);
 			}
 
 		return new StringBuilder(this.template); //return a new string builder every time
@@ -158,19 +165,12 @@ public abstract class CodeExecutor {
 	public abstract List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases);
 
 	/**
-	 * Executes a provided code fragment.
+	 * Recursively deletes a directory and all its sub-directories and files.
 	 *
-	 * @param codeFragment code fragment to execute
-	 * @param functions    function signatures to execute tests on
-	 * @param testCases    test cases to execute
+	 * @param file directory (or file) to delete
 	 *
-	 * @return a {@link List} containing the {@link Result} for each test case
+	 * @return whether or not the directory was successfully deleted
 	 */
-	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, TestCase... testCases) {
-
-		return this.execute(codeFragment, functions, Arrays.asList(testCases));
-	}
-
 	protected boolean deleteRecursive(File file) {
 
 		boolean ret = true;
@@ -184,11 +184,22 @@ public abstract class CodeExecutor {
 		return ret;
 	}
 
+	/**
+	 * Reads the complete console output of a specified process. <br>
+	 * Note that the process' error stream needs to be redirected to read error output as well
+	 * (e.g. using {@link ProcessBuilder#redirectErrorStream(boolean)}).
+	 *
+	 * @param process process to read console output of
+	 *
+	 * @return complete console output of a specified process
+	 *
+	 * @throws ExecutorException if the console output could not be read
+	 */
 	protected String readConsole(Process process) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CONSOLE_CHARSET))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CodeExecutor.CHARSET))) {
 			StringBuilder sb = new StringBuilder();
 
 			String line; //read every line

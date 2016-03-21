@@ -2,9 +2,7 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -15,7 +13,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.omg.SendingContext.RunTime;
 import ch.bfh.progressor.executor.CodeExecutor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -32,11 +29,6 @@ import ch.bfh.progressor.executor.thrift.executorConstants;
 public class CSharpExecutor extends CodeExecutor {
 
 	/**
-	 * Character set to use for the custom code.
-	 */
-	public static final Charset CODE_CHARSET = Charset.forName("UTF-8");
-
-	/**
 	 * Unique name of the language this executor supports.
 	 */
 	public static final String CODE_LANGUAGE = "csharp";
@@ -49,7 +41,7 @@ public class CSharpExecutor extends CodeExecutor {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 3;
+	public static final int COMPILE_TIMEOUT_SECONDS = 5;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
@@ -82,18 +74,10 @@ public class CSharpExecutor extends CodeExecutor {
 			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
 
 			//********************
-			//*** PARAMETER_SEPARATOR_PATTERN CODE ***
+			//*** COMPILE CODE ***
 			//********************
 			long cscStart = System.nanoTime();
-			String [] compileArguments;
-			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
-				compileArguments =  new String [] {"cmd.exe","/C","msc","*.cs"};
-			}
-			else {
-				compileArguments =  new String [] {"msc","*.cs"};
-			}
-			//Process cscProcess = new ProcessBuilder("cmd.exe","/C","mcs","*.cs").directory(codeDirectory).redirectErrorStream(true).start();
-			Process cscProcess = new ProcessBuilder(compileArguments).directory(codeDirectory).redirectErrorStream(true).start();
+			Process cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "msc", "*.cs", "/debug").directory(codeDirectory).redirectErrorStream(true).start();
 			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cscProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
@@ -107,17 +91,14 @@ public class CSharpExecutor extends CodeExecutor {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
+			String[] csArguments;
+			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
+				csArguments = new String[] { "cmd", "/C", CSharpExecutor.EXECUTABLE_NAME };
+			else
+				csArguments = new String[] { "mono", CSharpExecutor.EXECUTABLE_NAME };
+
 			long csStart = System.nanoTime();
-			//String [] strs = new String [] {"cmd.exe","/C",CSharpExecutor.EXECUTABLE_NAME};
-			String [] executeArguments;
-			if(System.getProperty("os.name").substring(0,3).equals("Win")) {
-				executeArguments = new String[] {"cmd.exe","/C","mono",CSharpExecutor.EXECUTABLE_NAME+".exe"};
-			}
-			else{
-				executeArguments = new String[] {"mono",CSharpExecutor.EXECUTABLE_NAME};
-			}
-			Process csProcess = new ProcessBuilder(executeArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			//Process csProcess = Runtime.getRuntime().exec(strs,null,codeDirectory);
+			Process csProcess = new ProcessBuilder(csArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (csProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
@@ -131,9 +112,8 @@ public class CSharpExecutor extends CodeExecutor {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(csProcess.getInputStream(), //create a scanner to read the console output case by case
-																				CSharpExecutor.CODE_CHARSET.name()).useDelimiter(String.format("%n%n"))) {
-				while (outStm.hasNext()) {
+			try (Scanner outStm = new Scanner(csProcess.getInputStream(), CodeExecutor.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
@@ -175,7 +155,7 @@ public class CSharpExecutor extends CodeExecutor {
 			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
 			Files.write(Paths.get(directory.getPath(), "main.cs"), //create a c++ source file in the temporary directory
-									code.toString().getBytes(CSharpExecutor.CODE_CHARSET)); //and write the generated code in it
+									code.toString().getBytes(CodeExecutor.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
 			throw new ExecutorException(true, "Could not generate the code file.", ex);
@@ -225,7 +205,7 @@ public class CSharpExecutor extends CodeExecutor {
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
 				throw new ExecutorException(true, "Exactly one output value has to be defined for a C# sample.");
 
-			sb.append("try {").append(newLine); //begin test case block
+			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
 			sb.append(this.getTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunctionName()).append('(');
@@ -235,7 +215,7 @@ public class CSharpExecutor extends CodeExecutor {
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("Boolean suc = ret"); //begin validation of return value
+			sb.append("bool suc = ret"); //begin validation of return value
 
 			boolean useEquals = false;
 			switch (oType) {
@@ -268,12 +248,11 @@ public class CSharpExecutor extends CodeExecutor {
 
 			sb.append(';').append(newLine); //finish validation of return value
 
-			sb.append("Console.Write(\"{0}:{1}\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
+			sb.append("Console.WriteLine(\"{0}:{1}\", suc ? \"OK\" : \"ER\", ret);").append(newLine).append("Console.WriteLine();").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
-			sb.append("Console.Write(\"ER:\");");
-			sb.append("Console.Write(ex.StackTrace);").append(newLine);
-			sb.append('}').append(newLine); //finish exception handling
+			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(newLine).append("Console.WriteLine();").append(newLine);
+			sb.append('}'); //finish exception handling
 		}
 
 		return sb.toString();
@@ -338,36 +317,42 @@ public class CSharpExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = CSharpExecutor.CODE_CHARSET.encode(value);
+				ByteBuffer valueChars = CodeExecutor.CHARSET.encode(value);
 				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				char separator = type == executorConstants.TypeCharacter ? '\'' : '"';
+				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';
 				return String.format("%1$c%2$s%1$c", separator, valueSafe);
 
 			case executorConstants.TypeBoolean:
 				return Boolean.toString("true".equalsIgnoreCase(value));
 
 			case executorConstants.TypeInt8:
-				return Byte.toString(Byte.parseByte(value));
-
 			case executorConstants.TypeInt16:
-				return Short.toString(Short.parseShort(value));
-
 			case executorConstants.TypeInt32:
-				return Integer.toString(Integer.parseInt(value));
-
 			case executorConstants.TypeInt64:
-				return String.format("%dL", Long.parseLong(value));
+				if (!CodeExecutor.NUMERIC_INTEGER_PATTERN.matcher(value).matches())
+					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
+
+				return type.equals(executorConstants.TypeInt64) ? String.format("%sL", value) : value;
 
 			case executorConstants.TypeFloat32:
-				return String.format("%F", Float.parseFloat(value));
-
 			case executorConstants.TypeFloat64:
-				return Double.toString(Double.parseDouble(value));
-
 			case executorConstants.TypeDecimal:
-				return String.format("%sm", new BigDecimal(value).toPlainString());
+				if (!CodeExecutor.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value).matches())
+					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
+
+				switch (type) {
+					case executorConstants.TypeFloat32:
+						return String.format("%sF", value);
+
+					case executorConstants.TypeFloat64:
+						return value;
+
+					case executorConstants.TypeDecimal:
+					default:
+						return String.format("%sM", value);
+				}
 
 			default:
 				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));

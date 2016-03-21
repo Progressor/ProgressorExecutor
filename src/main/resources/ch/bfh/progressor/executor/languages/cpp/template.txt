@@ -1,16 +1,16 @@
+#include <cstdlib>
 #include <iostream>
-#include <string>
-#include <map>
-#include <set>
-#include <array>
 #include <list>
+#include <set>
+#include <map>
+
 using namespace std;
 
+#line 1
 $CustomCode$
 
 int main() {
-
 	$TestCases$
 
-  return 0;
-};
+	return EXIT_SUCCESS;
+}
