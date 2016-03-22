@@ -175,7 +175,7 @@ public class CSharpExecutor extends CodeExecutor {
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a C# sample.");
 
-			sb.append("public static").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
+			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
