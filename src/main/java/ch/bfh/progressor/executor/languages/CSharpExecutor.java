@@ -154,7 +154,7 @@ public class CSharpExecutor extends CodeExecutor {
 			int caseStart = code.indexOf(CodeExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), "main.cs"), //create a c++ source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME)), //create a c++ source file in the temporary directory
 									code.toString().getBytes(CodeExecutor.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
