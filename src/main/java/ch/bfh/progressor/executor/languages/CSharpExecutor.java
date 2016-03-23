@@ -393,7 +393,7 @@ public class CSharpExecutor extends CodeExecutor {
 
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
-				return "String";
+				return "string";
 
 			case executorConstants.TypeCharacter:
 				return "char";
