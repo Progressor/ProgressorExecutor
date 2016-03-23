@@ -215,10 +215,35 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("bool suc = ret == "); //validate return value
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(';').append(newLine);
+			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
+			switch (oType) {
+				case executorConstants.TypeFloat32:
+				case executorConstants.TypeFloat64:
+				case executorConstants.TypeDecimal:
+					comparisonPrefix = "hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
 
-			String retPrefix = "";
+				//case executorConstants.TypeString:
+				//case executorConstants.TypeCharacter:
+				//case executorConstants.TypeBoolean:
+				//case executorConstants.TypeInt8:
+				//case executorConstants.TypeInt16:
+				//case executorConstants.TypeInt32:
+				//case executorConstants.TypeInt64:
+				default:
+					comparisonSeparator = " == "; //compare objects using equality operator
+					break;
+
+				//default:
+				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
+			}
+
+			sb.append(String.format("bool suc = %sret%s%s%s;", comparisonPrefix, comparisonSeparator,
+															this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
+
+			String returnPrefix = "";
 			switch (oType) {
 				case executorConstants.TypeInt8: //force numeric types to be printed as numbers (not chars or the like)
 				case executorConstants.TypeInt16:
@@ -227,10 +252,10 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				case executorConstants.TypeFloat32:
 				case executorConstants.TypeFloat64:
 				case executorConstants.TypeDecimal:
-					retPrefix = "+";
+					returnPrefix = "+";
 			}
 
-			sb.append(String.format("cout << (suc ? \"OK\" : \"ER\") << \":\" << %sret << endl << endl;", retPrefix)).append(newLine); //print result to the console
+			sb.append(String.format("cout << (suc ? \"OK\" : \"ER\") << \":\" << %sret << endl << endl;", returnPrefix)).append(newLine); //print result to the console
 			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
 			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception string)

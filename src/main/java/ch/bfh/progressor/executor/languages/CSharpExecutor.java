@@ -34,11 +34,6 @@ public class CSharpExecutor extends CodeExecutor {
 	public static final String CODE_LANGUAGE = "csharp";
 
 	/**
-	 * Name of the C# main class.
-	 */
-	public static final String CODE_CLASS_NAME = "Program";
-
-	/**
 	 * Name of the C# executable.
 	 */
 	public static final String EXECUTABLE_NAME = "main";
@@ -201,9 +196,6 @@ public class CSharpExecutor extends CodeExecutor {
 		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
 
 		StringBuilder sb = new StringBuilder();
-		sb.append(newLine).append(String.format("Console.OutputEncoding = System.Text.Encoding.GetEncoding(\"%s\");", CodeExecutor.CHARSET)).append(newLine);
-		sb.append(String.format("%1$s inst = new %1$s();", CSharpExecutor.CODE_CLASS_NAME)).append(newLine);
-
 		for (TestCase testCase : testCases) {
 			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
 
@@ -223,9 +215,7 @@ public class CSharpExecutor extends CodeExecutor {
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("bool suc = ret"); //begin validation of return value
-
-			boolean useEquals = false;
+			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (oType) {
 				case executorConstants.TypeString:
 				case executorConstants.TypeCharacter:
@@ -234,28 +224,28 @@ public class CSharpExecutor extends CodeExecutor {
 				case executorConstants.TypeInt16:
 				case executorConstants.TypeInt32:
 				case executorConstants.TypeInt64:
+				case executorConstants.TypeDecimal:
+					comparisonSeparator = " == "; //compare primitive types using equality operator
+					break;
+
 				case executorConstants.TypeFloat32:
 				case executorConstants.TypeFloat64:
-				case executorConstants.TypeDecimal:
-					sb.append(" == "); //compare primitive types using equality operator
+					comparisonPrefix = "HasMinimalDifference("; //compare floating-point numbers using custom equality comparison
+					comparisonSeparator = ", ";
+					comparisonSuffix = ", 1)";
 					break;
 
 				default:
-					useEquals = true;
-					sb.append(".Equals("); //compare objects using equality method
+					comparisonSeparator = ".Equals("; //compare objects using equality method
+					comparisonSuffix = ")";
 					break;
 
 				//default:
 				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
-
-			if (useEquals)
-				sb.append(')'); //close equality method parentheses
-
-			sb.append(';').append(newLine); //finish validation of return value
-
+			sb.append(String.format("bool suc = %sret%s%s%s;", comparisonPrefix, comparisonSeparator,
+															this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
 			sb.append("Console.WriteLine(\"{0}:{1}\", suc ? \"OK\" : \"ER\", ret);").append(newLine).append("Console.WriteLine();").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling

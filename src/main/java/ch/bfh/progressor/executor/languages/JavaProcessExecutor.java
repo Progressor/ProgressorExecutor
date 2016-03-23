@@ -192,9 +192,6 @@ public class JavaProcessExecutor extends CodeExecutor {
 		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
 
 		StringBuilder sb = new StringBuilder();
-		sb.append(newLine).append(String.format("try (java.io.OutputStreamWriter out = new java.io.OutputStreamWriter(System.out, java.nio.charset.Charset.forName(\"%s\").newEncoder())) {", CodeExecutor.CHARSET)).append(newLine);
-		sb.append(String.format("%1$s inst = new %1$s();", JavaProcessExecutor.CODE_CLASS_NAME)).append(newLine);
-
 		for (TestCase testCase : testCases) {
 			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
 
@@ -214,9 +211,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			}
 			sb.append(");").append(newLine);
 
-			sb.append("boolean suc = ret"); //begin validation of return value
-
-			boolean useEquals = false;
+			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (oType) {
 				case executorConstants.TypeCharacter:
 				case executorConstants.TypeBoolean:
@@ -224,29 +219,29 @@ public class JavaProcessExecutor extends CodeExecutor {
 				case executorConstants.TypeInt16:
 				case executorConstants.TypeInt32:
 				case executorConstants.TypeInt64:
-				case executorConstants.TypeFloat32:
-				case executorConstants.TypeFloat64:
-					sb.append(" == "); //compare primitive types using equality operator
+					comparisonSeparator = " == "; //compare primitive types using equality operator
 					break;
 
-				case executorConstants.TypeString:
-				case executorConstants.TypeDecimal:
+				case executorConstants.TypeFloat32:
+				case executorConstants.TypeFloat64:
+					comparisonPrefix = "hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
+				//case executorConstants.TypeString:
+				//case executorConstants.TypeDecimal:
 				default:
-					useEquals = true;
-					sb.append(".equals("); //compare objects using equality method
+					comparisonSeparator = ".equals("; //compare objects using equality method
+					comparisonSuffix = ")";
 					break;
 
 				//default:
 				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)); //expected output
-
-			if (useEquals)
-				sb.append(')'); //close equality method parentheses
-
-			sb.append(';').append(newLine); //finish validation of return value
-
+			sb.append(String.format("boolean suc = %sret%s%s%s;", comparisonPrefix, comparisonSeparator,
+															this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
 			sb.append("out.write(String.format(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret));").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
@@ -254,10 +249,6 @@ public class JavaProcessExecutor extends CodeExecutor {
 			sb.append("ex.printStackTrace(System.out);").append(newLine);
 			sb.append('}');
 		}
-
-		sb.append("} catch (java.io.IOException ex) {").append(newLine);
-		sb.append("throw new java.io.UncheckedIOException(ex);");
-		sb.append('}');
 
 		return sb.toString();
 	}
