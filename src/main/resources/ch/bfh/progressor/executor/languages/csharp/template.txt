@@ -1,8 +1,6 @@
-using System; using System.Collections.Generic; class CustomClass { $CustomCode$
+using System; using System.Collections.Generic; class Program { $CustomCode$
 
-	static void Main(params string[] args){
-
-		CustomClass inst = new CustomClass();
+	static void Main(params string[] args) {
 		$TestCases$
 	}
 }

@@ -2,7 +2,7 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutor;
@@ -33,6 +34,11 @@ public class JavaProcessExecutor extends CodeExecutor {
 	 * Unique name of the language this executor supports.
 	 */
 	public static final String CODE_LANGUAGE = "java";
+
+	/**
+	 * Name of the Java main class.
+	 */
+	public static final String CODE_CLASS_NAME = "Program";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
@@ -88,7 +94,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			long javaStart = System.nanoTime();
-			Process javaProcess = new ProcessBuilder("java", CodeExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(javaProcess));
@@ -102,7 +108,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(javaProcess.getInputStream(), CodeExecutor.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(new InputStreamReader(javaProcess.getInputStream(), CodeExecutor.CHARSET.newDecoder())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
@@ -144,7 +150,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 			int caseStart = code.indexOf(CodeExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", CodeExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
 									code.toString().getBytes(CodeExecutor.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -183,9 +189,12 @@ public class JavaProcessExecutor extends CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, f -> f));
+		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
 
 		StringBuilder sb = new StringBuilder();
+		sb.append(newLine).append(String.format("try (java.io.OutputStreamWriter out = new java.io.OutputStreamWriter(System.out, java.nio.charset.Charset.forName(\"%s\").newEncoder())) {", CodeExecutor.CHARSET)).append(newLine);
+		sb.append(String.format("%1$s inst = new %1$s();", JavaProcessExecutor.CODE_CLASS_NAME)).append(newLine);
+
 		for (TestCase testCase : testCases) {
 			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
 
@@ -238,13 +247,17 @@ public class JavaProcessExecutor extends CodeExecutor {
 
 			sb.append(';').append(newLine); //finish validation of return value
 
-			sb.append("System.out.printf(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret);").append(newLine); //print result to the console
+			sb.append("out.write(String.format(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret));").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
-			sb.append("System.out.print(\"ER:\");");
+			sb.append("out.write(\"ER:\");").append(newLine);
 			sb.append("ex.printStackTrace(System.out);").append(newLine);
-			sb.append('}'); //finish exception handling
+			sb.append('}');
 		}
+
+		sb.append("} catch (java.io.IOException ex) {").append(newLine);
+		sb.append("throw new java.io.UncheckedIOException(ex);");
+		sb.append('}');
 
 		return sb.toString();
 	}
@@ -308,8 +321,7 @@ public class JavaProcessExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = CodeExecutor.CHARSET.encode(value);
-				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
+				String valueSafe = IntStream.range(0, value.length()).map(value::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
 				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';

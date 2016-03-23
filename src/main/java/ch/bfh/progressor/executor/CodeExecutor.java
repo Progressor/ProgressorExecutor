@@ -23,18 +23,12 @@ import ch.bfh.progressor.executor.thrift.TestCase;
  *
  * @author strut1, touwm1 &amp; weidj1
  */
-
 public abstract class CodeExecutor {
 
 	/**
 	 * Character set to use for general operations.
 	 */
 	protected static final Charset CHARSET = Charset.forName("UTF-8");
-
-	/**
-	 * Name of the class as defined in the template.
-	 */
-	protected static final String CODE_CLASS_NAME = "CustomClass";
 
 	/**
 	 * Placeholder for the custom code fragment as defined in the template.
@@ -199,7 +193,7 @@ public abstract class CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CodeExecutor.CHARSET))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CodeExecutor.CHARSET.newDecoder()))) {
 			StringBuilder sb = new StringBuilder();
 
 			String line; //read every line

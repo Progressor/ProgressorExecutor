@@ -1,8 +1,6 @@
-import java.util.*; import java.math.*; public class CustomClass { $CustomCode$
+import java.util.*; import java.math.*; public class Program { $CustomCode$
 
 	public static void main(String[] args) {
-
-		CustomClass inst = new CustomClass();
 		$TestCases$
 	}
 }

@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -11,6 +10,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutor;
@@ -34,7 +34,12 @@ public class CSharpExecutor extends CodeExecutor {
 	public static final String CODE_LANGUAGE = "csharp";
 
 	/**
-	 * Name of the executable.
+	 * Name of the C# main class.
+	 */
+	public static final String CODE_CLASS_NAME = "Program";
+
+	/**
+	 * Name of the C# executable.
 	 */
 	public static final String EXECUTABLE_NAME = "main";
 
@@ -193,9 +198,12 @@ public class CSharpExecutor extends CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, f -> f));
+		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
 
 		StringBuilder sb = new StringBuilder();
+		sb.append(newLine).append(String.format("Console.OutputEncoding = System.Text.Encoding.GetEncoding(\"%s\");", CodeExecutor.CHARSET)).append(newLine);
+		sb.append(String.format("%1$s inst = new %1$s();", CSharpExecutor.CODE_CLASS_NAME)).append(newLine);
+
 		for (TestCase testCase : testCases) {
 			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
 
@@ -317,8 +325,7 @@ public class CSharpExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = CodeExecutor.CHARSET.encode(value);
-				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
+				String valueSafe = IntStream.range(0, value.length()).map(value::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
 				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';

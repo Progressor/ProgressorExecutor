@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -11,6 +10,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutor;
@@ -22,7 +22,7 @@ import ch.bfh.progressor.executor.thrift.TestCase;
 import ch.bfh.progressor.executor.thrift.executorConstants;
 
 /**
- * Code execution engine for C++ code.
+ * Code execution engine for C/C++ code.
  *
  * @author strut1, touwm1 &amp; weidj1
  */
@@ -34,7 +34,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 	public static final String CODE_LANGUAGE = "cpp";
 
 	/**
-	 * Name of the executable.
+	 * Name of the C/C++ executable.
 	 */
 	public static final String EXECUTABLE_NAME = "main";
 
@@ -154,7 +154,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			int caseStart = code.indexOf(CodeExecutor.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CodeExecutor.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), "main.cpp"), //create a c++ source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), "main.cpp"), //create a C/C++ source file in the temporary directory
 									code.toString().getBytes(CodeExecutor.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -193,7 +193,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, f -> f));
+		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
 
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
@@ -203,7 +203,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			if (testCase.getInputValuesSize() != function.getInputTypesSize())
 				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a C++ sample.");
+				throw new ExecutorException(true, "Exactly one output value has to be defined for a C/C++ sample.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
@@ -218,7 +218,19 @@ public class CPlusPlusExecutor extends CodeExecutor {
 			sb.append("bool suc = ret == "); //validate return value
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(';').append(newLine);
 
-			sb.append("cout << (suc ? \"OK\" : \"ER\") << \":\" << ret << endl << endl;").append(newLine); //print result to the console
+			String retPrefix = "";
+			switch (oType) {
+				case executorConstants.TypeInt8: //force numeric types to be printed as numbers (not chars or the like)
+				case executorConstants.TypeInt16:
+				case executorConstants.TypeInt32:
+				case executorConstants.TypeInt64:
+				case executorConstants.TypeFloat32:
+				case executorConstants.TypeFloat64:
+				case executorConstants.TypeDecimal:
+					retPrefix = "+";
+			}
+
+			sb.append(String.format("cout << (suc ? \"OK\" : \"ER\") << \":\" << %sret << endl << endl;", retPrefix)).append(newLine); //print result to the console
 			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
 			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception string)
@@ -292,8 +304,7 @@ public class CPlusPlusExecutor extends CodeExecutor {
 		switch (type) { //switch over basic types
 			case executorConstants.TypeString:
 			case executorConstants.TypeCharacter:
-				ByteBuffer valueChars = CodeExecutor.CHARSET.encode(value);
-				String valueSafe = IntStream.range(0, valueChars.remaining()).map(i -> valueChars.get()).mapToObj(i -> String.format("\\u%04X", i))
+				String valueSafe = IntStream.range(0, value.length()).map(value::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
 				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';
@@ -381,16 +392,16 @@ public class CPlusPlusExecutor extends CodeExecutor {
 				return "bool";
 
 			case executorConstants.TypeInt8:
-				return "signed char";
+				return "int8_t";
 
 			case executorConstants.TypeInt16:
-				return "int";
+				return "int16_t";
 
 			case executorConstants.TypeInt32:
-				return "long int";
+				return "int32_t";
 
 			case executorConstants.TypeInt64:
-				return "long long int";
+				return "int64_t";
 
 			case executorConstants.TypeFloat32:
 				return "float";
