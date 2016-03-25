@@ -73,11 +73,22 @@
 				</configuration>
 				<executions>
 					<execution>
-						<id>thrift-sources</id>
+						<id>thrift-sources-java</id>
 						<phase>generate-sources</phase>
 						<configuration>
 							<generator>java</generator>
 							<outputDirectory>${project.basedir}/gen-java</outputDirectory>
+						</configuration>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>thrift-sources-nodejs</id>
+						<phase>generate-sources</phase>
+						<configuration>
+							<generator>js:node</generator>
+							<outputDirectory>${project.basedir}/gen-nodejs</outputDirectory>
 						</configuration>
 						<goals>
 							<goal>compile</goal>
