@@ -36,7 +36,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 	public static final String CODE_LANGUAGE = "kotlin";
 
 	/**
-	 * Name of the Kotlin main class.
+	 * Name of the Kotlin (Java) main class.
 	 */
 	public static final String CODE_CLASS_NAME = "Program";
 
@@ -151,7 +151,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return results;
 	}
 
-	private void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	protected void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -170,7 +170,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		}
 	}
 
-	private String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
+	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
@@ -196,7 +196,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	private String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	protected String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
@@ -258,7 +258,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	private String getValueLiteral(String value, String type) throws ExecutorException {
+	protected String getValueLiteral(String value, String type) throws ExecutorException {
 
 		if ("null".equals(value))
 			return "null";
@@ -368,7 +368,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		}
 	}
 
-	private String getTypeName(String type) throws ExecutorException {
+	protected String getTypeName(String type) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
