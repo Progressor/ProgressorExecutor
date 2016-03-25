@@ -143,7 +143,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return results;
 	}
 
-	private void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	protected void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -162,7 +162,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		}
 	}
 
-	private String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
+	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
@@ -189,7 +189,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	private String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	protected String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
@@ -267,7 +267,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	private String getValueLiteral(String value, String type) throws ExecutorException {
+	protected String getValueLiteral(String value, String type) throws ExecutorException {
 
 		if ("null".equals(value))
 			return "nullptr";
@@ -380,7 +380,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		}
 	}
 
-	private String getTypeName(String type) throws ExecutorException {
+	protected String getTypeName(String type) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
