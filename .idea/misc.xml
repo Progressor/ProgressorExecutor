@@ -18,7 +18,7 @@
     <option name="OTHER_OPTIONS" value="-windowtitle &quot;Progressor Executor&quot; -doctitle &quot;Progressor Executor&quot; -linksource -link http://docs.oracle.com/javase/8/docs/api/ -link http://people.apache.org/~thejas/thrift-0.9/javadoc/" />
     <option name="HEAP_SIZE" />
     <option name="LOCALE" value="en_GB" />
-    <option name="OPEN_IN_BROWSER" value="true" />
+    <option name="OPEN_IN_BROWSER" value="false" />
     <option name="OPTION_INCLUDE_LIBS" value="false" />
   </component>
   <component name="MavenProjectsManager">
