@@ -23,8 +23,8 @@ import ch.bfh.progressor.executor.thrift.TestCase;
 import ch.bfh.progressor.executor.thrift.executorConstants;
 
 /**
- * Code execution engine for java code.
- * Uses a new process to execute the custom java code.
+ * Code execution engine for Java code. <br>
+ * Uses a new process to execute the custom Java code.
  *
  * @author strut1, touwm1 &amp; weidj1
  */
@@ -150,7 +150,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a java source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a Java source file in the temporary directory
 									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {
@@ -169,7 +169,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			if (function.getInputTypesSize() != function.getInputNamesSize())
 				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
-				throw new ExecutorException(true, "Exactly one output type has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output type has to be defined for a Java sample.");
 
 			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
 			sb.append(function.getName()).append('(');
@@ -199,7 +199,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			if (testCase.getInputValuesSize() != function.getInputTypesSize())
 				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
 			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a java sample.");
+				throw new ExecutorException(true, "Exactly one output value has to be defined for a Java sample.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
