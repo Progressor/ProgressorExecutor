@@ -29,26 +29,36 @@ The **Executor** currently supports four programming languages.
 
 To use the languages, the following compilers (and other tools) need to be installed and available in the **PATH**.
 
-1. Java: `javac` and `java`
-2. C/C++: `g++`
-3. C#: `csc` (Windows) or `msc` (Linux)
-4. Kotlin: `kotlinc` and `kotlin`
+1. *Java*: `javac` and `java`
+2. *C/C++*: `g++`
+3. *C#*: `csc` (Windows) or `msc` (Linux)
+4. *Kotlin*: `kotlinc` and `kotlin`
 
 #### Java
 
-Java 8 ...
+Support for *Java SE* version 8 is required.
+
+The *Java Developer Toolkit* (JDK) can be downloaded from the [official *Oracle* downloads page](http://www.oracle.com/technetwork/java/javase/downloads/).
 
 #### C/C++
 
-GCC, C++11 ...
+This projects targets the [*GNU Compiler Collection* (GCC)](https://gcc.gnu.org/).
+Support for *C++11* is required.
+
+* For Linux...
+* For Windows, the following packages are available:
+  * [*MinGW*](http://www.mingw.org/), which can be downloaded from [*sourceforge*](https://sourceforge.net/projects/mingw/files/).
+    * A [x64 version](http://mingw-w64.org/) is available on a [dedicated site](http://mingw-w64.org/doku.php/download/win-builds).
+  * [*Cygwin*](http://sourceware.org/cygwin/), which can be downloaded from their home page.
 
 #### C#
 
-...
+* For Windows, ...
+* For Linux, [*Mono*](http://www.mono-project.com/) can be downloaded from their [downloads page](http://www.mono-project.com/download/).
 
 #### Kotlin
 
-...
+For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinlang.org/docs/tutorials/command-line.html) can be downloaded from [*GitHub*](https://github.com/JetBrains/kotlin/releases/latest).
 
 #### Extensibility
 
