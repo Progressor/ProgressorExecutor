@@ -23,8 +23,8 @@ import ch.bfh.progressor.executor.thrift.TestCase;
 import ch.bfh.progressor.executor.thrift.executorConstants;
 
 /**
- * Code execution engine for Kotlin code.
- * Uses a new process to execute the custom Kotlin code.
+ * Code execution engine for Kotlin code. <br>
+ * Compiles and executes the Kotlin code in two steps.
  *
  * @author strut1, touwm1 &amp; weidj1
  */

@@ -1,10 +1,12 @@
 package ch.bfh.progressor.executor;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,9 +38,14 @@ public final class Executor {
 	}
 
 	/**
-	 * The network port the server should listen on.
+	 * The default network port the server should listen on.
 	 */
-	public static final int SERVER_PORT = 9090;
+	public static final int DEFAULT_SERVER_PORT = 9090;
+
+	/**
+	 * The time (in milliseconds) to wait after telling server to stop.
+	 */
+	public static final int SERVER_STOP_TIMEOUT_MILLISECONDS = 250;
 
 	/**
 	 * Main method.
@@ -48,18 +55,45 @@ public final class Executor {
 	 */
 	public static void main(String... args) {
 
-		try {
-			try (TServerTransport transport = new TServerSocket(Executor.SERVER_PORT)) {
-				TProcessor processor = new ExecutorService.Processor<>(new Executor.RequestHandler());
-				TServer server = new TThreadPoolServer(new TThreadPoolServer.Args(transport).processor(processor));
+		int port = Executor.DEFAULT_SERVER_PORT;
 
-				Executor.LOGGER.info("Accepting requests...");
-				server.serve();
-				Executor.LOGGER.info("Server shut down.");
+		for (int i = 0; i < args.length; i++)
+			switch (args[i]) {
+				case "-p":
+				case "-port":
+					port = Integer.parseInt(args[++i]);
+					break;
+
+				default:
+					throw new InvalidParameterException(String.format("Command-line argument '%s' is invalid.", args[i]));
 			}
+
+		try (TServerTransport transport = new TServerSocket(port)) {
+			TProcessor processor = new ExecutorService.Processor<>(new Executor.RequestHandler());
+			TServer server = new TThreadPoolServer(new TThreadPoolServer.Args(transport).processor(processor));
+
+			Executor.LOGGER.info(String.format("Accepting requests on port %d...", port));
+			Thread thread = new Thread(server::serve);
+			thread.start();
+
+			System.out.print("Press enter to stop server.");
+			try (Scanner scanner = new Scanner(System.in)) {
+				scanner.nextLine();
+			}
+
+			server.stop();
+			thread.join(Executor.SERVER_STOP_TIMEOUT_MILLISECONDS);
+
+			if (!thread.isAlive())
+				Executor.LOGGER.info("Server stopped.");
+			else
+				Executor.LOGGER.log(Level.SEVERE, "Could not stop server. Forcefully abort application!");
 
 		} catch (TTransportException ex) {
 			Executor.LOGGER.log(Level.SEVERE, "Could not successfully start server.", ex);
+
+		} catch (InterruptedException ex) {
+			Executor.LOGGER.log(Level.SEVERE, "Could not wait for server to stop.", ex);
 		}
 	}
 
