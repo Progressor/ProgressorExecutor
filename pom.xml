@@ -114,6 +114,12 @@
 			<artifactId>slf4j-simple</artifactId>
 			<version>1.7.13</version>
 		</dependency>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>RELEASE</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 	<profiles>
 		<profile>

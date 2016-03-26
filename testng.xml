@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="ProgressorExecutor">
+
+	<test name="CodeExecutors">
+		<classes>
+			<class name="ch.bfh.progressor.executor.tests.JavaProcessExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.CPlusPlusExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.CSharpExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.KotlinExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.KotlinScriptExecutorTest" />
+		</classes>
+	</test>
+
+</suite>
