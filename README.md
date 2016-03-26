@@ -1,10 +1,10 @@
 # Progressor - Executor
 
-This is the code executor of the project **Progressor - The Programming Professor**.
+This is the code **Executor** component of the project **Progressor - The Programming Professor**.
 
 ## Instructions
 
-This repository contains an *IntelliJ IDEA* project.
+This repository contains a *Maven* project created using *IntelliJ IDEA*.
 
 ### Maven
 
@@ -12,7 +12,7 @@ This repository contains an *IntelliJ IDEA* project.
 
 ### Dependencies
 
-This project has three *Maven* dependencies that should be downloaded automatically:
+This project has four *Maven* dependencies:
 
 1. [org.apache.thrift:libthrift:0.9.3](http://mvnrepository.com/artifact/org.apache.thrift/libthrift/0.9.3)
    for *Apache Thrift*
@@ -25,7 +25,9 @@ This project has three *Maven* dependencies that should be downloaded automatica
 
 #### Languages
 
-This project depends on the following compilers to be available and included in the home path:
+The **Executor** currently supports four programming languages.
+
+To use the languages, the following compilers (and other tools) need to be installed and available in the **PATH**.
 
 1. Java: `javac` and `java`
 2. C/C++: `g++`
@@ -38,7 +40,7 @@ Java 8 ...
 
 #### C/C++
 
-C++11 ...
+GCC, C++11 ...
 
 #### C#
 
@@ -47,3 +49,10 @@ C++11 ...
 #### Kotlin
 
 ...
+
+#### Extensibility
+
+The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
+
+New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.CodeExecutor* and making it discoverable by the **Executor**.
+Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).
