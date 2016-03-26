@@ -171,8 +171,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a Java sample.");
 
-			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
-			sb.append(function.getName()).append('(');
+			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
 				if (i > 0) sb.append(", ");
@@ -240,8 +239,9 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(String.format("boolean suc = %sret%s%s%s;", comparisonPrefix, comparisonSeparator,
-															this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
+			sb.append("boolean suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(comparisonSuffix).append(';').append(newLine);
+
 			sb.append("out.write(String.format(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret));").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
@@ -264,25 +264,28 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
+			String elmTyp = type.substring(cntTypLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getClassName(elmTyp)).append("[] { ");
+				sb.append("new ").append(this.getTypeName(type)).append(" { ");
 			else if (isLst) //begin list initialisation using helper method
-				sb.append(String.format("Arrays.<%s>asList(", this.getClassName(elmTyp)));
-			else //begin set initialisation using constructor and helper method
-				sb.append(String.format("new HashSet<%1$s>(Arrays.<%1$s>asList(", this.getClassName(elmTyp)));
+				sb.append("Arrays.<").append(this.getClassName(elmTyp)).append(">asList(");
+			else {//begin set initialisation using constructor and helper method
+				String elmCls = this.getClassName(elmTyp);
+				sb.append("new HashSet<").append(elmCls).append(">(Arrays.<").append(elmCls).append(">asList(");
+			}
 
 			boolean first = true; //generate collection elements
-			for (String elm : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
-				if (first) first = false;
-				else sb.append(", ");
-				sb.append(this.getValueLiteral(elm, elmTyp));
-			}
+			if (!value.isEmpty())
+				for (String elm : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(elm, elmTyp));
+				}
 
 			return sb.append(isArr ? " }" : isLst ? ')' : "))").toString(); //finish collection initialisation and return literal
 
@@ -295,16 +298,17 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
-			sb.append(String.format("new HashMap<%s, %s>() {{ ", this.getClassName(kvTyps[0]), this.getClassName(kvTyps[1])));
+			sb.append("new HashMap<").append(this.getClassName(kvTyps[0])).append(", ").append(this.getClassName(kvTyps[1])).append(">() {{ ");
 
-			for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
-				String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
+			if (!value.isEmpty())
+				for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+					String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
-				if (kv.length != 2) //validate key/value pair
-					throw new ExecutorException(true, "Map entries always need a key and a value.");
+					if (kv.length != 2) //validate key/value pair
+						throw new ExecutorException(true, "Map entries always need a key and a value.");
 
-				sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("); ");
-			}
+					sb.append("put(").append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("); ");
+				}
 
 			return sb.append("}}").toString(); //finish initialisation and return literal
 		}
@@ -403,12 +407,16 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
-			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
+			int typLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
+			String typeParam = type.substring(typLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getClassName(typeParam)); //return class name
+			if (isArr)
+				return String.format("%s[]", this.getTypeName(typeParam)); //return class name
+			else
+				return String.format(isLst ? "List<%s>" : "Set<%s>", this.getClassName(typeParam)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {

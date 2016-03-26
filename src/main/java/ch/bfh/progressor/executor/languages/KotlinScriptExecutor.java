@@ -112,7 +112,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
 			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
 
-			Files.write(Paths.get(directory.getPath(), "main.kts"), //create a Kotlin source file in the temporary directory
+			Files.write(Paths.get(directory.getPath(), String.format("%s.kts", KotlinExecutor.CODE_CLASS_NAME)), //create a Kotlin source file in the temporary directory
 									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
 
 		} catch (ExecutorException | IOException ex) {

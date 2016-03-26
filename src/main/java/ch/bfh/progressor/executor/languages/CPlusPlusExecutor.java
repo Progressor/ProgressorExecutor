@@ -175,12 +175,11 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a C++ sample.");
 
-			sb.append(this.getTypeName(function.getOutputTypes().get(0))).append(' ');
-			sb.append(function.getName()).append('(');
+			sb.append(this.getTypeName(function.getOutputTypes().get(0), true)).append(' ').append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypesSize(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+				sb.append(this.getTypeName(function.getInputTypes().get(i), true)).append(' ').append(function.getInputNames().get(i));
 			}
 
 			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
@@ -208,7 +207,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
 			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getTypeName(oType)).append(" ret = ").append(testCase.getFunctionName()).append('(');
+			sb.append(this.getTypeName(oType, true)).append(" ret = ").append(testCase.getFunctionName()).append('(');
 			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
@@ -240,7 +239,8 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(String.format("bool suc = %sret%s%s%s;", comparisonPrefix, comparisonSeparator, this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
+			sb.append("bool suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(comparisonSuffix).append(";").append(newLine);
 
 			String returnPrefix = "";
 			switch (oType) {
@@ -254,7 +254,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 					returnPrefix = "+";
 			}
 
-			sb.append(String.format("cout << (suc ? \"OK\" : \"ER\") << \":\" << %sret << endl << endl;", returnPrefix)).append(newLine); //print result to the console
+			sb.append("cout << (suc ? \"OK\" : \"ER\") << \":\" << ").append(returnPrefix).append("ret << endl << endl;").append(newLine); //print result to the console
 			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
 			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception string)
@@ -278,20 +278,20 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
+			String elmTyp = type.substring(cntTypLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			String[] elms = CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value);
+			String[] elms = value.isEmpty() ? new String[] {} : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value);
 
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getTypeName(elmTyp)).append('[').append(elms.length).append("] { ");
+				sb.append("new ").append(this.getTypeName(elmTyp, false)).append('[').append(elms.length).append("] { ");
 			else if (isLst) //begin list initialisation using helper method
-				sb.append(String.format("list<%s>(", this.getTypeName(elmTyp)));
+				sb.append("list<").append(this.getTypeName(elmTyp, false)).append(">{ ");
 			else //begin set initialisation using constructor and helper method
-				sb.append(String.format("set<%s>{", this.getTypeName(elmTyp)));
+				sb.append("set<").append(this.getTypeName(elmTyp, false)).append(">{ ");
 
 			boolean first = true; //generate collection elements
 			for (String elm : elms) {
@@ -311,16 +311,20 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation
-			sb.append(String.format("map<%s, %s> { ", this.getTypeName(kvTyps[0]), this.getTypeName(kvTyps[1])));
+			sb.append("map<").append(this.getTypeName(kvTyps[0], false)).append(", ").append(this.getTypeName(kvTyps[1], false)).append("> { ");
 
-			for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
-				String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
+			boolean first = true; //generate collection elements
+			if (!value.isEmpty())
+				for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
+					String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
-				if (kv.length != 2) //validate key/value pair
-					throw new ExecutorException(true, "Map entries always need a key and a value.");
+					if (kv.length != 2) //validate key/value pair
+						throw new ExecutorException(true, "Map entries always need a key and a value.");
 
-				sb.append('{').append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("}, ");
-			}
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append('{').append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("}");
+				}
 
 			return sb.append('}').toString(); //finish initialisation and return literal
 		}
@@ -347,10 +351,11 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				switch (type) {
 					case executorConstants.TypeInt8:
 					case executorConstants.TypeInt16:
+					case executorConstants.TypeInt32:
 						return value;
 
-					case executorConstants.TypeInt32:
-						return String.format("%sL", value);
+					//case executorConstants.TypeInt32:
+					//	return String.format("%sL", value);
 
 					case executorConstants.TypeInt64:
 					default:
@@ -380,19 +385,23 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		}
 	}
 
-	protected String getTypeName(String type) throws ExecutorException {
+	protected String getTypeName(String type, boolean isDeclaration) throws ExecutorException {
 
 		//check for collection container types
 		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
 		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
-			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
+			int typLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
+			String typeParam = type.substring(typLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
 
-			return String.format(isArr ? "%s[]" : isLst ? "List<%s>" : "Set<%s>", this.getTypeName(typeParam)); //return class name
+			if (isArr) //alternative: array<%s>
+				return String.format(isDeclaration ? "%s*" : "%s[]", this.getTypeName(typeParam, true)); //return class name
+			else
+				return String.format(isLst ? "list<%s>" : "set<%s>", this.getTypeName(typeParam, true)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
@@ -402,7 +411,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			if (typeParamsArray.length != 2) // validate type parameters
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
-			return String.format("map<%s, %s>", this.getTypeName(typeParamsArray[0]), this.getTypeName(typeParamsArray[1])); //return class name
+			return String.format("map<%s, %s>", this.getTypeName(typeParamsArray[0], true), this.getTypeName(typeParamsArray[1], true)); //return class name
 		}
 
 		switch (type) { //switch over primitive types

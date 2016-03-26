@@ -20,23 +20,15 @@ int main() {
 }
 
 template<class T>
-T machine_epsilon(T value) {
+bool hasMinimalDifference(T value1, T value2) {
 
 	union {
-		int64_t i64;
 		T d64;
-	} u;
-
-	u.d64 = value;
+		int64_t i64;
+	} u { value1 };
 	u.i64++;
-
-	return u.d64 - value;
-}
-
-template<class T>
-bool hasMinimalDifference(T value1, T value2) {
 
 	if (!isnormal(value1) || !isnormal(value2)) return value1 == value2;
 	if (value1 == value2) return true;
-	return abs(value1 - value2) <= machine_epsilon(value1);
+	return abs(value1 - value2) <= u.d64 - value1;
 }

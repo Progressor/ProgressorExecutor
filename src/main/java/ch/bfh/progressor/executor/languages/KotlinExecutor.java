@@ -246,7 +246,8 @@ public class KotlinExecutor extends CodeExecutorBase {
 				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
-			sb.append(String.format("val suc = %sret%s%s%s", comparisonPrefix, comparisonSeparator, this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType), comparisonSuffix)).append(newLine);
+			sb.append("val suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(comparisonSuffix).append(newLine);
 			sb.append("out.write(\"%s:%s%n%n\".format(if (suc) \"OK\" else \"ER\", ret))").append(newLine); //print result to the console
 
 			sb.append("} catch (ex: Exception) {").append(newLine); //finish test case block / begin exception handling
@@ -269,7 +270,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
 			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String elmTyp = type.substring(cntTypLen + 1, type.length() - cntTypLen - 2);
+			String elmTyp = type.substring(cntTypLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
@@ -280,11 +281,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 			else sb.append("setOf("); //begin set initialisation
 
 			boolean first = true; //generate collection elements
-			for (String elm : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
-				if (first) first = false;
-				else sb.append(", ");
-				sb.append(this.getValueLiteral(elm, elmTyp));
-			}
+			if (!value.isEmpty())
+				for (String elm : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(elm, elmTyp));
+				}
 
 			return sb.append(')').toString(); //finish collection initialisation and return literal
 
@@ -299,16 +301,17 @@ public class KotlinExecutor extends CodeExecutorBase {
 			StringBuilder sb = new StringBuilder("mapOf("); //begin map initialisation
 
 			boolean first = true; //generate key/value pairs
-			for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
-				String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
+			if (!value.isEmpty())
+				for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
+					String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
 
-				if (kv.length != 2) //validate key/value pair
-					throw new ExecutorException(true, "Map entries always need a key and a value.");
+					if (kv.length != 2) //validate key/value pair
+						throw new ExecutorException(true, "Map entries always need a key and a value.");
 
-				if (first) first = false;
-				else sb.append(", ");
-				sb.append(this.getValueLiteral(kv[0], kvTyps[0])).append(" to ").append(this.getValueLiteral(kv[1], kvTyps[1]));
-			}
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(kv[0], kvTyps[0])).append(" to ").append(this.getValueLiteral(kv[1], kvTyps[1]));
+				}
 
 			return sb.append(")").toString(); //finish initialisation and return literal
 		}
@@ -375,7 +378,8 @@ public class KotlinExecutor extends CodeExecutorBase {
 		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
 		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
 		if (isArr || isLst || isSet) {
-			String typeParam = type.substring(executorConstants.TypeContainerArray.length() + 1, type.length() - executorConstants.TypeContainerArray.length() - 2);
+			int typLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
+			String typeParam = type.substring(typLen + 1, type.length() - 1);
 
 			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
 				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
