@@ -74,6 +74,7 @@ public final class Executor {
 
 			Executor.LOGGER.info(String.format("Accepting requests on port %d...", port));
 			Thread thread = new Thread(server::serve);
+			thread.setDaemon(true);
 			thread.start();
 
 			System.out.print("Press enter to stop server.");
