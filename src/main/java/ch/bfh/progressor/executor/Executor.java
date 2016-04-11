@@ -78,7 +78,7 @@ public final class Executor {
 			thread.start();
 
 			System.out.print("Press enter to stop server.");
-			try (Scanner scanner = new Scanner(System.in)) {
+			try (Scanner scanner = new Scanner(System.in, CodeExecutorBase.CHARSET.name())) {
 				scanner.nextLine();
 			}
 
