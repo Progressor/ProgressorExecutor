@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-#include <list>
+#include <vector>
 #include <set>
 #include <map>
 
