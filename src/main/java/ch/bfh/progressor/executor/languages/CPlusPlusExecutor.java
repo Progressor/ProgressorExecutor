@@ -288,10 +288,8 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			StringBuilder sb = new StringBuilder();
 			if (isArr) //begin array initialisation syntax
 				sb.append("new ").append(this.getTypeName(elmTyp, false)).append('[').append(elms.length).append("] { ");
-			else if (isLst) //begin list initialisation using helper method
-				sb.append("list<").append(this.getTypeName(elmTyp, false)).append(">{ ");
-			else //begin set initialisation using constructor and helper method
-				sb.append("set<").append(this.getTypeName(elmTyp, false)).append(">{ ");
+			else
+				sb.append(this.getTypeName(type, false)).append(" { ");
 
 			boolean first = true; //generate collection elements
 			for (String elm : elms) {
@@ -311,7 +309,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				throw new ExecutorException(true, "Map type needs 2 type parameters.");
 
 			StringBuilder sb = new StringBuilder(); //begin map initialisation
-			sb.append("map<").append(this.getTypeName(kvTyps[0], false)).append(", ").append(this.getTypeName(kvTyps[1], false)).append("> { ");
+			sb.append(this.getTypeName(type, false)).append(" { ");
 
 			boolean first = true; //generate collection elements
 			if (!value.isEmpty())
@@ -401,7 +399,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			if (isArr) //alternative: array<%s>
 				return String.format(isDeclaration ? "%s*" : "%s[]", this.getTypeName(typeParam, true)); //return class name
 			else
-				return String.format(isLst ? "list<%s>" : "set<%s>", this.getTypeName(typeParam, true)); //return class name
+				return String.format(isLst ? "vector<%s>" : "set<%s>", this.getTypeName(typeParam, true)); //return class name
 
 			//check for map container type
 		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {

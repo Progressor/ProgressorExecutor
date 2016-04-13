@@ -17,7 +17,7 @@ public class CPlusPlusExecutorTest extends CodeExecutorTestBase {
 																															.append("double sumFloat64(double a, double b) { return a + b; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("long double sumDecimal(long double a, long double b) { return a + b; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("int32_t sumInt32Array(int32_t* a, int32_t l) { int32_t s = 0; for (int i = 0; i < l; i++) s += a[i]; return s; }").append(CodeExecutorTestBase.NEW_LINE)
-																															.append("int32_t sumInt32List(list<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorTestBase.NEW_LINE)
+																															.append("int32_t sumInt32List(vector<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("int32_t sumInt32Set(set<int32_t> s) { int32_t u = 0; for (auto i : s) u += i; return u; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").toString();
 
