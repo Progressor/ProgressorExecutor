@@ -2,47 +2,19 @@
 	{
 		"group": "keywords",
 		"elements": [
-			{"keyword":"#include"},
-			{"keyword":"#define"},
-			{"keyword":"enum"},
-			{"keyword":"volatile"},
-			{"keyword":"shared"},
-			{"keyword":"auto"}
+			{"keyword": "#include"},
+			{"keyword": "#define"},
+			{"keyword": "enum"},
+			{"keyword": "volatile"},
+			{"keyword": "shared"},
+			{"keyword": "auto"}
 		]
 	},
 	{
 		"group": "functions",
 		"elements": [
 			{"keyword": "memset"},
-			{"keyword":"system"}
-		]
-	},
-	{
-		"group": "classes (java.lang)",
-		"elements": [
-			{"keyword": "Class"},
-			{"keyword": "Error"},
-			{"keyword": "Exception"}
-		]
-	},
-	{
-		"group": "classes (java.util)",
-		"elements": [
-			{"keyword": "Primitive"},
-			{"keyword": "Resource"},
-			{"keyword": "Service"},
-			{"keyword": "Stack"},
-			{"keyword": "Timer"},
-			{"keyword": "Task"}
-		]
-	},
-	{
-		"group": "packages",
-		"elements": [
-			{"keyword": "concurrent"},
-			{"keyword": "logging"},
-			{"keyword": "management"},
-			{"keyword": "reflect"}
+			{"keyword": "system"}
 		]
 	}
 ]

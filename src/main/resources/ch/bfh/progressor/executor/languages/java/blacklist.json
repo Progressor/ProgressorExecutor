@@ -37,7 +37,7 @@
 			{"keyword": "Error"},
 			{"keyword": "Exception"},
 			{"keyword": "File"},
-			{"keyword":"Method"},
+			{"keyword": "Method"},
 			{"keyword": "Path"},
 			{"keyword": "Package"},
 			{"keyword": "Process"},
