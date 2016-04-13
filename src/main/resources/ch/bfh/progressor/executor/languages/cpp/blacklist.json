@@ -3,26 +3,18 @@
 		"group": "keywords",
 		"elements": [
 			{"keyword":"#include"},
-			{"keyword": "catch"},
-			{"keyword": "class"},
-			{"keyword": "const"},
-			{"keyword": "enum"},
-			{"keyword": "goto"},
-			{"keyword": "implements"},
-			{"keyword": "mutable"},
-			{"keyword": "operator"},
-			{"keyword": "switch"},
-			{"keyword": "thread_local"},
-			{"keyword": "throw"},
-			{"keyword": "try"},
-			{"keyword": "virtual"},
-			{"keyword": "volatile"}
+			{"keyword":"#define"},
+			{"keyword":"enum"},
+			{"keyword":"volatile"},
+			{"keyword":"shared"},
+			{"keyword":"auto"}
 		]
 	},
 	{
 		"group": "functions",
 		"elements": [
-			{"keyword": "memset"}
+			{"keyword": "memset"},
+			{"keyword":"system"}
 		]
 	},
 	{
@@ -30,14 +22,7 @@
 		"elements": [
 			{"keyword": "Class"},
 			{"keyword": "Error"},
-			{"keyword": "Exception"},
-			{"keyword": "Package"},
-			{"keyword": "Process"},
-			{"keyword": "Reference"},
-			{"keyword": "Runtime"},
-			{"keyword": "System"},
-			{"keyword": "Thread"},
-			{"keyword": "Throwable"}
+			{"keyword": "Exception"}
 		]
 	},
 	{

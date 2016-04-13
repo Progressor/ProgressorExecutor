@@ -95,7 +95,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				cppArguments = new String[] { "cmd", "/C", CPlusPlusExecutor.EXECUTABLE_NAME };
 			else
-				cppArguments = new String[] { CPlusPlusExecutor.EXECUTABLE_NAME };
+				cppArguments = new String[] { "./", CPlusPlusExecutor.EXECUTABLE_NAME };
 
 			long cppStart = System.nanoTime();
 			Process cppProcess = new ProcessBuilder(cppArguments).directory(codeDirectory).redirectErrorStream(true).start();
