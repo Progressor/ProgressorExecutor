@@ -1,1 +1,55 @@
-[]
+[
+	{
+		"group": "keywords",
+		"elements": [
+			{"keyword": "base"},
+			{"keyword": "checked"},
+			{"keyword": "const"},
+			{"keyword": "enum"},
+			{"keyword": "event"},
+			{"keyword": "explicit"},
+			{"keyword": "extern"},
+			{"keyword": "fixed"},
+			{"keyword": "implicit"},
+			{"keyword": "interface"},
+			{"keyword": "lock"},
+			{"keyword": "namespace"},
+			{"keyword": "new"},
+			{"keyword": "null"},
+			{"keyword": "object"},
+			{"keyword": "override"},
+			{"keyword": "sealed"},
+			{"keyword": "stackalloc"},
+			{"keyword": "static"},
+			{"keyword": "struct"},
+			{"keyword": "throw"},
+			{"keyword": "typeof"},
+			{"keyword": "unchecked"},
+			{"keyword": "unsafe"},
+			{"keyword": "virtual"},
+			{"keyword": "volatile"}
+		]
+	},
+	{
+		"group": "methods",
+		"elements": [
+			{"keyword": "Finalize"},
+			{"keyword": "GetType"},
+			{"keyword": "MemberwiseClone"}
+		]
+	},
+	{
+		"group": "classes & namespaces",
+		"elements": [
+			{"keyword": "Application"},
+			{"keyword": "Directory"},
+			{"keyword": "File"},
+			{"keyword": "Memory"},
+			{"keyword": "Path"},
+			{"keyword": "Reflection"},
+			{"keyword": "Runtime"},
+			{"keyword": "Security"},
+			{"keyword": "System"}
+		]
+	}
+]
