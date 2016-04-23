@@ -69,7 +69,6 @@
 				<version>0.1.11</version>
 				<configuration>
 					<thriftExecutable>${project.basedir}/thrift/${thrift.executable}</thriftExecutable>
-					<thriftSourceRoot>${project.basedir}/thrift</thriftSourceRoot>
 				</configuration>
 				<executions>
 					<execution>

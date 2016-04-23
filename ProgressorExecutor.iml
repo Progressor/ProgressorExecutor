@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/gen-java" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/gen-nodejs" />
       <excludeFolder url="file://$MODULE_DIR$/out" />
+      <excludeFolder url="file://$MODULE_DIR$/src/main/thrift" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/temp" />
       <excludeFolder url="file://$MODULE_DIR$/thrift" />
