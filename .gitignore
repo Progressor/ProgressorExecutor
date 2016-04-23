@@ -37,7 +37,7 @@ buildNumber.properties
 ### Java template
 *.class
 
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.ear
