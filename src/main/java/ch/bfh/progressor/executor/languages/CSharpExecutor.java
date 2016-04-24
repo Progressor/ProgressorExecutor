@@ -117,7 +117,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((cscEnd - cscStart) / 1e6)));
+																 new PerformanceIndicators((csEnd - csStart) / 1e6)));
 				}
 			}
 

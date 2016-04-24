@@ -117,7 +117,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((gccEnd - gccStart) / 1e6)));
+																 new PerformanceIndicators((cppEnd - cppStart) / 1e6)));
 				}
 			}
 
