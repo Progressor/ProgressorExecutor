@@ -7,6 +7,11 @@
 	<groupId>TeamProgressor</groupId>
 	<artifactId>ProgressorExecutor</artifactId>
 	<version>1.0</version>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -21,6 +26,7 @@
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -44,6 +50,7 @@
 					</execution>
 				</executions>
 			</plugin>
+
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
@@ -63,6 +70,7 @@
 					</execution>
 				</executions>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.thrift.tools</groupId>
 				<artifactId>maven-thrift-plugin</artifactId>
@@ -97,6 +105,7 @@
 			</plugin>
 		</plugins>
 	</build>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.thrift</groupId>
@@ -120,6 +129,7 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
 	<profiles>
 		<profile>
 			<id>Windows</id>
@@ -132,6 +142,7 @@
 				<thrift.executable>thrift-0.9.3.exe</thrift.executable>
 			</properties>
 		</profile>
+
 		<profile>
 			<id>Unix</id>
 			<activation>
