@@ -108,7 +108,7 @@ public abstract class CodeExecutorTestBase {
 	@Test
 	public void testGetLanguage() throws ExecutorException {
 
-		Assert.assertEquals(this.codeExecutor.getLanguage(), this.getExpectedLanguage());
+		Assert.assertEquals(this.codeExecutor.getLanguage(), this.getExpectedLanguage(), "language name incorrect");
 	}
 
 	@Test
@@ -126,6 +126,12 @@ public abstract class CodeExecutorTestBase {
 	@Test
 	public void testExecute() throws ExecutorException {
 
-		Assert.assertTrue(this.codeExecutor.execute(this.getFragment(), CodeExecutorTestBase.FUNCTIONS, CodeExecutorTestBase.TEST_CASES).stream().allMatch(Result::isSuccess));
+		List<Result> results = this.codeExecutor.execute(this.getFragment(), CodeExecutorTestBase.FUNCTIONS, CodeExecutorTestBase.TEST_CASES);
+		Assert.assertEquals(results.size(), CodeExecutorTestBase.TEST_CASES.size(), "number of results not equal to number of test cases");
+
+		for (int i = 0; i < CodeExecutorTestBase.TEST_CASES.size(); i++) {
+			Assert.assertFalse(results.get(i).isFatal(), String.format("fatal exception (reported by test case #%d): %s", i, results.get(i).getResult()));
+			Assert.assertTrue(results.get(i).isSuccess(), String.format("test case #%d failed: %s", i, results.get(i).getResult()));
+		}
 	}
 }

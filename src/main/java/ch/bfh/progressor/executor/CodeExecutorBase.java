@@ -3,13 +3,16 @@ package ch.bfh.progressor.executor;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.commons.io.input.BOMInputStream;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -37,7 +40,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
-	protected static final String DOCKERCONTAINER = "progressor/executor";
+	/**
+	 * Whether or not to use Docker containers to execute the code fragments.
+	 */
+	protected static boolean USE_DOCKER = false;
+
+	/**
+	 * Name of the Docker container (on LINUX only).
+	 */
+	protected static final String DOCKER_CONTAINER_NAME = String.format("progressor%sexecutor", File.separator);
 
 	/**
 	 * Regular expression pattern for parameter separation.
@@ -74,7 +85,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return default path to the blacklist file
 	 */
 	protected String getBlackListPath() {
-		return String.format("%s/blacklist.json", this.getLanguage());
+		return String.format("%s%sblacklist.json", this.getLanguage(), File.separator);
 	}
 
 	@Override
@@ -112,7 +123,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return default path to the template file
 	 */
 	protected String getTemplatePath() {
-		return String.format("%s/template.txt", this.getLanguage());
+		return String.format("%s%stemplate.txt", this.getLanguage(), File.separator);
 	}
 
 	/**
@@ -141,6 +152,46 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
+	 * Gets the combined command line to run a specific command.
+	 *
+	 * @param prepend the first few arguments
+	 * @param append  the last few arguments
+	 *
+	 * @return the combined command line arguments
+	 */
+	protected String[] getCombinedCommandLine(String[] prepend, String... append) {
+
+		String[] combined = Arrays.copyOf(prepend, prepend.length + append.length);
+		System.arraycopy(append, 0, combined, prepend.length, append.length);
+		return combined;
+	}
+
+	/**
+	 * Gets the cmd.exe command line to run a specific command.
+	 *
+	 * @param arguments additional arguments to pass to Docker
+	 *
+	 * @return the combined command line arguments
+	 */
+	protected String[] getCmdCommandLine(String... arguments) {
+
+		return this.getCombinedCommandLine(new String[] { "cmd", "/C" }, arguments);
+	}
+
+	/**
+	 * Gets the Docker command line to run a specific command.
+	 *
+	 * @param workingDirectory the working directory for Docker to run in
+	 * @param arguments        additional arguments to pass to Docker
+	 *
+	 * @return the combined command line arguments
+	 */
+	protected String[] getDockerCommandLine(File workingDirectory, String... arguments) {
+
+		return this.getCombinedCommandLine(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_CONTAINER_NAME }, arguments);
+	}
+
+	/**
 	 * Recursively deletes a directory and all its sub-directories and files.
 	 *
 	 * @param file directory (or file) to delete
@@ -161,6 +212,21 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
+	 * Creates a safe {@link InputStreamReader} for a specific {@link InputStream}.
+	 *
+	 * @param stream input stream to create reader for
+	 *
+	 * @return a safe reader for a specific input stream
+	 *
+	 * @throws IOException if no safe reader could be created for the input stream
+	 */
+	protected InputStreamReader getSafeReader(InputStream stream) throws IOException {
+
+		BOMInputStream bom = new BOMInputStream(stream);
+		return new InputStreamReader(bom, (bom.getBOM() != null ? Charset.forName(bom.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder());
+	}
+
+	/**
 	 * Reads the complete console output of a specified process. <br>
 	 * Note that the process' error stream needs to be redirected to read error output as well
 	 * (e.g. using {@link ProcessBuilder#redirectErrorStream(boolean)}).
@@ -175,7 +241,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 		final String newLine = String.format("%n");
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), CodeExecutorBase.CHARSET.newDecoder()))) {
+		try (BufferedReader reader = new BufferedReader(this.getSafeReader(process.getInputStream()))) {
 			StringBuilder sb = new StringBuilder();
 
 			String line; //read every line

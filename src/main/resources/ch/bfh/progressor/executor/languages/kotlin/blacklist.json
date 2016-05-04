@@ -1,1 +1,73 @@
-[]
+[
+	{
+		"group": "keywords",
+		"elements": [
+			{"keyword": "class"},
+			{"keyword": "companion"},
+			{"keyword": "constructor"},
+			{"keyword": "dynamic"},
+			{"keyword": "enum"},
+			{"keyword": "import"},
+			{"keyword": "interface"},
+			{"keyword": "object"},
+			{"keyword": "package"},
+			{"keyword": "super"},
+			{"keyword": "throw"}
+		]
+	},
+	{
+		"group": "methods",
+		"elements": [
+			{"keyword": "javaClass"}
+		]
+	},
+	{
+		"group": "classes (java.lang)",
+		"elements": [
+			{"keyword": "Class"},
+			{"keyword": "Error"},
+			{"keyword": "Exception"},
+			{"keyword": "File"},
+			{"keyword": "Method"},
+			{"keyword": "Path"},
+			{"keyword": "Package"},
+			{"keyword": "Process"},
+			{"keyword": "Reference"},
+			{"keyword": "Runtime"},
+			{"keyword": "System"},
+			{"keyword": "Thread"},
+			{"keyword": "Throwable"}
+		]
+	},
+	{
+		"group": "classes (java.util)",
+		"elements": [
+			{"keyword": "Primitive"},
+			{"keyword": "Resource"},
+			{"keyword": "Service"},
+			{"keyword": "Stack"},
+			{"keyword": "Timer"},
+			{"keyword": "Task"}
+		]
+	},
+	{
+		"group": "classes (kotlin)",
+		"elements": [
+			{"keyword": "Jvm"},
+			{"keyword": "Strictfp"},
+			{"keyword": "Synchronized"},
+			{"keyword": "Throws"},
+			{"keyword": "Transient"},
+			{"keyword": "Volatile"}
+		]
+	},
+	{
+		"group": "packages",
+		"elements": [
+			{"keyword": "concurrent"},
+			{"keyword": "logging"},
+			{"keyword": "management"},
+			{"keyword": "reflect"}
+		]
+	}
+]

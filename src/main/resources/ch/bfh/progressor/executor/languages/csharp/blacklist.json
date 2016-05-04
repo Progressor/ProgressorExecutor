@@ -2,62 +2,51 @@
 	{
 		"group": "keywords",
 		"elements": [
-			{"keyword":"#include"},
-			{"keyword": "catch"},
-			{"keyword": "class"},
+			{"keyword": "base"},
+			{"keyword": "checked"},
 			{"keyword": "const"},
 			{"keyword": "enum"},
-			{"keyword": "goto"},
-			{"keyword": "implements"},
-			{"keyword": "mutable"},
-			{"keyword": "operator"},
-			{"keyword": "switch"},
-			{"keyword": "thread_local"},
+			{"keyword": "event"},
+			{"keyword": "explicit"},
+			{"keyword": "extern"},
+			{"keyword": "fixed"},
+			{"keyword": "implicit"},
+			{"keyword": "interface"},
+			{"keyword": "lock"},
+			{"keyword": "namespace"},
+			{"keyword": "override"},
+			{"keyword": "sealed"},
+			{"keyword": "stackalloc"},
+			{"keyword": "static"},
+			{"keyword": "struct"},
 			{"keyword": "throw"},
-			{"keyword": "try"},
+			{"keyword": "typeof"},
+			{"keyword": "unchecked"},
+			{"keyword": "unsafe"},
 			{"keyword": "virtual"},
 			{"keyword": "volatile"}
 		]
 	},
 	{
-		"group": "functions",
+		"group": "methods",
 		"elements": [
-			{"keyword": "memset"}
+			{"keyword": "Finalize"},
+			{"keyword": "GetType"},
+			{"keyword": "MemberwiseClone"}
 		]
 	},
 	{
-		"group": "classes (java.lang)",
+		"group": "classes & namespaces",
 		"elements": [
-			{"keyword": "Class"},
-			{"keyword": "Error"},
-			{"keyword": "Exception"},
-			{"keyword": "Package"},
-			{"keyword": "Process"},
-			{"keyword": "Reference"},
+			{"keyword": "Application"},
+			{"keyword": "Directory"},
+			{"keyword": "File"},
+			{"keyword": "Memory"},
+			{"keyword": "Path"},
+			{"keyword": "Reflection"},
 			{"keyword": "Runtime"},
-			{"keyword": "System"},
-			{"keyword": "Thread"},
-			{"keyword": "Throwable"}
-		]
-	},
-	{
-		"group": "classes (java.util)",
-		"elements": [
-			{"keyword": "Primitive"},
-			{"keyword": "Resource"},
-			{"keyword": "Service"},
-			{"keyword": "Stack"},
-			{"keyword": "Timer"},
-			{"keyword": "Task"}
-		]
-	},
-	{
-		"group": "packages",
-		"elements": [
-			{"keyword": "concurrent"},
-			{"keyword": "logging"},
-			{"keyword": "management"},
-			{"keyword": "reflect"}
+			{"keyword": "Security"},
+			{"keyword": "System"}
 		]
 	}
 ]

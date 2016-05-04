@@ -1,9 +1,6 @@
 
 # https://thrift.apache.org/docs/idl
 
-# .\thrift\thrift-0.9.3.exe -gen java .\thrift\executor.thrift
-# .\thrift\thrift-0.9.3.exe -gen js:node .\thrift\executor.thrift
-
 namespace java ch.bfh.progressor.executor.thrift
 namespace cpp progressor.executor.thrift
 namespace csharp Progressor.Executor.Thrift

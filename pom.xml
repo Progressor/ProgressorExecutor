@@ -156,7 +156,7 @@
 				</os>
 			</activation>
 			<properties>
-				<thrift.executable>thrift</thrift.executable>
+				<thrift.executable>thrift-0.9.3</thrift.executable>
 			</properties>
 		</profile>
 	</profiles>

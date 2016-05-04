@@ -2,17 +2,17 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.CodeExecutorBase;
+import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
+import ch.bfh.progressor.executor.ExecutorPlatform;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
 import ch.bfh.progressor.executor.thrift.Result;
@@ -34,9 +34,10 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 	@Override
 	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
 
-		List<Result> results = new ArrayList<>(testCases.size());
-		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File codeFile = new File(codeDirectory, String.format("%s.kts", KotlinExecutor.CODE_CLASS_NAME));
 
+		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
@@ -49,13 +50,12 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments;
-			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
-				kotlinArguments = new String[] { "cmd", "/C", "kotlinc", "-script", "*.kts" };
-			else {
-				if (ch.bfh.progressor.executor.Executor.useDocker) kotlinArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + ":/opt", DOCKERCONTAINER, "kotlinc", "-nowarn", "-script", KotlinScriptExecutor.CODE_CLASS_NAME + ".kts" };
-				else kotlinArguments = new String[] {"kotlinc", "-nowarn", "-script", KotlinScriptExecutor.CODE_CLASS_NAME + ".kts" };
-			}
+			String[] kotlinArguments = { "kotlinc", "-script", codeFile.getName() };
+			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
+				kotlinArguments = this.getCmdCommandLine(kotlinArguments);
+			if (CodeExecutorBase.USE_DOCKER)
+				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
+
 			long kotlinStart = System.nanoTime();
 			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (kotlinProcess.waitFor(KotlinExecutor.COMPILE_TIMEOUT_SECONDS + KotlinExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -71,7 +71,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(new InputStreamReader(kotlinProcess.getInputStream(), CodeExecutorBase.CHARSET.newDecoder())).useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(this.getSafeReader(kotlinProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,

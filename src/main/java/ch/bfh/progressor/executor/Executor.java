@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +18,6 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
-import ch.bfh.progressor.executor.languages.JavaProcessExecutor;
 import ch.bfh.progressor.executor.thrift.ExecutorService;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.Result;
@@ -49,7 +47,11 @@ public final class Executor {
 	 */
 	public static final int SERVER_STOP_TIMEOUT_MILLISECONDS = 250;
 
-	public static boolean useDocker;
+	/**
+	 * Platform (supported operating system) of the executor.
+	 */
+	public static final ExecutorPlatform PLATFORM = ExecutorPlatform.determine();
+
 	/**
 	 * Main method.
 	 * Starts the executor service.
@@ -64,7 +66,13 @@ public final class Executor {
 			switch (args[i]) {
 				case "-p":
 				case "-port":
-					port = Integer.parseInt(args[++i]);
+					try {
+						port = Integer.parseInt(args[++i]);
+						Executor.LOGGER.fine(String.format("Using port %d.", port));
+
+					} catch (NumberFormatException ex) {
+						throw new InvalidParameterException(String.format("Value '%s' for command-line argument '%s' is invalid. Use integer number.", args[i], args[i - 1]));
+					}
 					break;
 
 				case "-d":
@@ -72,21 +80,26 @@ public final class Executor {
 					switch (args[++i]) {
 						case "true":
 						case "yes":
-							if(System.getProperty("os.name").substring(0, 3).equals("Win")) throw new InvalidParameterException(String.format("Cannot use docker on Windows"));
-							Executor.LOGGER.info("Using Docker");
-							useDocker=true;
+							if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
+								throw new InvalidParameterException("Cannot use Docker switch on WINDOWS machines.");
+							CodeExecutorBase.USE_DOCKER = true;
+							Executor.LOGGER.fine("Using Docker.");
 							break;
+
+						case "false":
+						case "no":
+							CodeExecutorBase.USE_DOCKER = false;
+							Executor.LOGGER.fine("Not using Docker.");
+							break;
+
 						default:
-							Executor.LOGGER.info("Not using Docker");
-							useDocker=false;
+							throw new InvalidParameterException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
 					}
 					break;
 
 				default:
 					throw new InvalidParameterException(String.format("Command-line argument '%s' is invalid.", args[i]));
 			}
-
-
 
 		try (TServerTransport transport = new TServerSocket(port)) {
 			TProcessor processor = new ExecutorService.Processor<>(new Executor.RequestHandler());
@@ -120,6 +133,7 @@ public final class Executor {
 
 	private static class RequestHandler implements ExecutorService.Iface {
 
+		private int logId;
 		private final Map<String, CodeExecutor> codeExecutors = new HashMap<>();
 
 		private CodeExecutor getCodeExecutor(String language) throws TException {
@@ -128,7 +142,7 @@ public final class Executor {
 				ServiceLoader<CodeExecutor> executors = ServiceLoader.load(CodeExecutor.class); //fetch the executor classes
 				for (CodeExecutor executor : executors)
 					if (language.equals(executor.getLanguage())) { //store the executor instance for the chosen language
-						Executor.LOGGER.info(String.format("Loaded code executor '%s'.", executor.getClass().getName()));
+						Executor.LOGGER.fine(String.format("Loaded code executor '%s'.", executor.getClass().getName()));
 						this.codeExecutors.put(language, executor);
 					}
 
@@ -139,10 +153,16 @@ public final class Executor {
 			return this.codeExecutors.get(language); //return the instance
 		}
 
+		private synchronized int getLogId() {
+
+			return this.logId++;
+		}
+
 		@Override
 		public List<String> getBlacklist(String language) throws TException {
 
-			Executor.LOGGER.info(String.format("getBlacklist(language=%s)", language));
+			int logId = this.getLogId();
+			Executor.LOGGER.info(String.format("%-6d: getBlacklist(language=%s)", logId, language));
 
 			try {
 				Collection<String> list = this.getCodeExecutor(language).getBlacklist(); //delegate call
@@ -152,13 +172,17 @@ public final class Executor {
 				String msg = String.format("Could not fetch the blacklist for language '%s'.", language);
 				Executor.LOGGER.log(Level.WARNING, msg, ex);
 				throw new TException(msg, ex);
+
+			} finally {
+				Executor.LOGGER.finer(String.format("%-6d: finished", logId));
 			}
 		}
 
 		@Override
 		public String getFragment(String language, List<FunctionSignature> functions) throws TException {
 
-			Executor.LOGGER.info(String.format("getFragment(language=%s)", language));
+			int logId = this.getLogId();
+			Executor.LOGGER.info(String.format("%-6d: getFragment(language=%s)", logId, language));
 
 			try {
 				return this.getCodeExecutor(language).getFragment(functions); //delegate call
@@ -167,13 +191,17 @@ public final class Executor {
 				String msg = String.format("Could not generate the fragment for language '%s'.", language);
 				Executor.LOGGER.log(Level.WARNING, msg, ex);
 				throw new TException(msg, ex);
+
+			} finally {
+				Executor.LOGGER.finer(String.format("%-6d: finished", logId));
 			}
 		}
 
 		@Override
 		public List<Result> execute(String language, String fragment, List<FunctionSignature> functions, List<TestCase> testCases) throws TException {
 
-			Executor.LOGGER.info(String.format("execute(language=%s, fragment=..., %d testCases: %s...)", language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
+			int logId = this.getLogId();
+			Executor.LOGGER.info(String.format("%-6d: execute(language=%s, fragment=..., %d testCases: %s...)", logId, language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
 			try {
 				CodeExecutor codeExecutor = this.getCodeExecutor(language);
@@ -187,15 +215,20 @@ public final class Executor {
 					return results;
 				}
 
-				return codeExecutor.execute(fragment, functions, testCases); //delegate execution call
+				List<Result> results = codeExecutor.execute(fragment, functions, testCases); //delegate execution call
+
+				Result result = new Result(false, true, "Could not read execution result for test case.", null);
+				while (results.size() < testCases.size())
+					results.add(result);
+				return results;
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not execute the code fragment in language '%s'.", language);
 				Executor.LOGGER.log(Level.WARNING, msg, ex);
 				throw new TException(msg, ex);
-			}
-			finally{
-				Executor.LOGGER.info("execute Finished");
+
+			} finally {
+				Executor.LOGGER.finer(String.format("%-6d: finished", logId));
 			}
 		}
 	}

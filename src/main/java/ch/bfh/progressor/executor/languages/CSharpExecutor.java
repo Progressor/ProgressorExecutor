@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.commons.io.input.BOMInputStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
 import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
@@ -48,7 +47,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
+	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
 
 	@Override
 	public String getLanguage() {
@@ -63,9 +62,12 @@ public class CSharpExecutor extends CodeExecutorBase {
 	@Override
 	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
 
-		List<Result> results = new ArrayList<>(testCases.size());
-		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File localDirectory = new File(".");
+		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File codeFile = new File(codeDirectory, String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME));
+		final File executableFile = new File(codeDirectory, String.format("%s.exe", CSharpExecutor.EXECUTABLE_NAME));
 
+		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
@@ -78,15 +80,22 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//********************
 			//*** COMPILE CODE ***
 			//********************
+			String[] cscArguments;
+			switch (Executor.PLATFORM) {
+				case WINDOWS:
+					cscArguments = new String[] { "csc", codeFile.getName(), "/debug" };
+					break;
+				case LINUX:
+					cscArguments = new String[] { "mcs", codeFile.getName(), "-debug" };
+					break;
+				default:
+					throw new ExecutorException(true, "Unsupported platform detected.");
+			}
+			if (CodeExecutorBase.USE_DOCKER)
+				cscArguments = this.getDockerCommandLine(codeDirectory, cscArguments);
+
 			long cscStart = System.nanoTime();
-			Process cscProcess = null;
-			if (Executor.useDocker)
-				cscProcess = new ProcessBuilder("docker", "run", "-v", codeDirectory.getAbsolutePath() + "/:/opt", DOCKERCONTAINER, "mcs", CSharpExecutor.EXECUTABLE_NAME + ".cs")
-					.redirectErrorStream(true).start();
-			else
-				cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "mcs", CSharpExecutor.EXECUTABLE_NAME + ".cs", "/debug")
-					.directory(codeDirectory)
-					.redirectErrorStream(true).start();
+			Process cscProcess = new ProcessBuilder(cscArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cscProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
@@ -101,16 +110,21 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] csArguments;
-			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
-				csArguments = new String[] { "cmd", "/C", CSharpExecutor.EXECUTABLE_NAME };
-			else {
-				if (Executor.useDocker)
-					csArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + "/:/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
-				else csArguments = new String[] {"mono",codeDirectory.getAbsolutePath() + "/"+CSharpExecutor.EXECUTABLE_NAME+".exe"};
+			switch (Executor.PLATFORM) {
+				case WINDOWS:
+					csArguments = new String[] { executableFile.getAbsolutePath() };
+					break;
+				case LINUX:
+					csArguments = new String[] { "mono", new File(localDirectory, executableFile.getName()).getAbsolutePath(), "--debug" };
+					break;
+				default:
+					throw new ExecutorException(true, "Unsupported platform detected.");
 			}
+			if (CodeExecutorBase.USE_DOCKER)
+				csArguments = this.getDockerCommandLine(codeDirectory, csArguments);
 
 			long csStart = System.nanoTime();
-			Process csProcess = new ProcessBuilder(csArguments).redirectErrorStream(true).start();
+			Process csProcess = new ProcessBuilder(csArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (csProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
@@ -124,13 +138,12 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(new BOMInputStream(csProcess.getInputStream()), CodeExecutorBase.CHARSET.name())
-				.useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(this.getSafeReader(csProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((cscEnd - cscStart) / 1e6)));
+																 new PerformanceIndicators((csEnd - csStart) / 1e6)));
 				}
 			}
 

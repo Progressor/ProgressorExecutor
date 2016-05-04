@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -17,6 +16,7 @@ import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
 import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
+import ch.bfh.progressor.executor.ExecutorPlatform;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
 import ch.bfh.progressor.executor.thrift.Result;
@@ -44,12 +44,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 17;
+	public static final int COMPILE_TIMEOUT_SECONDS = 10;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
+	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
 
 	@Override
 	public String getLanguage() {
@@ -64,9 +64,10 @@ public class KotlinExecutor extends CodeExecutorBase {
 	@Override
 	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
 
-		List<Result> results = new ArrayList<>(testCases.size());
-		File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+		final File codeFile = new File(codeDirectory, String.format("%s.kt", KotlinExecutor.CODE_CLASS_NAME));
 
+		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
@@ -79,13 +80,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** COMPILE CODE ***
 			//********************
-			String[] kotlincArguments;
-			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
-				kotlincArguments = new String[] { "cmd", "/C", "kotlinc", "*.kt" };
-			else{
-				if(Executor.useDocker) kotlincArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath()+"/:/opt",DOCKERCONTAINER,"kotlinc",KotlinExecutor.CODE_CLASS_NAME + ".kt" };
-				else kotlincArguments = new String[] {"kotlinc",KotlinExecutor.CODE_CLASS_NAME + ".kt" };
-			}
+			String[] kotlincArguments = { "kotlinc", codeFile.getName() };
+			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
+				kotlincArguments = this.getCmdCommandLine(kotlincArguments);
+			if (CodeExecutorBase.USE_DOCKER)
+				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
+
 			long kotlincStart = System.nanoTime();
 			Process kotlincProcess = new ProcessBuilder(kotlincArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (kotlincProcess.waitFor(KotlinExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -101,15 +101,11 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments;
-			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
-				kotlinArguments = new String[] { "cmd", "/C", "kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			else{
-				if(Executor.useDocker) kotlinArguments = new String[] { "docker","run","-v",codeDirectory.getAbsolutePath()+":/opt","progressor/executor","kotlin", KotlinExecutor.CODE_CLASS_NAME };
-				else kotlinArguments = new String[] {"kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			}
-
-
+			String[] kotlinArguments = { "kotlin", KotlinExecutor.CODE_CLASS_NAME };
+			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
+				kotlinArguments = this.getCmdCommandLine(kotlinArguments);
+			if (CodeExecutorBase.USE_DOCKER)
+				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 
 			long kotlinStart = System.nanoTime();
 			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -126,7 +122,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(new InputStreamReader(kotlinProcess.getInputStream(), CodeExecutorBase.CHARSET.newDecoder())).useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(this.getSafeReader(kotlinProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
