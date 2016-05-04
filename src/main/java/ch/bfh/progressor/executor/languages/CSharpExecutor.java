@@ -80,9 +80,13 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//********************
 			long cscStart = System.nanoTime();
 			Process cscProcess = null;
-			if(Executor.useDocker)cscProcess = new ProcessBuilder("docker", "run", "-v",codeDirectory.getAbsolutePath()+"/:/opt", DOCKERCONTAINER, "mcs", CSharpExecutor.EXECUTABLE_NAME+".cs").redirectErrorStream(true).start();
-			else cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "mcs",CSharpExecutor.EXECUTABLE_NAME+".cs", "/debug").directory(codeDirectory)
-																																																																																			.redirectErrorStream(true).start();
+			if (Executor.useDocker)
+				cscProcess = new ProcessBuilder("docker", "run", "-v", codeDirectory.getAbsolutePath() + "/:/opt", DOCKERCONTAINER, "mcs", CSharpExecutor.EXECUTABLE_NAME + ".cs")
+					.redirectErrorStream(true).start();
+			else
+				cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "mcs", CSharpExecutor.EXECUTABLE_NAME + ".cs", "/debug")
+					.directory(codeDirectory)
+					.redirectErrorStream(true).start();
 			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cscProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
@@ -99,13 +103,14 @@ public class CSharpExecutor extends CodeExecutorBase {
 			String[] csArguments;
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				csArguments = new String[] { "cmd", "/C", CSharpExecutor.EXECUTABLE_NAME };
-			else{
-				if(Executor.useDocker)csArguments = new String[] {"docker", "run", "-v",codeDirectory.getAbsolutePath()+":/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME+".exe"};
-				else csArguments = new String[] {"mono",CSharpExecutor.EXECUTABLE_NAME+".exe"};
+			else {
+				if (Executor.useDocker)
+					csArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + ":/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
+				else csArguments = new String[] { "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
 			}
 
 			long csStart = System.nanoTime();
-			Process csProcess = new ProcessBuilder("cmd", "/C", CSharpExecutor.EXECUTABLE_NAME ).directory(codeDirectory).redirectErrorStream(true).start();
+			Process csProcess = new ProcessBuilder("cmd", "/C", CSharpExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
 			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (csProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
