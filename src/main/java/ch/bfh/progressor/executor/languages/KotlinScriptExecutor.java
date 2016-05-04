@@ -50,9 +50,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments = { "kotlinc", "-script", codeFile.getName() };
-			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
-				kotlinArguments = this.getCmdCommandLine(kotlinArguments);
+			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", codeFile.getName() };
 			if (CodeExecutorBase.USE_DOCKER)
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 

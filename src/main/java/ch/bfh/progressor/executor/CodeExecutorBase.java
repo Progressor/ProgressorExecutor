@@ -167,18 +167,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
-	 * Gets the cmd.exe command line to run a specific command.
-	 *
-	 * @param arguments additional arguments to pass to Docker
-	 *
-	 * @return the combined command line arguments
-	 */
-	protected String[] getCmdCommandLine(String... arguments) {
-
-		return this.getCombinedCommandLine(new String[] { "cmd", "/C" }, arguments);
-	}
-
-	/**
 	 * Gets the Docker command line to run a specific command.
 	 *
 	 * @param workingDirectory the working directory for Docker to run in

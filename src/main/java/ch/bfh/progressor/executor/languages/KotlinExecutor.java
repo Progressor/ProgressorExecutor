@@ -80,9 +80,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** COMPILE CODE ***
 			//********************
-			String[] kotlincArguments = { "kotlinc", codeFile.getName() };
-			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
-				kotlincArguments = this.getCmdCommandLine(kotlincArguments);
+			String[] kotlincArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
 			if (CodeExecutorBase.USE_DOCKER)
 				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
 
@@ -101,9 +99,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments = { "kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
-				kotlinArguments = this.getCmdCommandLine(kotlinArguments);
+			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
 			if (CodeExecutorBase.USE_DOCKER)
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 
