@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.CodeExecutorBase;
 import ch.bfh.progressor.executor.ExecutorException;
@@ -51,9 +52,10 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			String[] kotlinArguments;
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				kotlinArguments = new String[] { "cmd", "/C", "kotlinc", "-script", "*.kts" };
-			else
-				kotlinArguments = new String[] { "kotlinc", "-script", "*.kts" };
-
+			else {
+				if (ch.bfh.progressor.executor.Executor.useDocker) kotlinArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + ":/opt", DOCKERCONTAINER, "kotlinc", "-nowarn", "-script", KotlinScriptExecutor.CODE_CLASS_NAME + ".kts" };
+				else kotlinArguments = new String[] {"kotlinc", "-nowarn", "-script", KotlinScriptExecutor.CODE_CLASS_NAME + ".kts" };
+			}
 			long kotlinStart = System.nanoTime();
 			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (kotlinProcess.waitFor(KotlinExecutor.COMPILE_TIMEOUT_SECONDS + KotlinExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {

@@ -15,6 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
+import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
@@ -43,12 +44,12 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 3;
+	public static final int COMPILE_TIMEOUT_SECONDS = 10;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
+	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
 
 	@Override
 	public String getLanguage() {
@@ -79,11 +80,13 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			long javacStart = System.nanoTime();
-			Process javacProcess = new ProcessBuilder("javac", "*.java").directory(codeDirectory).redirectErrorStream(true).start();
+			Process javacProcess = null;
+			if(Executor.useDocker) javacProcess = new ProcessBuilder("docker","run","-v",codeDirectory.getAbsolutePath()+":/opt",DOCKERCONTAINER,"javac", JavaProcessExecutor.CODE_CLASS_NAME+".java").redirectErrorStream(true).start();
+			else javacProcess = new ProcessBuilder("javac",JavaProcessExecutor.CODE_CLASS_NAME+".java").directory(codeDirectory).redirectErrorStream(true).start();
+
 			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javacProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(javacProcess));
-
 			} else {
 				javacProcess.destroyForcibly(); //destroy()
 				throw new ExecutorException(true, "Could not compile the user code in time.");
@@ -93,8 +96,11 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
+			Process javaProcess = null;
 			long javaStart = System.nanoTime();
-			Process javaProcess = new ProcessBuilder("java", JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			if(Executor.useDocker) javaProcess = new ProcessBuilder("docker","run","-v",codeDirectory.getAbsolutePath()+":/opt",DOCKERCONTAINER,"java", JavaProcessExecutor.CODE_CLASS_NAME).redirectErrorStream(true).start();
+			else javaProcess = new ProcessBuilder("java",JavaProcessExecutor.CODE_CLASS_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+
 			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (javaProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(javaProcess));

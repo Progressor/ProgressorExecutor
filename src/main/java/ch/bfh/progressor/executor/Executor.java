@@ -2,6 +2,7 @@ package ch.bfh.progressor.executor;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import ch.bfh.progressor.executor.languages.JavaProcessExecutor;
 import ch.bfh.progressor.executor.thrift.ExecutorService;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.Result;
@@ -47,6 +49,7 @@ public final class Executor {
 	 */
 	public static final int SERVER_STOP_TIMEOUT_MILLISECONDS = 250;
 
+	public static boolean useDocker;
 	/**
 	 * Main method.
 	 * Starts the executor service.
@@ -56,7 +59,7 @@ public final class Executor {
 	public static void main(String... args) {
 
 		int port = Executor.DEFAULT_SERVER_PORT;
-		//sdfs
+
 		for (int i = 0; i < args.length; i++)
 			switch (args[i]) {
 				case "-p":
@@ -64,9 +67,24 @@ public final class Executor {
 					port = Integer.parseInt(args[++i]);
 					break;
 
+				case "-d":
+				case "-docker":
+					switch (args[++i]) {
+						case "true":
+						case "yes":
+							if(System.getProperty("os.name").substring(0, 3).equals("Win")) throw new InvalidParameterException(String.format("Cannot use docker on Windows"));
+							useDocker=true;
+							break;
+						default:
+							useDocker=false;
+					}
+					break;
+
 				default:
 					throw new InvalidParameterException(String.format("Command-line argument '%s' is invalid.", args[i]));
 			}
+
+
 
 		try (TServerTransport transport = new TServerSocket(port)) {
 			TProcessor processor = new ExecutorService.Processor<>(new Executor.RequestHandler());
@@ -173,6 +191,9 @@ public final class Executor {
 				String msg = String.format("Could not execute the code fragment in language '%s'.", language);
 				Executor.LOGGER.log(Level.WARNING, msg, ex);
 				throw new TException(msg, ex);
+			}
+			finally{
+				Executor.LOGGER.info("execute Finished");
 			}
 		}
 	}

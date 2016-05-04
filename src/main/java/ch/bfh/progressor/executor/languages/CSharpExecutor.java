@@ -13,7 +13,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import ch.bfh.progressor.executor.BomProofInputStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
+import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
@@ -77,7 +79,9 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			long cscStart = System.nanoTime();
-			Process cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "msc", "*.cs", "/debug").directory(codeDirectory).redirectErrorStream(true).start();
+			Process cscProcess = null;
+			if(Executor.useDocker)cscProcess = new ProcessBuilder("docker", "run", "-v",codeDirectory.getAbsolutePath()+"/:/opt", DOCKERCONTAINER, "mcs", CSharpExecutor.EXECUTABLE_NAME+".cs").redirectErrorStream(true).start();
+			else cscProcess = new ProcessBuilder(System.getProperty("os.name").substring(0, 3).equals("Win") ? "csc" : "mcs", codeDirectory.getAbsolutePath()+"/"+ CSharpExecutor.EXECUTABLE_NAME+".cs", "/debug").redirectErrorStream(true).start();
 			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (cscProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
@@ -94,8 +98,10 @@ public class CSharpExecutor extends CodeExecutorBase {
 			String[] csArguments;
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				csArguments = new String[] { "cmd", "/C", CSharpExecutor.EXECUTABLE_NAME };
-			else
-				csArguments = new String[] { "mono", CSharpExecutor.EXECUTABLE_NAME };
+			else{
+				if(Executor.useDocker)csArguments = new String[] {"docker", "run", "-v",codeDirectory.getAbsolutePath()+":/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME+".exe"};
+				else csArguments = new String[] {"mono", CSharpExecutor.EXECUTABLE_NAME+".exe"};
+			}
 
 			long csStart = System.nanoTime();
 			Process csProcess = new ProcessBuilder(csArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -112,12 +118,13 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(csProcess.getInputStream(), CodeExecutorBase.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(new BomProofInputStream(cscProcess.getInputStream()), CodeExecutorBase.CHARSET.name())
+				.useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((csEnd - csStart) / 1e6)));
+																 new PerformanceIndicators((cscEnd - cscStart) / 1e6)));
 				}
 			}
 
@@ -305,7 +312,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 					if (first) first = false;
 					else sb.append(", ");
-					sb.append('[').append(this.getValueLiteral(kv[0], kvTyps[0])).append("] = ").append(this.getValueLiteral(kv[1], kvTyps[1]));
+					sb.append('{').append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append('}');
 				}
 
 			return sb.append(" }").toString(); //finish initialisation and return literal

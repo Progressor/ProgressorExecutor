@@ -14,6 +14,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
+import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
@@ -77,7 +78,15 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			long gccStart = System.nanoTime();
-			Process gccProcess = new ProcessBuilder("g++", "*.cpp", "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			String directory = codeDirectory.getAbsolutePath()+"/"+CPlusPlusExecutor.EXECUTABLE_NAME;
+			//Process gccProcess = new ProcessBuilder("g++", codeDirectory.getAbsolutePath()+"/"+CPlusPlusExecutor.EXECUTABLE_NAME+".cpp", "-std=c++11", "-o", codeDirectory.getAbsolutePath()+"/"+CPlusPlusExecutor.EXECUTABLE_NAME).redirectErrorStream(true).start();
+			Process gccProcess = null;
+
+
+			if(Executor.useDocker) gccProcess = new ProcessBuilder("docker", "run", "-v",codeDirectory.getAbsolutePath()+"/:/opt",DOCKERCONTAINER, "g++", CPlusPlusExecutor.EXECUTABLE_NAME + ".cpp", "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			else gccProcess = new ProcessBuilder("g++",codeDirectory.getAbsolutePath()+"/"+CPlusPlusExecutor.EXECUTABLE_NAME+".cpp", "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+
+
 			if (gccProcess.waitFor(CPlusPlusExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (gccProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(gccProcess));
@@ -92,11 +101,12 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] cppArguments;
-			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
+			if (System.getProperty("os.name").substring(0, 3).equalsIgnoreCase("Win"))
 				cppArguments = new String[] { "cmd", "/C", CPlusPlusExecutor.EXECUTABLE_NAME };
-			else
-				cppArguments = new String[] { "./", CPlusPlusExecutor.EXECUTABLE_NAME };
-
+			else{
+				if(Executor.useDocker) cppArguments = new String[] {"docker","run","-v",codeDirectory.getAbsolutePath()+":/opt",DOCKERCONTAINER,"./"+ CPlusPlusExecutor.EXECUTABLE_NAME};
+				else cppArguments = new String[] { "./",CPlusPlusExecutor.EXECUTABLE_NAME };
+			}
 			long cppStart = System.nanoTime();
 			Process cppProcess = new ProcessBuilder(cppArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (cppProcess.waitFor(CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -117,7 +127,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
 																 res.substring(3),
-																 new PerformanceIndicators((cppEnd - cppStart) / 1e6)));
+																 new PerformanceIndicators((gccEnd - gccStart) / 1e6)));
 				}
 			}
 

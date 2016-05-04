@@ -37,6 +37,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
+	protected static final String DOCKERCONTAINER = "progressor/executor";
+
 	/**
 	 * Regular expression pattern for parameter separation.
 	 */

@@ -15,6 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
+import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
 import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
@@ -43,7 +44,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 7;
+	public static final int COMPILE_TIMEOUT_SECONDS = 17;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
@@ -81,9 +82,10 @@ public class KotlinExecutor extends CodeExecutorBase {
 			String[] kotlincArguments;
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				kotlincArguments = new String[] { "cmd", "/C", "kotlinc", "*.kt" };
-			else
-				kotlincArguments = new String[] { "kotlinc", "*.kt" };
-
+			else{
+				if(Executor.useDocker) kotlincArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath()+"/:/opt",DOCKERCONTAINER,"kotlinc",KotlinExecutor.CODE_CLASS_NAME + ".kt" };
+				else kotlincArguments = new String[] {"kotlinc",KotlinExecutor.CODE_CLASS_NAME + ".kt" };
+			}
 			long kotlincStart = System.nanoTime();
 			Process kotlincProcess = new ProcessBuilder(kotlincArguments).directory(codeDirectory).redirectErrorStream(true).start();
 			if (kotlincProcess.waitFor(KotlinExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -102,8 +104,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 			String[] kotlinArguments;
 			if (System.getProperty("os.name").substring(0, 3).equals("Win"))
 				kotlinArguments = new String[] { "cmd", "/C", "kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			else
-				kotlinArguments = new String[] { "kotlin", KotlinExecutor.CODE_CLASS_NAME };
+			else{
+				if(Executor.useDocker) kotlinArguments = new String[] { "docker","run","-v",codeDirectory.getAbsolutePath()+":/opt","progressor/executor","kotlin", KotlinExecutor.CODE_CLASS_NAME };
+				else kotlinArguments = new String[] {"kotlin", KotlinExecutor.CODE_CLASS_NAME };
+			}
+
+
 
 			long kotlinStart = System.nanoTime();
 			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();

@@ -2,75 +2,47 @@
 	{
 		"group": "keywords",
 		"elements": [
-			{"keyword": "alignas"},
-			{"keyword": "alignof"},
-			{"keyword": "asm"},
-			{"keyword": "class"},
-			{"keyword": "const_cast"},
-			{"keyword": "explicit"},
-			{"keyword": "export"},
-			{"keyword": "extern"},
-			{"keyword": "friend"},
-			{"keyword": "namespace"},
-			{"keyword": "noexcept"},
-			{"keyword": "nullptr"},
-			{"keyword": "operator"},
-			{"keyword": "reinterpret_cast"},
-			{"keyword": "static_assert"},
-			{"keyword": "static_cast"},
-			{"keyword": "struct"},
-			{"keyword": "template"},
-			{"keyword": "thread_local"},
-			{"keyword": "throw"},
-			{"keyword": "typedef"},
-			{"keyword": "typeid"},
-			{"keyword": "typename"},
-			{"keyword": "union"},
-			{"keyword": "virtual"},
-			{"keyword": "while"}
+			{"keyword":"#include"},
+			{"keyword":"#define"},
+			{"keyword":"enum"},
+			{"keyword":"volatile"},
+			{"keyword":"shared"},
+			{"keyword":"auto"}
 		]
 	},
 	{
-		"group": "preprocessor / macros",
+		"group": "functions",
 		"elements": [
-			{"keyword": "#error"},
-			{"keyword": "#include"},
-			{"keyword": "#line"},
-			{"keyword": "#pragma"},
-			{"keyword": "__FILE__"},
-			{"keyword": "__LINE__"}
+			{"keyword": "memset"},
+			{"keyword":"system"}
 		]
 	},
 	{
-		"group": "library",
+		"group": "classes (java.lang)",
 		"elements": [
-			{"keyword": "cin"},
-			{"keyword": "cout"},
-			{"keyword": "cerr"},
-			{"keyword": "clog"},
-			{"keyword": "wcin"},
-			{"keyword": "wcout"},
-			{"keyword": "wcerr"},
-			{"keyword": "wclog"},
-			{"keyword": "calloc"},
-			{"keyword": "free"},
-			{"keyword": "malloc"},
-			{"keyword": "realloc"},
-			{"keyword": "abort"},
-			{"keyword": "atexit"},
-			{"keyword": "at_quick_exit"},
-			{"keyword": "exit"},
-			{"keyword": "getenv"},
-			{"keyword": "quick_exit"},
-			{"keyword": "system"},
-			{"keyword": "_Exit"},
-			{"keyword": "fclose"},
-			{"keyword": "fflush"},
-			{"keyword": "fopen"},
-			{"keyword": "freopen"},
-			{"keyword": "memcpy"},
-			{"keyword": "memmove"},
-			{"keyword": "memset"}
+			{"keyword": "Class"},
+			{"keyword": "Error"},
+			{"keyword": "Exception"}
+		]
+	},
+	{
+		"group": "classes (java.util)",
+		"elements": [
+			{"keyword": "Primitive"},
+			{"keyword": "Resource"},
+			{"keyword": "Service"},
+			{"keyword": "Stack"},
+			{"keyword": "Timer"},
+			{"keyword": "Task"}
+		]
+	},
+	{
+		"group": "packages",
+		"elements": [
+			{"keyword": "concurrent"},
+			{"keyword": "logging"},
+			{"keyword": "management"},
+			{"keyword": "reflect"}
 		]
 	}
 ]
