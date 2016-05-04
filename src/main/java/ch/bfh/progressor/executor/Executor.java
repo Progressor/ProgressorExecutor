@@ -73,9 +73,11 @@ public final class Executor {
 						case "true":
 						case "yes":
 							if(System.getProperty("os.name").substring(0, 3).equals("Win")) throw new InvalidParameterException(String.format("Cannot use docker on Windows"));
+							Executor.LOGGER.info("Using Docker");
 							useDocker=true;
 							break;
 						default:
+							Executor.LOGGER.info("Not using Docker");
 							useDocker=false;
 					}
 					break;

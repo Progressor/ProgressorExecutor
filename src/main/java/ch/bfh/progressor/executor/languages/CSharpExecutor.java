@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import ch.bfh.progressor.executor.BomProofInputStream;
+import org.apache.commons.io.input.BOMInputStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
 import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
@@ -105,12 +105,12 @@ public class CSharpExecutor extends CodeExecutorBase {
 				csArguments = new String[] { "cmd", "/C", CSharpExecutor.EXECUTABLE_NAME };
 			else {
 				if (Executor.useDocker)
-					csArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + ":/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
-				else csArguments = new String[] { "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
+					csArguments = new String[] { "docker", "run", "-v", codeDirectory.getAbsolutePath() + "/:/opt", DOCKERCONTAINER, "mono", CSharpExecutor.EXECUTABLE_NAME + ".exe" };
+				else csArguments = new String[] {"mono",codeDirectory.getAbsolutePath() + "/"+CSharpExecutor.EXECUTABLE_NAME+".exe"};
 			}
 
 			long csStart = System.nanoTime();
-			Process csProcess = new ProcessBuilder("cmd", "/C", CSharpExecutor.EXECUTABLE_NAME).directory(codeDirectory).redirectErrorStream(true).start();
+			Process csProcess = new ProcessBuilder(csArguments).redirectErrorStream(true).start();
 			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 				if (csProcess.exitValue() != 0)
 					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
@@ -124,7 +124,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(new BomProofInputStream(csProcess.getInputStream()), CodeExecutorBase.CHARSET.name())
+			try (Scanner outStm = new Scanner(new BOMInputStream(csProcess.getInputStream()), CodeExecutorBase.CHARSET.name())
 				.useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case

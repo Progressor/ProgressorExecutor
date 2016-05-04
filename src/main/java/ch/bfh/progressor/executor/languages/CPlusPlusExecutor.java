@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.io.input.BOMInputStream;
 import ch.bfh.progressor.executor.CodeExecutorBase;
 import ch.bfh.progressor.executor.Executor;
 import ch.bfh.progressor.executor.ExecutorException;
@@ -105,7 +106,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				cppArguments = new String[] { "cmd", "/C", CPlusPlusExecutor.EXECUTABLE_NAME };
 			else{
 				if(Executor.useDocker) cppArguments = new String[] {"docker","run","-v",codeDirectory.getAbsolutePath()+":/opt",DOCKERCONTAINER,"./"+ CPlusPlusExecutor.EXECUTABLE_NAME};
-				else cppArguments = new String[] { "./",CPlusPlusExecutor.EXECUTABLE_NAME };
+				else cppArguments = new String[] { "./"+CPlusPlusExecutor.EXECUTABLE_NAME };
 			}
 			long cppStart = System.nanoTime();
 			Process cppProcess = new ProcessBuilder(cppArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -122,7 +123,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************
-			try (Scanner outStm = new Scanner(cppProcess.getInputStream(), CodeExecutorBase.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
+			try (Scanner outStm = new Scanner(new BOMInputStream(cppProcess.getInputStream()), CodeExecutorBase.CHARSET.name()).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
 					results.add(new Result(res.startsWith("OK"), false,
