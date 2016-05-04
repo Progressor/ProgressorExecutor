@@ -28,7 +28,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Character set to use for general operations.
 	 */
-	protected static final Charset CHARSET = Charset.forName("UTF-8");
+	public static final Charset CHARSET = Charset.forName("UTF-8");
 
 	/**
 	 * Placeholder for the custom code fragment as defined in the template.

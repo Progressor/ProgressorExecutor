@@ -37,7 +37,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	/**
 	 * Name of the Java main class.
 	 */
-	public static final String CODE_CLASS_NAME = "Program";
+	protected static final String CODE_CLASS_NAME = "Program";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).

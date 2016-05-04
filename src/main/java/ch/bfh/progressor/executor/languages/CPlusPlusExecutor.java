@@ -36,7 +36,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	/**
 	 * Name of the C/C++ executable.
 	 */
-	public static final String EXECUTABLE_NAME = "main";
+	protected static final String EXECUTABLE_NAME = "main";
 
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
