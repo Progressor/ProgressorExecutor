@@ -81,7 +81,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] kotlincArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
 
 			long kotlincStart = System.nanoTime();
@@ -100,7 +100,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 
 			long kotlinStart = System.nanoTime();
@@ -143,7 +143,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 
 		} finally {
 			if (codeDirectory.exists())
-				this.deleteRecursive(codeDirectory);
+				this.tryDeleteRecursive(codeDirectory);
 		}
 
 		return results;

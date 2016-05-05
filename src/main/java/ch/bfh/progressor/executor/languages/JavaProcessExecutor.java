@@ -79,7 +79,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] javacArguments = { "javac", codeFile.getName() };
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				javacArguments = this.getDockerCommandLine(codeDirectory, javacArguments);
 
 			long javacStart = System.nanoTime();
@@ -97,7 +97,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] javaArguments = { "java", JavaProcessExecutor.CODE_CLASS_NAME };
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				javaArguments = this.getDockerCommandLine(codeDirectory, javaArguments);
 
 			long javaStart = System.nanoTime();
@@ -140,7 +140,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 		} finally {
 			if (codeDirectory.exists())
-				this.deleteRecursive(codeDirectory);
+				this.tryDeleteRecursive(codeDirectory);
 		}
 
 		return results;

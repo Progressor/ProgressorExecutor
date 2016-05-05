@@ -80,7 +80,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] gccArguments;
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				gccArguments = this.getDockerCommandLine(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 			else
 				gccArguments = new String[] { "g++", codeFile.getAbsolutePath(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME };
@@ -101,7 +101,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] cppArguments;
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				cppArguments = this.getDockerCommandLine(codeDirectory, new File(localDirectory, executableFile.getName()).getPath());
 			else
 				cppArguments = new String[] { executableFile.getAbsolutePath() };
@@ -146,7 +146,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 
 		} finally {
 			if (codeDirectory.exists())
-				this.deleteRecursive(codeDirectory);
+				this.tryDeleteRecursive(codeDirectory);
 		}
 
 		return results;

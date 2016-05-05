@@ -85,13 +85,13 @@ public class CSharpExecutor extends CodeExecutorBase {
 				case WINDOWS:
 					cscArguments = new String[] { "csc", codeFile.getName(), "/debug" };
 					break;
-				case LINUX:
+				case UNIX_LINUX:
 					cscArguments = new String[] { "mcs", codeFile.getName(), "-debug" };
 					break;
 				default:
 					throw new ExecutorException(true, "Unsupported platform detected.");
 			}
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				cscArguments = this.getDockerCommandLine(codeDirectory, cscArguments);
 
 			long cscStart = System.nanoTime();
@@ -114,13 +114,13 @@ public class CSharpExecutor extends CodeExecutorBase {
 				case WINDOWS:
 					csArguments = new String[] { executableFile.getAbsolutePath() };
 					break;
-				case LINUX:
+				case UNIX_LINUX:
 					csArguments = new String[] { "mono", new File(localDirectory, executableFile.getName()).getAbsolutePath(), "--debug" };
 					break;
 				default:
 					throw new ExecutorException(true, "Unsupported platform detected.");
 			}
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				csArguments = this.getDockerCommandLine(codeDirectory, csArguments);
 
 			long csStart = System.nanoTime();
@@ -163,7 +163,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 		} finally {
 			if (codeDirectory.exists())
-				this.deleteRecursive(codeDirectory);
+				this.tryDeleteRecursive(codeDirectory);
 		}
 
 		return results;

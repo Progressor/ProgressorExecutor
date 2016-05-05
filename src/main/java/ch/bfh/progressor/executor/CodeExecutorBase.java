@@ -41,12 +41,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	/**
-	 * Whether or not to use Docker containers to execute the code fragments.
+	 * Whether or not to use Docker containers by default.
 	 */
-	protected static boolean USE_DOCKER = false;
+	protected static final boolean USE_DOCKER_DEFAULT = false;
 
 	/**
-	 * Name of the Docker container (on LINUX only).
+	 * Name of the Docker container to use.
 	 */
 	protected static final String DOCKER_CONTAINER_NAME = String.format("progressor%sexecutor", File.separator);
 
@@ -76,8 +76,28 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
+	private static boolean useDocker = CodeExecutorBase.USE_DOCKER_DEFAULT;
+
 	private List<String> blacklist;
 	private StringBuilder template;
+
+	/**
+	 * Set whether or not the {@link CodeExecutor}s should use Docker containers to execute the code fragments.
+	 *
+	 * @param useDocker whether or not the executors should use Docker containers
+	 */
+	static void setShouldUseDocker(boolean useDocker) {
+		CodeExecutorBase.useDocker = useDocker;
+	}
+
+	/**
+	 * Whether or not the {@link CodeExecutor}s should use Docker containers to execute the code fragments.
+	 *
+	 * @return whether or not the executors should use Docker containers
+	 */
+	protected static boolean shouldUseDocker() {
+		return CodeExecutorBase.useDocker;
+	}
 
 	/**
 	 * Gets the path to the blacklist file.
@@ -186,14 +206,14 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @return whether or not the directory was successfully deleted
 	 */
-	protected boolean deleteRecursive(File file) {
+	protected boolean tryDeleteRecursive(File file) {
 
 		boolean ret = true;
 
 		File[] children; //recursively delete children
 		if (file.isDirectory() && (children = file.listFiles()) != null)
 			for (File child : children)
-				ret &= this.deleteRecursive(child);
+				ret &= this.tryDeleteRecursive(child);
 
 		ret &= file.delete(); //delete file itself
 		return ret;

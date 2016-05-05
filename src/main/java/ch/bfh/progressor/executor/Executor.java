@@ -1,6 +1,5 @@
 package ch.bfh.progressor.executor;
 
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -60,6 +59,9 @@ public final class Executor {
 	 */
 	public static void main(String... args) {
 
+		if (Executor.PLATFORM == ExecutorPlatform.UNSUPPORTED)
+			throw new UnsupportedOperationException(String.format("Operating system '%s' (%s, %s) is not supported.", ExecutorPlatform.OPERATING_SYSTEM_NAME, ExecutorPlatform.OPERATING_SYSTEM_VERSION, ExecutorPlatform.OPERATING_SYSTEM_ARCHITECTURE));
+
 		int port = Executor.DEFAULT_SERVER_PORT;
 
 		for (int i = 0; i < args.length; i++)
@@ -68,11 +70,15 @@ public final class Executor {
 				case "-port":
 					try {
 						port = Integer.parseInt(args[++i]);
-						Executor.LOGGER.fine(String.format("Using port %d.", port));
 
 					} catch (NumberFormatException ex) {
-						throw new InvalidParameterException(String.format("Value '%s' for command-line argument '%s' is invalid. Use integer number.", args[i], args[i - 1]));
+						throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use integer number.", args[i], args[i - 1]));
 					}
+
+					if (port < 0 || 65535 < port)
+						throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use unsigned 16-bit integer (0 to 65535).", args[i], args[i - 1]));
+
+					Executor.LOGGER.fine(String.format("Using port %d.", port));
 					break;
 
 				case "-d":
@@ -80,25 +86,26 @@ public final class Executor {
 					switch (args[++i]) {
 						case "true":
 						case "yes":
-							if (Executor.PLATFORM == ExecutorPlatform.WINDOWS)
-								throw new InvalidParameterException("Cannot use Docker switch on WINDOWS machines.");
-							CodeExecutorBase.USE_DOCKER = true;
-							Executor.LOGGER.fine("Using Docker.");
+							if (!Executor.PLATFORM.hasDockerSupport())
+								throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", Executor.PLATFORM));
+
+							CodeExecutorBase.setShouldUseDocker(true);
+							Executor.LOGGER.fine("Using Docker containers.");
 							break;
 
 						case "false":
 						case "no":
-							CodeExecutorBase.USE_DOCKER = false;
-							Executor.LOGGER.fine("Not using Docker.");
+							CodeExecutorBase.setShouldUseDocker(false);
+							Executor.LOGGER.fine("Not using Docker containers.");
 							break;
 
 						default:
-							throw new InvalidParameterException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
+							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
 					}
 					break;
 
 				default:
-					throw new InvalidParameterException(String.format("Command-line argument '%s' is invalid.", args[i]));
+					throw new IllegalArgumentException(String.format("Command-line argument '%s' is invalid.", args[i]));
 			}
 
 		try (TServerTransport transport = new TServerSocket(port)) {

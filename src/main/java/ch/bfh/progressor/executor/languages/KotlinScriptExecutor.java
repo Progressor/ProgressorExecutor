@@ -51,7 +51,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", codeFile.getName() };
-			if (CodeExecutorBase.USE_DOCKER)
+			if (CodeExecutorBase.shouldUseDocker())
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 
 			long kotlinStart = System.nanoTime();
@@ -94,7 +94,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 
 		} finally {
 			if (codeDirectory.exists())
-				this.deleteRecursive(codeDirectory);
+				this.tryDeleteRecursive(codeDirectory);
 		}
 
 		return results;

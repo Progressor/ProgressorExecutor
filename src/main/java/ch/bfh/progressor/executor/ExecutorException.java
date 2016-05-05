@@ -9,8 +9,8 @@ public class ExecutorException extends Exception {
 
 	private static final long serialVersionUID = -8545556134081763337L;
 
-	private boolean fatal;
-	private String output;
+	private final boolean fatal;
+	private final String output;
 
 	/**
 	 * Constructs a new exception with the specified detail message.
@@ -19,9 +19,7 @@ public class ExecutorException extends Exception {
 	 * @param message the detail message
 	 */
 	public ExecutorException(boolean fatal, String message) {
-		super(message);
-
-		this.fatal = fatal;
+		this(fatal, message, (String)null);
 	}
 
 	/**
@@ -32,8 +30,9 @@ public class ExecutorException extends Exception {
 	 * @param output  the console output
 	 */
 	public ExecutorException(boolean fatal, String message, String output) {
-		this(fatal, message);
+		super(message);
 
+		this.fatal = fatal;
 		this.output = output;
 	}
 
@@ -45,9 +44,7 @@ public class ExecutorException extends Exception {
 	 * @param cause   the cause of the exception
 	 */
 	public ExecutorException(boolean fatal, String message, Throwable cause) {
-		super(message, cause);
-
-		this.fatal = fatal;
+		this(fatal, message, null, cause);
 	}
 
 	/**
@@ -59,8 +56,9 @@ public class ExecutorException extends Exception {
 	 * @param cause   the cause of the exception
 	 */
 	public ExecutorException(boolean fatal, String message, String output, Throwable cause) {
-		this(fatal, message, cause);
+		super(message, cause);
 
+		this.fatal = fatal;
 		this.output = output;
 	}
 
