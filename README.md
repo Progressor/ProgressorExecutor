@@ -21,6 +21,10 @@ This project has four *Maven* dependencies:
 3. [org.testng:testng:RELEASE](http://mvnrepository.com/artifact/org.testng/testng)
    for unit tests
 
+## Docker
+
+...
+
 ## Programming Languages
 
 The **Executor** currently supports four programming languages.
