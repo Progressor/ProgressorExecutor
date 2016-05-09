@@ -44,12 +44,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 10;
+	public static final int COMPILE_TIMEOUT_SECONDS = 15;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
+	public static final int EXECUTION_TIMEOUT_SECONDS = 15;
 
 	@Override
 	public String getLanguage() {
@@ -80,7 +80,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** COMPILE CODE ***
 			//********************
-			String[] kotlincArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
+			String[] kotlincArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlinc", codeFile.getName() };
 			if (CodeExecutorBase.shouldUseDocker())
 				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
 
@@ -99,7 +99,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
+			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin",KotlinExecutor.CODE_CLASS_NAME };
 			if (CodeExecutorBase.shouldUseDocker())
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 

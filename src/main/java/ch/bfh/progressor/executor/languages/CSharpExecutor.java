@@ -115,7 +115,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 					csArguments = new String[] { executableFile.getAbsolutePath() };
 					break;
 				case UNIX_LINUX:
-					csArguments = new String[] { "mono", new File(localDirectory, executableFile.getName()).getAbsolutePath(), "--debug" };
+					csArguments = new String[] { "mono", shouldUseDocker() == true ? CSharpExecutor.EXECUTABLE_NAME + ".exe" : codeDirectory.getAbsolutePath() + "/" + CSharpExecutor.EXECUTABLE_NAME + ".exe", "--debug" };
 					break;
 				default:
 					throw new ExecutorException(true, "Unsupported platform detected.");
