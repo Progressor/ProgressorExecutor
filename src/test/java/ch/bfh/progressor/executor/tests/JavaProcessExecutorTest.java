@@ -1,6 +1,6 @@
 package ch.bfh.progressor.executor.tests;
 
-import ch.bfh.progressor.executor.CodeExecutor;
+import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.languages.JavaProcessExecutor;
 
 public class JavaProcessExecutorTest extends CodeExecutorTestBase {
@@ -19,7 +19,8 @@ public class JavaProcessExecutorTest extends CodeExecutorTestBase {
 																															.append("public int sumInt32Array(int[] a, int l) { return Arrays.stream(a).sum(); }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("public int sumInt32List(List<Integer> l) { return l.stream().mapToInt(i -> i).sum(); }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("public int sumInt32Set(Set<Integer> s) { return s.stream().mapToInt(i -> i).sum(); }").append(CodeExecutorTestBase.NEW_LINE)
-																															.append("public String getMapEntry(Map<Integer, String> m, int k) { return m.get(k); }").toString();
+																															.append("public String getMapEntry(Map<Integer, String> m, int k) { return m.get(k); }").append(CodeExecutorTestBase.NEW_LINE)
+																															.append("public String getMapListEntry(Map<Integer, List<String>> m, int k, int i) { return m.get(k).get(i); }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

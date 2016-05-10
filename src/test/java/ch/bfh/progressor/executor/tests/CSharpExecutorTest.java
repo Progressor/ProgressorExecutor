@@ -1,6 +1,6 @@
 package ch.bfh.progressor.executor.tests;
 
-import ch.bfh.progressor.executor.CodeExecutor;
+import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.languages.CSharpExecutor;
 
 public class CSharpExecutorTest extends CodeExecutorTestBase {
@@ -19,7 +19,8 @@ public class CSharpExecutorTest extends CodeExecutorTestBase {
 																															.append("public int sumInt32Array(int[] a, int l) { return a.Sum(); }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("public int sumInt32List(List<int> l) { return l.Sum(); }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("public int sumInt32Set(HashSet<int> s) { return s.Sum(); }").append(CodeExecutorTestBase.NEW_LINE)
-																															.append("public string getMapEntry(Dictionary<int, string> d, int k) { return d[k]; }").toString();
+																															.append("public string getMapEntry(Dictionary<int, string> d, int k) { return d[k]; }").append(CodeExecutorTestBase.NEW_LINE)
+																															.append("public string getMapListEntry(Dictionary<int, List<string>> d, int k, int i) { return d[k][i]; }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

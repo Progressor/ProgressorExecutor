@@ -1,4 +1,4 @@
-package ch.bfh.progressor.executor;
+package ch.bfh.progressor.executor.api;
 
 /**
  * Represents the supported platforms (operating systems) of the executor.

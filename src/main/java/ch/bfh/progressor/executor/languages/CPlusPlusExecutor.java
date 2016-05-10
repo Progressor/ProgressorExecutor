@@ -6,20 +6,19 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import ch.bfh.progressor.executor.CodeExecutorBase;
-import ch.bfh.progressor.executor.ExecutorException;
-import ch.bfh.progressor.executor.thrift.FunctionSignature;
-import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
-import ch.bfh.progressor.executor.thrift.Result;
-import ch.bfh.progressor.executor.thrift.TestCase;
-import ch.bfh.progressor.executor.thrift.executorConstants;
+import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.FunctionSignature;
+import ch.bfh.progressor.executor.api.Result;
+import ch.bfh.progressor.executor.api.TestCase;
+import ch.bfh.progressor.executor.api.Value;
+import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.impl.CodeExecutorBase;
+import ch.bfh.progressor.executor.impl.PerformanceIndicatorsImpl;
+import ch.bfh.progressor.executor.impl.ResultImpl;
 
 /**
  * Code execution engine for C/C++ code.
@@ -59,7 +58,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
+	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
 
 		final File localDirectory = new File(".");
 		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
@@ -74,13 +73,13 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*********************
 			//*** GENERATE CODE ***
 			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
+			this.generateCodeFile(codeDirectory, codeFragment, testCases);
 
 			//********************
 			//*** COMPILE CODE ***
 			//********************
 			String[] gccArguments;
-			if (CodeExecutorBase.shouldUseDocker())
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
 				gccArguments = this.getDockerCommandLine(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 			else
 				gccArguments = new String[] { "g++", codeFile.getAbsolutePath(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME };
@@ -101,7 +100,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** EXECUTE CODE ***
 			//********************
 			String[] cppArguments;
-			if (CodeExecutorBase.shouldUseDocker())
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
 				cppArguments = this.getDockerCommandLine(codeDirectory, new File(localDirectory, executableFile.getName()).getPath());
 			else
 				cppArguments = new String[] { executableFile.getAbsolutePath() };
@@ -124,9 +123,9 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			try (Scanner outStm = new Scanner(this.getSafeReader(cppProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
-					results.add(new Result(res.startsWith("OK"), false,
-																 res.substring(3),
-																 new PerformanceIndicators((cppEnd - cppStart) / 1e6)));
+					results.add(new ResultImpl(res.startsWith("OK"), false,
+																		 res.substring(3),
+																		 new PerformanceIndicatorsImpl((cppEnd - cppStart) / 1e6)));
 				}
 			}
 
@@ -135,14 +134,14 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//**************************
 		} catch (Exception ex) {
 			ExecutorException exEx;
-			Result res = new Result().setSuccess(false).setFatal(false);
+			Result result;
 			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
-				res.setFatal(exEx.isFatal()).setResult(String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()));
+				result = new ResultImpl(false, exEx.isFatal(), String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()), null);
 			else
-				res.setResult(String.format("%s:%n%s", "Could not invoke the user code.", ex));
+				result = new ResultImpl(false, false, String.format("%s:%n%s", "Could not invoke the user code.", ex), null);
 
 			while (results.size() < testCases.size())
-				results.add(res);
+				results.add(result);
 
 		} finally {
 			if (codeDirectory.exists())
@@ -152,7 +151,16 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return results;
 	}
 
-	protected void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	/**
+	 * Generates the C/C++ code file with the user's code fragment.
+	 *
+	 * @param directory    directory to create code file in
+	 * @param codeFragment code fragment to write into the file
+	 * @param testCases    test cases to generate tests for
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -161,7 +169,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
 			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
+			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
 
 			Files.write(Paths.get(directory.getPath(), String.format("%s.cpp", CPlusPlusExecutor.EXECUTABLE_NAME)), //create a C/C++ source file in the temporary directory
 									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
@@ -171,22 +179,27 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		}
 	}
 
+	/**
+	 * Generates the C/C++ function signatures.
+	 *
+	 * @param functions functions to generate signatures for
+	 *
+	 * @return C/C++ function signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
-
-			//validate input / output types & names
-			if (function.getInputTypesSize() != function.getInputNamesSize())
-				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
-			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
-				throw new ExecutorException(true, "Exactly one output type has to be defined for a C++ sample.");
+			if (function.getOutputTypes().size() != 1)
+				throw new ExecutorException(true, "Exactly one output type has to be defined for a C/C++ sample.");
 
 			sb.append(this.getTypeName(function.getOutputTypes().get(0), true)).append(' ').append(function.getName()).append('(');
 
-			for (int i = 0; i < function.getInputTypesSize(); i++) {
+			for (int i = 0; i < function.getInputTypes().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getTypeName(function.getInputTypes().get(i), true)).append(' ').append(function.getInputNames().get(i));
 			}
@@ -197,76 +210,70 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	protected String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	/**
+	 * Generates the C/C++ test case signatures.
+	 *
+	 * @param testCases test cases to generate signatures for
+	 *
+	 * @return C/C++ test case signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
-		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
-
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
-			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
-
-			//validate input / output types & values
-			if (testCase.getInputValuesSize() != function.getInputTypesSize())
-				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
-			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
+			if (testCase.getExpectedOutputValues().size() != 1)
 				throw new ExecutorException(true, "Exactly one output value has to be defined for a C/C++ sample.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getTypeName(oType, true)).append(" ret = ").append(testCase.getFunctionName()).append('(');
-			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
+			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
+			sb.append(this.getTypeName(oType, true)).append(" ret = ").append(testCase.getFunction().getName()).append('(');
+			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
+				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(");").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType) {
-				case executorConstants.TypeFloat32:
-				case executorConstants.TypeFloat64:
-				case executorConstants.TypeDecimal:
+			switch (oType.getBaseType()) {
+				case FLOAT32:
+				case FLOAT64:
+				case DECIMAL:
 					comparisonPrefix = "hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
 					comparisonSeparator = ", ";
 					comparisonSuffix = ")";
 					break;
 
-				//case executorConstants.TypeString:
-				//case executorConstants.TypeCharacter:
-				//case executorConstants.TypeBoolean:
-				//case executorConstants.TypeInt8:
-				//case executorConstants.TypeInt16:
-				//case executorConstants.TypeInt32:
-				//case executorConstants.TypeInt64:
 				default:
 					comparisonSeparator = " == "; //compare objects using equality operator
 					break;
-
-				//default:
-				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
 			sb.append("bool suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(comparisonSuffix).append(";").append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(newLine);
 
 			String returnPrefix = "";
-			switch (oType) {
-				case executorConstants.TypeInt8: //force numeric types to be printed as numbers (not chars or the like)
-				case executorConstants.TypeInt16:
-				case executorConstants.TypeInt32:
-				case executorConstants.TypeInt64:
-				case executorConstants.TypeFloat32:
-				case executorConstants.TypeFloat64:
-				case executorConstants.TypeDecimal:
+			switch (oType.getBaseType()) {
+				case INT8: //force numeric types to be printed as numbers (not chars or the like)
+				case INT16:
+				case INT32:
+				case INT64:
+				case FLOAT32:
+				case FLOAT64:
+				case DECIMAL:
 					returnPrefix = "+";
 			}
 
 			sb.append("cout << (suc ? \"OK\" : \"ER\") << \":\" << ").append(returnPrefix).append("ret << endl << endl;").append(newLine); //print result to the console
 			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
-			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception string)
+			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception C++-string)
+			sb.append("cout << \"ER:\" << ex << endl << endl;").append(newLine);
+			sb.append("} catch (char const* const &ex) {").append(newLine); //tertiary exception handling (exception C-string)
 			sb.append("cout << \"ER:\" << ex << endl << endl;").append(newLine);
 			sb.append("} catch (...) {").append(newLine); //last resort (handling all unknown exceptions)
 			sb.append("cout << \"ER:unknown exception\" << endl << endl;").append(newLine);
@@ -276,180 +283,154 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	protected String getValueLiteral(String value, String type) throws ExecutorException {
+	/**
+	 * Gets the C/C++ literal for an arbitrary value.
+	 *
+	 * @param value value to get literal for
+	 *
+	 * @return C/C++ literal for value
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getValueLiteral(Value value) throws ExecutorException {
 
-		if ("null".equals(value))
-			return "nullptr";
+		switch (value.getType().getBaseType()) {
+			case ARRAY:
+			case LIST:
+			case SET:
+				StringBuilder sb = new StringBuilder();
+				if (value.getType().getBaseType() == ValueType.BaseType.ARRAY) //begin array initialisation syntax
+					sb.append("new ").append(this.getTypeName(value.getType().getGenericParameters().get(0), false)).append('[').append(value.getCollection().size()).append("] { ");
+				else
+					sb.append(this.getTypeName(value.getType(), false)).append(" { ");
 
-		//check for collection container types
-		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
-		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
-		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
-		if (isArr || isLst || isSet) {
-			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String elmTyp = type.substring(cntTypLen + 1, type.length() - 1);
-
-			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
-				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
-
-			String[] elms = value.isEmpty() ? new String[] {} : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value);
-
-			StringBuilder sb = new StringBuilder();
-			if (isArr) //begin array initialisation syntax
-				sb.append("new ").append(this.getTypeName(elmTyp, false)).append('[').append(elms.length).append("] { ");
-			else
-				sb.append(this.getTypeName(type, false)).append(" { ");
-
-			boolean first = true; //generate collection elements
-			for (String elm : elms) {
-				if (first) first = false;
-				else sb.append(", ");
-				sb.append(this.getValueLiteral(elm, elmTyp));
-			}
-
-			return sb.append(" }").toString(); //finish collection initialisation and return literal
-
-			//check for map container type
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] kvTyps = CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
-
-			if (kvTyps.length != 2) // validate type parameters
-				throw new ExecutorException(true, "Map type needs 2 type parameters.");
-
-			StringBuilder sb = new StringBuilder(); //begin map initialisation
-			sb.append(this.getTypeName(type, false)).append(" { ");
-
-			boolean first = true; //generate collection elements
-			if (!value.isEmpty())
-				for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) { //generate key/value pairs
-					String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
-
-					if (kv.length != 2) //validate key/value pair
-						throw new ExecutorException(true, "Map entries always need a key and a value.");
-
+				boolean first = true; //generate collection elements
+				for (Value element : value.getCollection()) {
 					if (first) first = false;
 					else sb.append(", ");
-					sb.append('{').append(this.getValueLiteral(kv[0], kvTyps[0])).append(", ").append(this.getValueLiteral(kv[1], kvTyps[1])).append("}");
+					sb.append(this.getValueLiteral(element));
 				}
 
-			return sb.append('}').toString(); //finish initialisation and return literal
-		}
+				return sb.append(" }").toString(); //finish collection initialisation and return literal
 
-		switch (type) { //switch over basic types
-			case executorConstants.TypeString:
-			case executorConstants.TypeCharacter:
-				String valueSafe = IntStream.range(0, value.length()).map(value::charAt).mapToObj(i -> String.format("\\u%04X", i))
+			case MAP:
+				sb = new StringBuilder(); //begin map initialisation
+				sb.append(this.getTypeName(value.getType(), false)).append(" { ");
+
+				first = true; //generate collection elements
+				if (!value.get2DCollection().isEmpty())
+					for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
+						if (element.size() != 2) //validate key/value pair
+							throw new ExecutorException(true, "Map entries always need a key and a value.");
+
+						if (first) first = false;
+						else sb.append(", ");
+						sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append("}");
+					}
+
+				return sb.append('}').toString(); //finish initialisation and return literal
+
+			case STRING:
+			case CHARACTER:
+				String valueSafe = IntStream.range(0, value.getSingle().length()).map(value.getSingle()::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';
+				char separator = value.getType().getBaseType() == ValueType.BaseType.CHARACTER ? '\'' : '"';
 				return String.format("%1$c%2$s%1$c", separator, valueSafe);
 
-			case executorConstants.TypeBoolean:
-				return Boolean.toString("true".equalsIgnoreCase(value));
+			case BOOLEAN:
+				return Boolean.toString("true".equalsIgnoreCase(value.getSingle()));
 
-			case executorConstants.TypeInt8:
-			case executorConstants.TypeInt16:
-			case executorConstants.TypeInt32:
-			case executorConstants.TypeInt64:
-				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value).matches())
+			case INT8:
+			case INT16:
+			case INT32:
+			case INT64:
+				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value.getSingle()).matches())
 					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
 
-				switch (type) {
-					case executorConstants.TypeInt8:
-					case executorConstants.TypeInt16:
-					case executorConstants.TypeInt32:
-						return value;
+				switch (value.getType().getBaseType()) {
+					case INT8:
+					case INT16:
+					case INT32:
+						return value.getSingle();
 
-					//case executorConstants.TypeInt32:
-					//	return String.format("%sL", value);
-
-					case executorConstants.TypeInt64:
 					default:
-						return String.format("%sLL", value);
+						return String.format("%sLL", value.getSingle());
 				}
 
-			case executorConstants.TypeFloat32:
-			case executorConstants.TypeFloat64:
-			case executorConstants.TypeDecimal:
-				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value).matches())
+			case FLOAT32:
+			case FLOAT64:
+			case DECIMAL:
+				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
 					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
 
-				switch (type) {
-					case executorConstants.TypeFloat32:
-						return String.format("%sF", value);
+				switch (value.getType().getBaseType()) {
+					case FLOAT32:
+						return String.format("%sF", value.getSingle());
 
-					case executorConstants.TypeFloat64:
-						return value;
+					case FLOAT64:
+						return value.getSingle();
 
-					case executorConstants.TypeDecimal:
 					default:
-						return String.format("%sL", value);
+						return String.format("%sL", value.getSingle());
 				}
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(true, String.format("Value type %s is not supported.", value.getType()));
 		}
 	}
 
-	protected String getTypeName(String type, boolean isDeclaration) throws ExecutorException {
+	/**
+	 * Gets the C/C++ name of an arbitrary type.
+	 *
+	 * @param type type to get name of
+	 *
+	 * @return C/C++ name of type
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getTypeName(ValueType type, boolean isDeclaration) throws ExecutorException {
 
-		//check for collection container types
-		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
-		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
-		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
-		if (isArr || isLst || isSet) {
-			int typLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String typeParam = type.substring(typLen + 1, type.length() - 1);
+		switch (type.getBaseType()) {
+			case ARRAY:
+			case LIST:
+			case SET:
+				if (type.getBaseType() == ValueType.BaseType.ARRAY) //alternative: array<%s>
+					return String.format(isDeclaration ? "%s*" : "%s[]", this.getTypeName(type.getGenericParameters().get(0), true)); //return class name
+				else
+					return String.format(type.getBaseType() == ValueType.BaseType.LIST ? "vector<%s>" : "set<%s>", this.getTypeName(type.getGenericParameters().get(0), true)); //return class name
 
-			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
-				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
+			case MAP:
+				return String.format("map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0), true), this.getTypeName(type.getGenericParameters().get(1), true)); //return class name
 
-			if (isArr) //alternative: array<%s>
-				return String.format(isDeclaration ? "%s*" : "%s[]", this.getTypeName(typeParam, true)); //return class name
-			else
-				return String.format(isLst ? "vector<%s>" : "set<%s>", this.getTypeName(typeParam, true)); //return class name
-
-			//check for map container type
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] typeParamsArray = CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
-
-			if (typeParamsArray.length != 2) // validate type parameters
-				throw new ExecutorException(true, "Map type needs 2 type parameters.");
-
-			return String.format("map<%s, %s>", this.getTypeName(typeParamsArray[0], true), this.getTypeName(typeParamsArray[1], true)); //return class name
-		}
-
-		switch (type) { //switch over primitive types
-			case executorConstants.TypeString:
+			case STRING:
 				return "string";
 
-			case executorConstants.TypeCharacter:
+			case CHARACTER:
 				return "char";
 
-			case executorConstants.TypeBoolean:
+			case BOOLEAN:
 				return "bool";
 
-			case executorConstants.TypeInt8:
+			case INT8:
 				return "int8_t";
 
-			case executorConstants.TypeInt16:
+			case INT16:
 				return "int16_t";
 
-			case executorConstants.TypeInt32:
+			case INT32:
 				return "int32_t";
 
-			case executorConstants.TypeInt64:
+			case INT64:
 				return "int64_t";
 
-			case executorConstants.TypeFloat32:
+			case FLOAT32:
 				return "float";
 
-			case executorConstants.TypeFloat64:
+			case FLOAT64:
 				return "double";
 
-			case executorConstants.TypeDecimal:
+			case DECIMAL:
 				return "long double";
 
 			default:

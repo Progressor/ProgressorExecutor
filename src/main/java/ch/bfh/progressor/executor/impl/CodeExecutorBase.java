@@ -1,4 +1,4 @@
-package ch.bfh.progressor.executor;
+package ch.bfh.progressor.executor.impl;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +17,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import ch.bfh.progressor.executor.api.CodeExecutor;
+import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
+import ch.bfh.progressor.executor.api.Result;
 
 /**
  * Base class with helper methods for code execution engines.
@@ -41,24 +45,19 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	/**
-	 * Whether or not to use Docker containers by default.
+	 * The platform the executor runs on.
 	 */
-	protected static final boolean USE_DOCKER_DEFAULT = false;
+	protected static final ExecutorPlatform PLATFORM = ExecutorPlatform.determine();
+
+	/**
+	 * Whether or not to use Docker containers.
+	 */
+	protected static final boolean USE_DOCKER = true;
 
 	/**
 	 * Name of the Docker container to use.
 	 */
 	protected static final String DOCKER_CONTAINER_NAME = String.format("progressor%sexecutor", File.separator);
-
-	/**
-	 * Regular expression pattern for parameter separation.
-	 */
-	protected static final Pattern PARAMETER_SEPARATOR_PATTERN = Pattern.compile(",\\s*");
-
-	/**
-	 * Regular expression pattern for key-value pair separation.
-	 */
-	protected static final Pattern KEY_VALUE_SEPARATOR_PATTERN = Pattern.compile(":\\s*");
 
 	/**
 	 * Regular expression pattern for numeric integer literals.
@@ -76,28 +75,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
-	private static boolean useDocker = CodeExecutorBase.USE_DOCKER_DEFAULT;
-
 	private List<String> blacklist;
 	private StringBuilder template;
 
-	/**
-	 * Set whether or not the {@link CodeExecutor}s should use Docker containers to execute the code fragments.
-	 *
-	 * @param useDocker whether or not the executors should use Docker containers
-	 */
-	static void setShouldUseDocker(boolean useDocker) {
-		CodeExecutorBase.useDocker = useDocker;
-	}
-
-	/**
-	 * Whether or not the {@link CodeExecutor}s should use Docker containers to execute the code fragments.
-	 *
-	 * @return whether or not the executors should use Docker containers
-	 */
-	protected static boolean shouldUseDocker() {
-		return CodeExecutorBase.useDocker;
-	}
+	//********************************
+	//*** INTERFACE IMPLEMENTATION ***
+	//********************************
 
 	/**
 	 * Gets the path to the blacklist file.
@@ -171,18 +154,27 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return new StringBuilder(this.template); //return a new string builder every time
 	}
 
-	/**
-	 * Gets the combined command line to run a specific command.
-	 *
-	 * @param prepend the first few arguments
-	 * @param append  the last few arguments
-	 *
-	 * @return the combined command line arguments
-	 */
-	protected String[] getCombinedCommandLine(String[] prepend, String... append) {
+	//**********************
+	//*** HELPER METHODS ***
+	//**********************
 
-		String[] combined = Arrays.copyOf(prepend, prepend.length + append.length);
-		System.arraycopy(append, 0, combined, prepend.length, append.length);
+	/**
+	 * Concatenate several arrays.
+	 *
+	 * @param arrays arrays to concatenate
+	 *
+	 * @return a concatenated array
+	 */
+	protected <T> T[] concat(T[]... arrays) {
+
+		if (arrays.length == 0) return (T[])new Object[0];
+
+		int length = Arrays.stream(arrays).mapToInt(a -> a.length).sum();
+		T[] combined = Arrays.copyOf(arrays[0], length);
+
+		for (int i = 1, position = arrays[0].length; i < arrays.length; position += arrays[i++].length)
+			System.arraycopy(arrays[i], 0, combined, position, arrays[i].length);
+
 		return combined;
 	}
 
@@ -196,7 +188,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected String[] getDockerCommandLine(File workingDirectory, String... arguments) {
 
-		return this.getCombinedCommandLine(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_CONTAINER_NAME }, arguments);
+		return this.concat(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_CONTAINER_NAME }, arguments);
 	}
 
 	/**
@@ -262,4 +254,23 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			throw new ExecutorException(false, "Could not read the console output.", ex);
 		}
 	}
+
+	/**
+	 * Constructs a result object.
+	 *
+	 * @param success             whether or not the execution was a success
+	 * @param fatal               whether or not a fatal error occurred
+	 * @param result              the actual result
+	 * @param runtimeMilliseconds the runtime of the execution in milliseconds
+	 *
+	 * @return a result object with the specified information
+	 */
+	protected Result getResult(boolean success, boolean fatal, String result, double runtimeMilliseconds) {
+
+		if (success && fatal)
+			throw new IllegalArgumentException("Cannot be a fatal success.");
+
+		return new ResultImpl(success, fatal, result, new PerformanceIndicatorsImpl(runtimeMilliseconds));
+	}
+
 }

@@ -66,5 +66,5 @@ For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinla
 
 The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
 
-New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.CodeExecutor* and making it discoverable by the **Executor**.
+New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.api.CodeExecutor* and making it discoverable by the **Executor**.
 Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).

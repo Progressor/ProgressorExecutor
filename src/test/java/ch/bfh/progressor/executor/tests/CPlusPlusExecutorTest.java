@@ -1,6 +1,6 @@
 package ch.bfh.progressor.executor.tests;
 
-import ch.bfh.progressor.executor.CodeExecutor;
+import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.languages.CPlusPlusExecutor;
 
 public class CPlusPlusExecutorTest extends CodeExecutorTestBase {
@@ -19,7 +19,8 @@ public class CPlusPlusExecutorTest extends CodeExecutorTestBase {
 																															.append("int32_t sumInt32Array(int32_t* a, int32_t l) { int32_t s = 0; for (int i = 0; i < l; i++) s += a[i]; return s; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("int32_t sumInt32List(vector<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("int32_t sumInt32Set(set<int32_t> s) { int32_t u = 0; for (auto i : s) u += i; return u; }").append(CodeExecutorTestBase.NEW_LINE)
-																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").toString();
+																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").append(CodeExecutorTestBase.NEW_LINE)
+																															.append("string getMapListEntry(map<int32_t, vector<string>> m, int k, int i) { return m[k][i]; }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

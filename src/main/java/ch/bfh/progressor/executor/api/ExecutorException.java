@@ -1,4 +1,4 @@
-package ch.bfh.progressor.executor;
+package ch.bfh.progressor.executor.api;
 
 /**
  * Custom exception class to use in {@link CodeExecutor}s.

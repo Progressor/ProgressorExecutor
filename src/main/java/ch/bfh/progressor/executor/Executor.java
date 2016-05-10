@@ -17,10 +17,15 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import ch.bfh.progressor.executor.api.CodeExecutor;
+import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
+import ch.bfh.progressor.executor.api.Result;
+import ch.bfh.progressor.executor.impl.CodeExecutorBase;
+import ch.bfh.progressor.executor.impl.FunctionSignatureImpl;
+import ch.bfh.progressor.executor.impl.ResultImpl;
+import ch.bfh.progressor.executor.impl.TestCaseImpl;
 import ch.bfh.progressor.executor.thrift.ExecutorService;
-import ch.bfh.progressor.executor.thrift.FunctionSignature;
-import ch.bfh.progressor.executor.thrift.Result;
-import ch.bfh.progressor.executor.thrift.TestCase;
 
 /**
  * Main class.
@@ -47,11 +52,6 @@ public final class Executor {
 	public static final int SERVER_STOP_TIMEOUT_MILLISECONDS = 250;
 
 	/**
-	 * Platform (supported operating system) of the executor.
-	 */
-	public static final ExecutorPlatform PLATFORM = ExecutorPlatform.determine();
-
-	/**
 	 * Main method.
 	 * Starts the executor service.
 	 *
@@ -59,7 +59,9 @@ public final class Executor {
 	 */
 	public static void main(String... args) {
 
-		if (Executor.PLATFORM == ExecutorPlatform.UNSUPPORTED)
+		final ExecutorPlatform platform = ExecutorPlatform.determine();
+
+		if (platform == ExecutorPlatform.UNSUPPORTED)
 			throw new UnsupportedOperationException(String.format("Operating system '%s' (%s, %s) is not supported.", ExecutorPlatform.OPERATING_SYSTEM_NAME, ExecutorPlatform.OPERATING_SYSTEM_VERSION, ExecutorPlatform.OPERATING_SYSTEM_ARCHITECTURE));
 
 		int port = Executor.DEFAULT_SERVER_PORT;
@@ -81,28 +83,28 @@ public final class Executor {
 					Executor.LOGGER.fine(String.format("Using port %d.", port));
 					break;
 
-				case "-d":
-				case "-docker":
-					switch (args[++i]) {
-						case "true":
-						case "yes":
-							if (!Executor.PLATFORM.hasDockerSupport())
-								throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", Executor.PLATFORM));
-
-							CodeExecutorBase.setShouldUseDocker(true);
-							Executor.LOGGER.fine("Using Docker containers.");
-							break;
-
-						case "false":
-						case "no":
-							CodeExecutorBase.setShouldUseDocker(false);
-							Executor.LOGGER.fine("Not using Docker containers.");
-							break;
-
-						default:
-							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
-					}
-					break;
+				//case "-d":
+				//case "-docker":
+				//	switch (args[++i]) {
+				//		case "true":
+				//		case "yes":
+				//			if (!platform.hasDockerSupport())
+				//				throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", platform));
+				//
+				//			CodeExecutorBase.setShouldUseDocker(true);
+				//			Executor.LOGGER.fine("Using Docker containers.");
+				//			break;
+				//
+				//		case "false":
+				//		case "no":
+				//			CodeExecutorBase.setShouldUseDocker(false);
+				//			Executor.LOGGER.fine("Not using Docker containers.");
+				//			break;
+				//
+				//		default:
+				//			throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
+				//	}
+				//	break;
 
 				default:
 					throw new IllegalArgumentException(String.format("Command-line argument '%s' is invalid.", args[i]));
@@ -143,7 +145,12 @@ public final class Executor {
 		private int logId;
 		private final Map<String, CodeExecutor> codeExecutors = new HashMap<>();
 
-		private CodeExecutor getCodeExecutor(String language) throws TException {
+		private synchronized int getLogId() {
+
+			return this.logId++;
+		}
+
+		private CodeExecutor getCodeExecutor(String language) throws ExecutorException {
 
 			if (!this.codeExecutors.containsKey(language)) {
 				ServiceLoader<CodeExecutor> executors = ServiceLoader.load(CodeExecutor.class); //fetch the executor classes
@@ -154,15 +161,10 @@ public final class Executor {
 					}
 
 				if (!this.codeExecutors.containsKey(language)) //if no executor found, throw exception
-					throw new TException(String.format("Could not find an executor for language '%s'.", language));
+					throw new ExecutorException(true, String.format("Could not find an executor for language '%s'.", language));
 			}
 
 			return this.codeExecutors.get(language); //return the instance
-		}
-
-		private synchronized int getLogId() {
-
-			return this.logId++;
 		}
 
 		@Override
@@ -186,13 +188,13 @@ public final class Executor {
 		}
 
 		@Override
-		public String getFragment(String language, List<FunctionSignature> functions) throws TException {
+		public String getFragment(String language, List<ch.bfh.progressor.executor.thrift.FunctionSignature> functions) throws TException {
 
 			int logId = this.getLogId();
 			Executor.LOGGER.info(String.format("%-6d: getFragment(language=%s)", logId, language));
 
 			try {
-				return this.getCodeExecutor(language).getFragment(functions); //delegate call
+				return this.getCodeExecutor(language).getFragment(FunctionSignatureImpl.convertFromThrift(functions)); //delegate call
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not generate the fragment for language '%s'.", language);
@@ -205,29 +207,31 @@ public final class Executor {
 		}
 
 		@Override
-		public List<Result> execute(String language, String fragment, List<FunctionSignature> functions, List<TestCase> testCases) throws TException {
+		public List<ch.bfh.progressor.executor.thrift.Result> execute(String language, String fragment, List<ch.bfh.progressor.executor.thrift.FunctionSignature> functions, List<ch.bfh.progressor.executor.thrift.TestCase> testCases) throws TException {
 
 			int logId = this.getLogId();
 			Executor.LOGGER.info(String.format("%-6d: execute(language=%s, fragment=..., %d testCases: %s...)", logId, language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
 			try {
 				CodeExecutor codeExecutor = this.getCodeExecutor(language);
+				List<Result> results;
 
 				List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
 				if (!blacklist.isEmpty()) { //validate fragment against blacklist
-					Result result = new Result(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
-					List<Result> results = new ArrayList<>(testCases.size());
+					Result result = new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
+					results = new ArrayList<>(testCases.size());
 					while (results.size() < testCases.size())
 						results.add(result);
-					return results;
+
+				} else {
+					results = codeExecutor.execute(fragment, TestCaseImpl.convertFromThrift(functions, testCases)); //delegate execution call
+
+					Result result = new ResultImpl(false, true, "Could not read execution result for test case.", null);
+					while (results.size() < testCases.size())
+						results.add(result);
 				}
 
-				List<Result> results = codeExecutor.execute(fragment, functions, testCases); //delegate execution call
-
-				Result result = new Result(false, true, "Could not read execution result for test case.", null);
-				while (results.size() < testCases.size())
-					results.add(result);
-				return results;
+				return ResultImpl.convertToThrift(results);
 
 			} catch (Exception ex) { //wrap exception
 				String msg = String.format("Could not execute the code fragment in language '%s'.", language);

@@ -1,6 +1,6 @@
 package ch.bfh.progressor.executor.tests;
 
-import ch.bfh.progressor.executor.CodeExecutor;
+import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.languages.KotlinExecutor;
 
 public class KotlinExecutorTest extends CodeExecutorTestBase {
@@ -19,7 +19,8 @@ public class KotlinExecutorTest extends CodeExecutorTestBase {
 																															.append("fun sumInt32Array(a: Array<Int>, l: Int) = a.sum()").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("fun sumInt32List(l: List<Int>) = l.sum()").append(CodeExecutorTestBase.NEW_LINE)
 																															.append("fun sumInt32Set(s: Set<Int>) = s.sum()").append(CodeExecutorTestBase.NEW_LINE)
-																															.append("fun getMapEntry(m: Map<Int, String>, k: Int) = m[k]").toString();
+																															.append("fun getMapEntry(m: Map<Int, String>, k: Int) = m[k]").append(CodeExecutorTestBase.NEW_LINE)
+																															.append("fun getMapListEntry(m: Map<Int, List<String>>, k: Int, i: Int) = m[k]!![i]").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

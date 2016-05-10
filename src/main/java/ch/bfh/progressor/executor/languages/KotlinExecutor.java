@@ -6,22 +6,20 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import ch.bfh.progressor.executor.CodeExecutorBase;
-import ch.bfh.progressor.executor.Executor;
-import ch.bfh.progressor.executor.ExecutorException;
-import ch.bfh.progressor.executor.ExecutorPlatform;
-import ch.bfh.progressor.executor.thrift.FunctionSignature;
-import ch.bfh.progressor.executor.thrift.PerformanceIndicators;
-import ch.bfh.progressor.executor.thrift.Result;
-import ch.bfh.progressor.executor.thrift.TestCase;
-import ch.bfh.progressor.executor.thrift.executorConstants;
+import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
+import ch.bfh.progressor.executor.api.FunctionSignature;
+import ch.bfh.progressor.executor.api.Result;
+import ch.bfh.progressor.executor.api.TestCase;
+import ch.bfh.progressor.executor.api.Value;
+import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.impl.CodeExecutorBase;
+import ch.bfh.progressor.executor.impl.PerformanceIndicatorsImpl;
+import ch.bfh.progressor.executor.impl.ResultImpl;
 
 /**
  * Code execution engine for Kotlin code. <br>
@@ -62,7 +60,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) {
+	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
 
 		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.kt", KotlinExecutor.CODE_CLASS_NAME));
@@ -75,13 +73,13 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//*********************
 			//*** GENERATE CODE ***
 			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, functions, testCases);
+			this.generateCodeFile(codeDirectory, codeFragment, testCases);
 
 			//********************
 			//*** COMPILE CODE ***
 			//********************
-			String[] kotlincArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
-			if (CodeExecutorBase.shouldUseDocker())
+			String[] kotlincArguments = { CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
 				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
 
 			long kotlincStart = System.nanoTime();
@@ -99,8 +97,8 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			//*** EXECUTE CODE ***
 			//********************
-			String[] kotlinArguments = { Executor.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
-			if (CodeExecutorBase.shouldUseDocker())
+			String[] kotlinArguments = { CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
 				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
 
 			long kotlinStart = System.nanoTime();
@@ -121,9 +119,9 @@ public class KotlinExecutor extends CodeExecutorBase {
 			try (Scanner outStm = new Scanner(this.getSafeReader(kotlinProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
 				while (outStm.hasNext()) { //create a scanner to read the console output case by case
 					String res = outStm.next(); //get output lines of next test case
-					results.add(new Result(res.startsWith("OK"), false,
-																 res.substring(3),
-																 new PerformanceIndicators((kotlinEnd - kotlinStart) / 1e6)));
+					results.add(new ResultImpl(res.startsWith("OK"), false,
+																		 res.substring(3),
+																		 new PerformanceIndicatorsImpl((kotlinEnd - kotlinStart) / 1e6)));
 				}
 			}
 
@@ -132,14 +130,14 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//**************************
 		} catch (Exception ex) {
 			ExecutorException exEx;
-			Result res = new Result().setSuccess(false).setFatal(false);
+			Result result;
 			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
-				res.setFatal(exEx.isFatal()).setResult(String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()));
+				result = new ResultImpl(false, exEx.isFatal(), String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()), null);
 			else
-				res.setResult(String.format("%s:%n%s", "Could not invoke the user code.", ex));
+				result = new ResultImpl(false, false, String.format("%s:%n%s", "Could not invoke the user code.", ex), null);
 
 			while (results.size() < testCases.size())
-				results.add(res);
+				results.add(result);
 
 		} finally {
 			if (codeDirectory.exists())
@@ -149,7 +147,16 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return results;
 	}
 
-	protected void generateCodeFile(File directory, String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	/**
+	 * Generates the Kotlin code file with the user's code fragment.
+	 *
+	 * @param directory    directory to create code file in
+	 * @param codeFragment code fragment to write into the file
+	 * @param testCases    test cases to generate tests for
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -158,7 +165,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
 
 			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(functions, testCases));
+			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
 
 			Files.write(Paths.get(directory.getPath(), String.format("%s.kt", KotlinExecutor.CODE_CLASS_NAME)), //create a Kotlin source file in the temporary directory
 									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
@@ -168,6 +175,15 @@ public class KotlinExecutor extends CodeExecutorBase {
 		}
 	}
 
+	/**
+	 * Generates the Kotlin function signatures.
+	 *
+	 * @param functions functions to generate signatures for
+	 *
+	 * @return Kotlin function signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -175,15 +191,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 
-			//validate input / output types & names
-			if (function.getInputTypesSize() != function.getInputNamesSize())
-				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
-			if (function.getOutputTypesSize() != 1 || function.getOutputTypesSize() != function.getOutputNamesSize())
+			if (function.getOutputTypes().size() != 1)
 				throw new ExecutorException(true, "Exactly one output type has to be defined for a Kotlin sample.");
 
 			sb.append("fun ").append(function.getName()).append('(');
 
-			for (int i = 0; i < function.getInputTypesSize(); i++) {
+			for (int i = 0; i < function.getInputTypes().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(function.getInputNames().get(i)).append(": ").append(this.getTypeName(function.getInputTypes().get(i)));
 			}
@@ -194,58 +207,46 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	protected String getTestCaseSignatures(List<FunctionSignature> functions, List<TestCase> testCases) throws ExecutorException {
+	/**
+	 * Generates the Kotlin test case signatures.
+	 *
+	 * @param testCases test cases to generate signatures for
+	 *
+	 * @return Kotlin test case signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
 
-		Map<String, FunctionSignature> functionsMap = functions.stream().collect(Collectors.toMap(FunctionSignature::getName, Function.identity()));
-
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
-			FunctionSignature function = functionsMap.get(testCase.getFunctionName());
-
-			//validate input / output types & values
-			if (testCase.getInputValuesSize() != function.getInputTypesSize())
-				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
-			if (testCase.getExpectedOutputValuesSize() != 1 || testCase.getExpectedOutputValuesSize() != function.getOutputTypesSize())
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a Kotlin sample.");
-
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			String oType = function.getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append("val ret = ").append(testCase.getFunctionName()).append('(');
-			for (int i = 0; i < testCase.getInputValuesSize(); i++) {
+			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
+			sb.append("val ret = ").append(testCase.getFunction().getName()).append('(');
+			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getValueLiteral(testCase.getInputValues().get(i), function.getInputTypes().get(i)));
+				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(')').append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType) {
-				case executorConstants.TypeFloat32:
-				case executorConstants.TypeFloat64:
+			switch (oType.getBaseType()) {
+				case FLOAT32:
+				case FLOAT64:
 					comparisonSeparator = ".hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
 					comparisonSuffix = ")";
 					break;
 
-				//case executorConstants.TypeString:
-				//case executorConstants.TypeCharacter:
-				//case executorConstants.TypeBoolean:
-				//case executorConstants.TypeInt8:
-				//case executorConstants.TypeInt16:
-				//case executorConstants.TypeInt32:
-				//case executorConstants.TypeInt64:
-				//case executorConstants.TypeDecimal:
 				default:
 					comparisonSeparator = " == "; //compare objects using equality operator
 					break;
-
-				//default:
-				//throw new ExecutorException(String.format("Value type %s is not supported.", oType));
 			}
 
 			sb.append("val suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0), oType)).append(comparisonSuffix).append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
 			sb.append("out.write(\"%s:%s%n%n\".format(if (suc) \"OK\" else \"ER\", ret))").append(newLine); //print result to the console
 
 			sb.append("} catch (ex: Exception) {").append(newLine); //finish test case block / begin exception handling
@@ -257,173 +258,154 @@ public class KotlinExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	protected String getValueLiteral(String value, String type) throws ExecutorException {
+	/**
+	 * Gets the Kotlin literal for an arbitrary value.
+	 *
+	 * @param value value to get literal for
+	 *
+	 * @return Kotlin literal for value
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getValueLiteral(Value value) throws ExecutorException {
 
-		if ("null".equals(value))
-			return "null";
+		switch (value.getType().getBaseType()) {
+			case ARRAY:
+			case LIST:
+			case SET:
+				StringBuilder sb = new StringBuilder();
+				sb.append(value.getType().getBaseType() == ValueType.BaseType.ARRAY ? "arrayOf(" :
+									value.getType().getBaseType() == ValueType.BaseType.LIST ? "listOf(" : "setOf(");
 
-		//check for collection container types
-		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
-		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
-		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
-		if (isArr || isLst || isSet) {
-			int cntTypLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String elmTyp = type.substring(cntTypLen + 1, type.length() - 1);
+				boolean first = true; //generate collection elements
+				if (!value.getCollection().isEmpty())
+					for (Value element : value.getCollection()) {
+						if (first) first = false;
+						else sb.append(", ");
+						sb.append(this.getValueLiteral(element));
+					}
 
-			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp).length != 1) //validate type parameters
-				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
+				return sb.append(')').toString(); //finish collection initialisation and return literal
 
-			StringBuilder sb = new StringBuilder();
-			if (isArr) sb.append("arrayOf("); //begin array initialisation
-			else if (isLst) sb.append("listOf("); //begin list initialisation
-			else sb.append("setOf("); //begin set initialisation
+			case MAP:
+				sb = new StringBuilder("mapOf("); //begin map initialisation
 
-			boolean first = true; //generate collection elements
-			if (!value.isEmpty())
-				for (String elm : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
-					if (first) first = false;
-					else sb.append(", ");
-					sb.append(this.getValueLiteral(elm, elmTyp));
-				}
+				first = true; //generate key/value pairs
+				if (!value.get2DCollection().isEmpty())
+					for (List<Value> element : value.get2DCollection()) {
+						if (element.size() != 2) //validate key/value pair
+							throw new ExecutorException(true, "Map entries always need a key and a value.");
 
-			return sb.append(')').toString(); //finish collection initialisation and return literal
+						if (first) first = false;
+						else sb.append(", ");
+						sb.append(this.getValueLiteral(element.get(0))).append(" to ").append(this.getValueLiteral(element.get(1)));
+					}
 
-			//check for map container type
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String elmTyp = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] kvTyps = CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(elmTyp);
+				return sb.append(")").toString(); //finish initialisation and return literal
 
-			if (kvTyps.length != 2) // validate type parameters
-				throw new ExecutorException(true, "Map type needs 2 type parameters.");
-
-			StringBuilder sb = new StringBuilder("mapOf("); //begin map initialisation
-
-			boolean first = true; //generate key/value pairs
-			if (!value.isEmpty())
-				for (String ety : CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(value)) {
-					String[] kv = CodeExecutorBase.KEY_VALUE_SEPARATOR_PATTERN.split(ety);
-
-					if (kv.length != 2) //validate key/value pair
-						throw new ExecutorException(true, "Map entries always need a key and a value.");
-
-					if (first) first = false;
-					else sb.append(", ");
-					sb.append(this.getValueLiteral(kv[0], kvTyps[0])).append(" to ").append(this.getValueLiteral(kv[1], kvTyps[1]));
-				}
-
-			return sb.append(")").toString(); //finish initialisation and return literal
-		}
-
-		switch (type) { //switch over basic types
-			case executorConstants.TypeString:
-			case executorConstants.TypeCharacter:
-				String valueSafe = IntStream.range(0, value.length()).map(value::charAt).mapToObj(i -> String.format("\\u%04X", i))
+			case STRING:
+			case CHARACTER:
+				String valueSafe = IntStream.range(0, value.getSingle().length()).map(value.getSingle()::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				char separator = type.equals(executorConstants.TypeCharacter) ? '\'' : '"';
+				char separator = value.getType().getBaseType() == ValueType.BaseType.CHARACTER ? '\'' : '"';
 				return String.format("%1$c%2$s%1$c", separator, valueSafe);
 
-			case executorConstants.TypeBoolean:
-				return Boolean.toString("true".equalsIgnoreCase(value));
+			case BOOLEAN:
+				return Boolean.toString("true".equalsIgnoreCase(value.getSingle()));
 
-			case executorConstants.TypeInt8:
-			case executorConstants.TypeInt16:
-			case executorConstants.TypeInt32:
-			case executorConstants.TypeInt64:
-				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value).matches())
+			case INT8:
+			case INT16:
+			case INT32:
+			case INT64:
+				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value.getSingle()).matches())
 					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
 
-				switch (type) {
-					case executorConstants.TypeInt8:
-					case executorConstants.TypeInt16:
-						return String.format("(%s).to%s()", value, this.getTypeName(type));
+				switch (value.getType().getBaseType()) {
+					case INT8:
+					case INT16:
+						return String.format("(%s).to%s()", value.getSingle(), this.getTypeName(value.getType()));
 
-					case executorConstants.TypeInt32:
-						return value;
+					case INT32:
+						return value.getSingle();
 
-					case executorConstants.TypeInt64:
+					case INT64:
 					default:
-						return String.format("%sL", value);
+						return String.format("%sL", value.getSingle());
 				}
 
-			case executorConstants.TypeFloat32:
-			case executorConstants.TypeFloat64:
-			case executorConstants.TypeDecimal:
-				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value).matches())
+			case FLOAT32:
+			case FLOAT64:
+			case DECIMAL:
+				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
 					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
 
-				switch (type) {
-					case executorConstants.TypeFloat32:
-						return String.format("%sF", value);
+				switch (value.getType().getBaseType()) {
+					case FLOAT32:
+						return String.format("%sF", value.getSingle());
 
-					case executorConstants.TypeFloat64:
-						return value;
+					case FLOAT64:
+						return value.getSingle();
 
-					case executorConstants.TypeDecimal:
+					case DECIMAL:
 					default:
-						return String.format("BigDecimal(\"%s\")", value);
+						return String.format("BigDecimal(\"%s\")", value.getSingle());
 				}
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(true, String.format("Value type %s is not supported.", value.getType()));
 		}
 	}
 
-	protected String getTypeName(String type) throws ExecutorException {
+	/**
+	 * Gets the Kotlin name of an arbitrary type.
+	 *
+	 * @param type type to get name of
+	 *
+	 * @return Kotlin name of type
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected String getTypeName(ValueType type) throws ExecutorException {
 
-		//check for collection container types
-		boolean isArr = type.startsWith(String.format("%s<", executorConstants.TypeContainerArray));
-		boolean isLst = type.startsWith(String.format("%s<", executorConstants.TypeContainerList));
-		boolean isSet = type.startsWith(String.format("%s<", executorConstants.TypeContainerSet));
-		if (isArr || isLst || isSet) {
-			int typLen = (isArr ? executorConstants.TypeContainerArray : isLst ? executorConstants.TypeContainerList : executorConstants.TypeContainerSet).length();
-			String typeParam = type.substring(typLen + 1, type.length() - 1);
+		switch (type.getBaseType()) {
+			case ARRAY:
+			case LIST:
+			case SET:
+				return String.format("%s<%s>", type.getBaseType() == ValueType.BaseType.ARRAY ? "Array" : type.getBaseType() == ValueType.BaseType.LIST ? "List" : "Set",
+														 this.getTypeName(type.getGenericParameters().get(0))); //return class name
 
-			if (CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParam).length != 1) //validate type parameters
-				throw new ExecutorException(true, "Array, List & Set types need 1 type parameter.");
+			case MAP:
+				return String.format("Map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0)), this.getTypeName(type.getGenericParameters().get(1))); //return class name
 
-			return String.format("%s<%s>", isArr ? "Array" : isLst ? "List" : "Set", this.getTypeName(typeParam)); //return class name
-
-			//check for map container type
-		} else if (type.startsWith(String.format("%s<", executorConstants.TypeContainerMap))) {
-			String typeParams = type.substring(executorConstants.TypeContainerMap.length() + 1, type.length() - 1);
-			String[] typeParamsArray = CodeExecutorBase.PARAMETER_SEPARATOR_PATTERN.split(typeParams);
-
-			if (typeParamsArray.length != 2) // validate type parameters
-				throw new ExecutorException(true, "Map type needs 2 type parameters.");
-
-			return String.format("Map<%s, %s>", this.getTypeName(typeParamsArray[0]), this.getTypeName(typeParamsArray[1])); //return class name
-		}
-
-		switch (type) { //switch over basic types
-			case executorConstants.TypeString:
+			case STRING:
 				return "String";
 
-			case executorConstants.TypeCharacter:
+			case CHARACTER:
 				return "Char";
 
-			case executorConstants.TypeBoolean:
+			case BOOLEAN:
 				return "Boolean";
 
-			case executorConstants.TypeInt8:
+			case INT8:
 				return "Byte";
 
-			case executorConstants.TypeInt16:
+			case INT16:
 				return "Short";
 
-			case executorConstants.TypeInt32:
+			case INT32:
 				return "Int";
 
-			case executorConstants.TypeInt64:
+			case INT64:
 				return "Long";
 
-			case executorConstants.TypeFloat32:
+			case FLOAT32:
 				return "Float";
 
-			case executorConstants.TypeFloat64:
+			case FLOAT64:
 				return "Double";
 
-			case executorConstants.TypeDecimal:
+			case DECIMAL:
 				return "BigDecimal";
 
 			default:

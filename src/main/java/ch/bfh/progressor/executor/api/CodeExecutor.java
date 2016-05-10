@@ -1,10 +1,7 @@
-package ch.bfh.progressor.executor;
+package ch.bfh.progressor.executor.api;
 
 import java.util.Collection;
 import java.util.List;
-import ch.bfh.progressor.executor.thrift.FunctionSignature;
-import ch.bfh.progressor.executor.thrift.Result;
-import ch.bfh.progressor.executor.thrift.TestCase;
 
 /**
  * Interface to be implemented by all code execution engines.
@@ -44,10 +41,9 @@ public interface CodeExecutor {
 	 * Executes a provided code fragment.
 	 *
 	 * @param codeFragment code fragment to execute
-	 * @param functions    function signatures to execute tests on
 	 * @param testCases    test cases to execute
 	 *
 	 * @return a {@link List} containing the {@link Result} for each test case
 	 */
-	List<Result> execute(String codeFragment, List<FunctionSignature> functions, List<TestCase> testCases);
+	List<Result> execute(String codeFragment, List<TestCase> testCases);
 }
