@@ -216,11 +216,11 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return this.concat(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME }, arguments);
 	}
 
-	protected String[] startDockerCommandLine(File workingDirectory) {
+	private String[] startDockerCommandLine(File workingDirectory) {
 		return this.concat(new String[] { "docker", "run", "-td", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME });
 	}
 
-	protected String[] dockerContainerStop(String containerID) {
+	private String[] dockerContainerStop(String containerID) {
 		return this.concat(new String[] { "docker", "stop", containerID });
 	}
 
