@@ -67,9 +67,10 @@ public class ResultImpl implements Result {
 	public static List<ch.bfh.progressor.executor.thrift.Result> convertToThrift(List<Result> results) throws ExecutorException {
 
 		List<ch.bfh.progressor.executor.thrift.Result> output = new ArrayList<>(results.size());
-		for (Result result : results)
-			output.add(new ch.bfh.progressor.executor.thrift.Result(result.isSuccess(), result.isFatal(), result.getResult(),
-																															PerformanceIndicatorsImpl.convertToThrift(Collections.singletonList(result.getPerformance())).get(0)));
+		for (Result result : results) {
+			ch.bfh.progressor.executor.thrift.PerformanceIndicators performance = result.getPerformance() != null ? PerformanceIndicatorsImpl.convertToThrift(Collections.singletonList(result.getPerformance())).get(0) : null;
+			output.add(new ch.bfh.progressor.executor.thrift.Result(result.isSuccess(), result.isFatal(), result.getResult(), performance));
+		}
 
 		return output;
 	}
