@@ -235,11 +235,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected String getContainerID(Process process) {
 		String containerID = null;
 		try (Scanner out = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter(String.format("%n"))) {
-			while (out.hasNext()) {
-				containerID = out.next();
-			}
+			if (out.hasNext()) containerID = out.next();
+			else throw new ExecutorException (true,"No containerID available. Container not started", this.readConsole(process));
 		} catch (IOException e) {
 			e.printStackTrace();
+		} catch (ExecutorException e) {
+			process.destroyForcibly();
 		}
 		return containerID;
 	}
