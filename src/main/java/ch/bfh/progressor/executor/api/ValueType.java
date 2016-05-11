@@ -80,7 +80,7 @@ public interface ValueType {
 		FLOAT64(executorConstants.TypeFloat64, 0),
 
 		/**
-		 * decimal (if not available: floating-point) number with highest available precision ({@link BigDecimal}
+		 * decimal (if not available: floating-point) number with highest available precision ({@link BigDecimal})
 		 */
 		DECIMAL(executorConstants.TypeDecimal, 0),
 

@@ -35,6 +35,7 @@ To use the languages, the following compilers (and other tools) need to be insta
 2. *C/C++*: `g++`
 3. *C#*: `csc` (Windows) or `msc` (Linux)
 4. *Kotlin*: `kotlinc` and `kotlin`
+5. *Python*: `python`
 
 ### Java
 
@@ -61,6 +62,10 @@ Support for *C++11* is required.
 #### Kotlin
 
 For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinlang.org/docs/tutorials/command-line.html) can be downloaded from [*GitHub*](https://github.com/JetBrains/kotlin/releases/latest).
+
+### Python
+
+...
 
 ### Extensibility
 
