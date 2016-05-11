@@ -55,7 +55,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Whether or not to use Docker containers.
 	 */
-	protected static final boolean USE_DOCKER = false;
+	protected static final boolean USE_DOCKER = true;
 
 	/**
 	 * Name of the Docker container to use.
@@ -87,10 +87,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * This pattern does support literals in exponential form (e.g. {@code 1.25e-2}).
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
-
-	/**
-	 * Hashmap for exceptions and their messages
-	 */
 
 	private List<String> blacklist;
 	private StringBuilder template;
