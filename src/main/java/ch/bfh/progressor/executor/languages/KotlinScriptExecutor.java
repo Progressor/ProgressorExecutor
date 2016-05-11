@@ -76,7 +76,6 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 																		 new PerformanceIndicatorsImpl((kotlinEnd - kotlinStart) / 1e6)));
 				}
 			}
-
 			//**************************
 			//*** EXCEPTION HANDLING ***
 			//**************************

@@ -65,6 +65,8 @@ public class KotlinExecutor extends CodeExecutorBase {
 		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.kt", KotlinExecutor.CODE_CLASS_NAME));
 
+		String containerID = null;
+
 		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
@@ -79,8 +81,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] kotlincArguments = { CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName() };
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				kotlincArguments = this.getDockerCommandLine(codeDirectory, kotlincArguments);
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerProcess = this.startDockerProcess(codeDirectory);
+				containerID = this.getContainerID(dockerProcess);
+				dockerProcess.destroy();
+				kotlincArguments = this.getDockerCommandLine(containerID, kotlincArguments);
+			}
 
 			long kotlincStart = System.nanoTime();
 			Process kotlincProcess = new ProcessBuilder(kotlincArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -99,7 +105,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			//********************
 			String[] kotlinArguments = { CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME };
 			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
+				kotlinArguments = this.getDockerCommandLine(containerID, kotlinArguments);
 
 			long kotlinStart = System.nanoTime();
 			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -122,6 +128,18 @@ public class KotlinExecutor extends CodeExecutorBase {
 					results.add(new ResultImpl(res.startsWith("OK"), false,
 																		 res.substring(3),
 																		 new PerformanceIndicatorsImpl((kotlinEnd - kotlinStart) / 1e6)));
+				}
+			}
+
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStopProcess = new ProcessBuilder(this.dockerContainerStop(containerID)).redirectErrorStream(true).start();
+				if (dockerStopProcess.waitFor(KotlinExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerStopProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
+
+				} else {
+					dockerStopProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not stop dockercontainer in time.");
 				}
 			}
 

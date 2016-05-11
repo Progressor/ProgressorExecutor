@@ -10,7 +10,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.commons.io.input.BOMInputStream;
 import org.json.JSONArray;
@@ -52,12 +55,22 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Whether or not to use Docker containers.
 	 */
-	protected static final boolean USE_DOCKER = true;
+	protected static final boolean USE_DOCKER = false;
 
 	/**
 	 * Name of the Docker container to use.
 	 */
-	protected static final String DOCKER_CONTAINER_NAME = String.format("progressor%sexecutor", File.separator);
+	protected static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
+
+	/**
+	 * Maximum time to use for for the Dockercontainer of the user to start (in seconds).
+	 */
+	public static final int CONTAINER_START_TIMEOUT = 3;
+
+	/**
+	 * Maximum time to use for the Dockercontainer of the user to stop (in seconds).
+	 */
+	public static final int CONTAINER_STOP_TIMEOUT = 3;
 
 	/**
 	 * Regular expression pattern for numeric integer literals.
@@ -74,6 +87,10 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * This pattern does support literals in exponential form (e.g. {@code 1.25e-2}).
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
+
+	/**
+	 * Hashmap for exceptions and their messages
+	 */
 
 	private List<String> blacklist;
 	private StringBuilder template;
@@ -179,7 +196,20 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
-	 * Gets the Docker command line to run a specific command.
+	 * @param dockerContainerName the ID of the started dockercontainer.
+	 * @param arguments           additional arguments to pass to Docker
+	 *
+	 * @return the combined command line argument
+	 */
+	protected String[] getDockerCommandLine(String dockerContainerName, String... arguments) {
+
+		return this.concat(new String[] { "docker", "exec", dockerContainerName }, arguments);
+
+	}
+
+	/**
+	 * Gets the Docker command line to run a specific command for scriptlanguages.
+	 * For example Kotlinscript, Python, etc.
 	 *
 	 * @param workingDirectory the working directory for Docker to run in
 	 * @param arguments        additional arguments to pass to Docker
@@ -187,8 +217,35 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return the combined command line arguments
 	 */
 	protected String[] getDockerCommandLine(File workingDirectory, String... arguments) {
+		return this.concat(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME }, arguments);
+	}
 
-		return this.concat(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_CONTAINER_NAME }, arguments);
+	protected String[] startDockerCommandLine(File workingDirectory) {
+		return this.concat(new String[] { "docker", "run", "-td", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME });
+	}
+
+	protected String[] dockerContainerStop(String containerID) {
+		return this.concat(new String[] { "docker", "stop", containerID });
+	}
+
+	protected Process startDockerProcess(File codeDirectory) throws IOException {
+		return new ProcessBuilder(startDockerCommandLine(codeDirectory)).redirectErrorStream(true).start();
+	}
+
+	protected Process stopDockerProcess(String containerID) throws IOException {
+		return new ProcessBuilder(this.dockerContainerStop(containerID)).redirectErrorStream(true).start();
+	}
+
+	protected String getContainerID(Process process) {
+		String containerID = null;
+		try (Scanner out = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter(String.format("%n"))) {
+			while (out.hasNext()) {
+				containerID = out.next();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return containerID;
 	}
 
 	/**
@@ -274,3 +331,5 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 }
+
+

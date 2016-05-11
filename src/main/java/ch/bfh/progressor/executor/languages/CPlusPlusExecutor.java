@@ -38,7 +38,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	protected static final String EXECUTABLE_NAME = "main";
 
 	/**
-	 * Maximum time to use for for the compilation of the user code (in seconds).
+	 * Maximum time to use for the compilation of the user code (in seconds).
 	 */
 	public static final int COMPILE_TIMEOUT_SECONDS = 3;
 
@@ -65,6 +65,8 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		final File codeFile = new File(codeDirectory, String.format("%s.cpp", CPlusPlusExecutor.EXECUTABLE_NAME));
 		final File executableFile = new File(codeDirectory, CPlusPlusExecutor.EXECUTABLE_NAME);
 
+		String containerID = null;
+
 		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
@@ -79,9 +81,19 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] gccArguments;
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				gccArguments = this.getDockerCommandLine(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
-			else
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStartProcess = this.startDockerProcess(codeDirectory);
+				if (dockerStartProcess.waitFor(CPlusPlusExecutor.CONTAINER_START_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerStartProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(dockerStartProcess));
+				} else {
+					dockerStartProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not compile the user code in time.");
+				}
+				containerID = this.getContainerID(dockerStartProcess);
+				dockerStartProcess.destroy();
+				gccArguments = this.getDockerCommandLine(containerID, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
+			} else
 				gccArguments = new String[] { "g++", codeFile.getAbsolutePath(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME };
 
 			long gccStart = System.nanoTime();
@@ -101,7 +113,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			//********************
 			String[] cppArguments;
 			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				cppArguments = this.getDockerCommandLine(codeDirectory, new File(localDirectory, executableFile.getName()).getPath());
+				cppArguments = this.getDockerCommandLine(containerID, new File(localDirectory, executableFile.getName()).getPath());
 			else
 				cppArguments = new String[] { executableFile.getAbsolutePath() };
 
@@ -129,6 +141,18 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				}
 			}
 
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStopProcess = new ProcessBuilder(this.dockerContainerStop(containerID)).redirectErrorStream(true).start();
+				if (dockerStopProcess.waitFor(CPlusPlusExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
+					if (cppProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
+
+				} else {
+					cppProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not stop dockercontainer in time.");
+				}
+			}
+
 			//**************************
 			//*** EXCEPTION HANDLING ***
 			//**************************
@@ -146,6 +170,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		} finally {
 			if (codeDirectory.exists())
 				this.tryDeleteRecursive(codeDirectory);
+
 		}
 
 		return results;

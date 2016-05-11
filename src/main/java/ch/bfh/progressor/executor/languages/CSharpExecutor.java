@@ -65,6 +65,8 @@ public class CSharpExecutor extends CodeExecutorBase {
 		final File codeFile = new File(codeDirectory, String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME));
 		final File executableFile = new File(codeDirectory, String.format("%s.exe", CSharpExecutor.EXECUTABLE_NAME));
 
+		String containerID = null;
+
 		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
@@ -89,8 +91,20 @@ public class CSharpExecutor extends CodeExecutorBase {
 				default:
 					throw new ExecutorException(true, "Unsupported platform detected.");
 			}
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				cscArguments = this.getDockerCommandLine(codeDirectory, cscArguments);
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStartProcess = this.startDockerProcess(codeDirectory);
+				if (dockerStartProcess.waitFor(CSharpExecutor.CONTAINER_START_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerStartProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not start dockercontainer.", this.readConsole(dockerStartProcess));
+
+				} else {
+					dockerStartProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not start dockercontainer in time.");
+				}
+				containerID = this.getContainerID(dockerStartProcess);
+				dockerStartProcess.destroy();
+				cscArguments = this.getDockerCommandLine(containerID, cscArguments);
+			}
 
 			long cscStart = System.nanoTime();
 			Process cscProcess = new ProcessBuilder(cscArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -119,7 +133,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 					throw new ExecutorException(true, "Unsupported platform detected.");
 			}
 			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				csArguments = this.getDockerCommandLine(codeDirectory, csArguments);
+				csArguments = this.getDockerCommandLine(containerID, csArguments);
 
 			long csStart = System.nanoTime();
 			Process csProcess = new ProcessBuilder(csArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -132,7 +146,20 @@ public class CSharpExecutor extends CodeExecutorBase {
 				throw new ExecutorException(true, "Could not execute the user code in time.");
 			}
 			long csEnd = System.nanoTime();
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStopProcess = this.stopDockerProcess(containerID);
+				if (dockerStopProcess.waitFor(CSharpExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerStopProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
 
+				} else {
+					dockerStopProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not stop dockercontainer in time.");
+				}
+			}
+
+
+			//this.checkProcess(dockerStopProcess,CSharpExecutor.CONTAINER_STOP_TIMEOUT,"Could not stop dockercontainer.","Could not stop dockercontainer in time.");
 			//****************************
 			//*** TEST CASE EVALUATION ***
 			//****************************

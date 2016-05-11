@@ -64,6 +64,8 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME));
 
+		String containerID = null;
+
 		List<Result> results = new ArrayList<>(testCases.size());
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
@@ -78,8 +80,20 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//*** COMPILE CODE ***
 			//********************
 			String[] javacArguments = { "javac", codeFile.getName() };
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				javacArguments = this.getDockerCommandLine(codeDirectory, javacArguments);
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+
+				Process dockerProcess = this.startDockerProcess(codeDirectory);
+				if (dockerProcess.waitFor(JavaProcessExecutor.CONTAINER_START_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not start dockercontainer.", this.readConsole(dockerProcess));
+				} else {
+					dockerProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not start dockercontainer in time.");
+				}
+				containerID = this.getContainerID(dockerProcess);
+				dockerProcess.destroy();
+				javacArguments = this.getDockerCommandLine(containerID, javacArguments);
+			}
 
 			long javacStart = System.nanoTime();
 			Process javacProcess = new ProcessBuilder(javacArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -97,7 +111,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			//********************
 			String[] javaArguments = { "java", JavaProcessExecutor.CODE_CLASS_NAME };
 			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				javaArguments = this.getDockerCommandLine(codeDirectory, javaArguments);
+				this.getDockerCommandLine(containerID, javaArguments);
 
 			long javaStart = System.nanoTime();
 			Process javaProcess = new ProcessBuilder(javaArguments).directory(codeDirectory).redirectErrorStream(true).start();
@@ -122,7 +136,16 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 																		 new PerformanceIndicatorsImpl((javaEnd - javaStart) / 1e6)));
 				}
 			}
-
+			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
+				Process dockerStopProcess = this.stopDockerProcess(containerID);
+				if (dockerStopProcess.waitFor(JavaProcessExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
+					if (dockerStopProcess.exitValue() != 0)
+						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
+				} else {
+					javacProcess.destroyForcibly(); //destroy()
+					throw new ExecutorException(true, "Could not stop dockercontainer in time");
+				}
+			}
 			//**************************
 			//*** EXCEPTION HANDLING ***
 			//**************************
