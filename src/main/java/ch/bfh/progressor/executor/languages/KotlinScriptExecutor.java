@@ -1,21 +1,13 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
-import ch.bfh.progressor.executor.impl.PerformanceIndicatorsImpl;
-import ch.bfh.progressor.executor.impl.ResultImpl;
 
 /**
  * Code execution engine for Kotlin code. <br>
@@ -31,90 +23,37 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
+	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
-		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.kts", KotlinExecutor.CODE_CLASS_NAME));
 
+		//*********************
+		//*** GENERATE CODE ***
+		//*********************
+		this.generateCodeFile(codeFile, codeFragment, testCases);
+
+		//********************
+		//*** EXECUTE CODE ***
+		//********************
+		long executionStart = System.nanoTime();
+
+		Process executionProcess;
+		try {
+			executionProcess = this.executeCommand(codeDirectory, KotlinExecutor.COMPILE_TIMEOUT_SECONDS + KotlinExecutor.EXECUTION_TIMEOUT_SECONDS,
+																						 CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
+
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not execute the user code.", ex);
+		}
+
+		long executionEnd = System.nanoTime();
+
+		//****************************
+		//*** TEST CASE EVALUATION ***
+		//****************************
 		List<Result> results = new ArrayList<>(testCases.size());
-		try {
-			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
-				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
-
-			//*********************
-			//*** GENERATE CODE ***
-			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, testCases);
-
-			//********************
-			//*** EXECUTE CODE ***
-			//********************
-			String[] kotlinArguments = { CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName() };
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				kotlinArguments = this.getDockerCommandLine(codeDirectory, kotlinArguments);
-
-			long kotlinStart = System.nanoTime();
-			Process kotlinProcess = new ProcessBuilder(kotlinArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			if (kotlinProcess.waitFor(KotlinExecutor.COMPILE_TIMEOUT_SECONDS + KotlinExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (kotlinProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(kotlinProcess));
-
-			} else {
-				kotlinProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException(true, "Could not execute the user code in time.");
-			}
-			long kotlinEnd = System.nanoTime();
-
-			//****************************
-			//*** TEST CASE EVALUATION ***
-			//****************************
-			try (Scanner outStm = new Scanner(this.getSafeReader(kotlinProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
-				while (outStm.hasNext()) { //create a scanner to read the console output case by case
-					String res = outStm.next(); //get output lines of next test case
-					results.add(new ResultImpl(res.startsWith("OK"), false,
-																		 res.substring(3),
-																		 new PerformanceIndicatorsImpl((kotlinEnd - kotlinStart) / 1e6)));
-				}
-			}
-			//**************************
-			//*** EXCEPTION HANDLING ***
-			//**************************
-		} catch (Exception ex) {
-			ExecutorException exEx;
-			Result result;
-			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
-				result = new ResultImpl(false, exEx.isFatal(), String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()), null);
-			else
-				result = new ResultImpl(false, false, String.format("%s:%n%s", "Could not invoke the user code.", ex), null);
-
-			while (results.size() < testCases.size())
-				results.add(result);
-
-		} finally {
-			if (codeDirectory.exists())
-				this.tryDeleteRecursive(codeDirectory);
-		}
-
+		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
+			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
 		return results;
-	}
-
-	@Override
-	protected void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
-
-		try {
-			StringBuilder code = this.getTemplate(); //read the template
-
-			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
-
-			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
-
-			Files.write(Paths.get(directory.getPath(), String.format("%s.kts", KotlinExecutor.CODE_CLASS_NAME)), //create a Kotlin source file in the temporary directory
-									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
-
-		} catch (ExecutorException | IOException ex) {
-			throw new ExecutorException(true, "Could not generate the code file.", ex);
-		}
 	}
 }

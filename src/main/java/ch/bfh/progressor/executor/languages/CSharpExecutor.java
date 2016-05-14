@@ -1,24 +1,17 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.FunctionSignature;
 import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
-import ch.bfh.progressor.executor.impl.PerformanceIndicatorsImpl;
-import ch.bfh.progressor.executor.impl.ResultImpl;
 
 /**
  * Code execution engine for C# code.
@@ -58,179 +51,60 @@ public class CSharpExecutor extends CodeExecutorBase {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
+	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
 		final File localDirectory = new File(".");
-		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME));
 		final File executableFile = new File(codeDirectory, String.format("%s.exe", CSharpExecutor.EXECUTABLE_NAME));
 
-		String containerID = null;
+		//*********************
+		//*** GENERATE CODE ***
+		//*********************
+		this.generateCodeFile(codeFile, codeFragment, testCases);
 
-		List<Result> results = new ArrayList<>(testCases.size());
+		//********************
+		//*** COMPILE CODE ***
+		//********************
+		String[] compilationArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
+																		? new String[] { "csc", codeFile.getName(), "/debug" }
+																		: new String[] { "mcs", codeFile.getName(), "-debug" };
+
 		try {
-			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
-				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
+			this.executeCommand(codeDirectory, CSharpExecutor.COMPILE_TIMEOUT_SECONDS, compilationArguments);
 
-			//*********************
-			//*** GENERATE CODE ***
-			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, testCases);
-
-			//********************
-			//*** COMPILE CODE ***
-			//********************
-			String[] cscArguments;
-			switch (CodeExecutorBase.PLATFORM) {
-				case WINDOWS:
-					cscArguments = new String[] { "csc", codeFile.getName(), "/debug" };
-					break;
-				case UNIX_LINUX:
-					cscArguments = new String[] { "mcs", codeFile.getName(), "-debug" };
-					break;
-				default:
-					throw new ExecutorException(true, "Unsupported platform detected.");
-			}
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
-				Process dockerStartProcess = this.startDockerProcess(codeDirectory);
-				if (dockerStartProcess.waitFor(CSharpExecutor.CONTAINER_START_TIMEOUT, TimeUnit.SECONDS)) {
-					if (dockerStartProcess.exitValue() != 0)
-						throw new ExecutorException(true, "Could not start dockercontainer.", this.readConsole(dockerStartProcess));
-
-				} else {
-					dockerStartProcess.destroyForcibly(); //destroy()
-					throw new ExecutorException(true, "Could not start dockercontainer in time.");
-				}
-				containerID = this.getContainerID(dockerStartProcess);
-				dockerStartProcess.destroy();
-				cscArguments = this.getDockerCommandLine(containerID, cscArguments);
-			}
-
-			long cscStart = System.nanoTime();
-			Process cscProcess = new ProcessBuilder(cscArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			if (cscProcess.waitFor(CSharpExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (cscProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(cscProcess));
-
-			} else {
-				cscProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException(true, "Could not compile the user code in time.");
-			}
-			long cscEnd = System.nanoTime();
-
-			//********************
-			//*** EXECUTE CODE ***
-			//********************
-			String[] csArguments;
-			switch (CodeExecutorBase.PLATFORM) {
-				case WINDOWS:
-					csArguments = new String[] { executableFile.getAbsolutePath() };
-					break;
-				case UNIX_LINUX:
-					csArguments = new String[] { "mono", CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER ? new File(localDirectory, executableFile.getName()).getPath() : executableFile.getAbsolutePath(), "--debug" };
-					break;
-				default:
-					throw new ExecutorException(true, "Unsupported platform detected.");
-			}
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				csArguments = this.getDockerCommandLine(containerID, csArguments);
-
-			long csStart = System.nanoTime();
-			Process csProcess = new ProcessBuilder(csArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			if (csProcess.waitFor(CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (csProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(csProcess));
-
-			} else {
-				csProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException(true, "Could not execute the user code in time.");
-			}
-			long csEnd = System.nanoTime();
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
-				Process dockerStopProcess = this.stopDockerProcess(containerID);
-				if (dockerStopProcess.waitFor(CSharpExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
-					if (dockerStopProcess.exitValue() != 0)
-						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
-
-				} else {
-					dockerStopProcess.destroyForcibly(); //destroy()
-					throw new ExecutorException(true, "Could not stop dockercontainer in time.");
-				}
-			}
-
-
-			//this.checkProcess(dockerStopProcess,CSharpExecutor.CONTAINER_STOP_TIMEOUT,"Could not stop dockercontainer.","Could not stop dockercontainer in time.");
-			//****************************
-			//*** TEST CASE EVALUATION ***
-			//****************************
-			try (Scanner outStm = new Scanner(this.getSafeReader(csProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
-				while (outStm.hasNext()) { //create a scanner to read the console output case by case
-					String res = outStm.next(); //get output lines of next test case
-					results.add(new ResultImpl(res.startsWith("OK"), false,
-																		 res.substring(3),
-																		 new PerformanceIndicatorsImpl((csEnd - csStart) / 1e6)));
-				}
-			}
-
-			//**************************
-			//*** EXCEPTION HANDLING ***
-			//**************************
-		} catch (Exception ex) {
-			ExecutorException exEx;
-			Result result;
-			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
-				result = new ResultImpl(false, exEx.isFatal(), String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()), null);
-			else
-				result = new ResultImpl(false, false, String.format("%s:%n%s", "Could not invoke the user code.", ex), null);
-
-			while (results.size() < testCases.size())
-				results.add(result);
-
-		} finally {
-			if (codeDirectory.exists())
-				this.tryDeleteRecursive(codeDirectory);
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not compile the user code.", ex);
 		}
 
+		//********************
+		//*** EXECUTE CODE ***
+		//********************
+		String[] executionArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
+																	? new String[] { executableFile.getAbsolutePath() }
+																	: new String[] { "mono", this.willUseDocker() ? new File(localDirectory, executableFile.getName()).getPath() : executableFile.getAbsolutePath(), "--debug" };
+
+		long executionStart = System.nanoTime();
+
+		Process executionProcess;
+		try {
+			executionProcess = this.executeCommand(codeDirectory, CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, executionArguments);
+
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not execute the user code.", ex);
+		}
+
+		long executionEnd = System.nanoTime();
+
+		//****************************
+		//*** TEST CASE EVALUATION ***
+		//****************************
+		List<Result> results = new ArrayList<>(testCases.size());
+		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
+			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
 		return results;
 	}
 
-	/**
-	 * Generates the C# code file with the user's code fragment.
-	 *
-	 * @param directory    directory to create code file in
-	 * @param codeFragment code fragment to write into the file
-	 * @param testCases    test cases to generate tests for
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
-	protected void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
-
-		try {
-			StringBuilder code = this.getTemplate(); //read the template
-
-			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
-
-			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
-
-			Files.write(Paths.get(directory.getPath(), String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME)), //create a c++ source file in the temporary directory
-									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
-
-		} catch (ExecutorException | IOException ex) {
-			throw new ExecutorException(true, "Could not generate the code file.", ex);
-		}
-	}
-
-	/**
-	 * Generates the C# function signatures.
-	 *
-	 * @param functions functions to generate signatures for
-	 *
-	 * @return C# function signatures
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -240,9 +114,9 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 			//validate input / output types & names
 			if (function.getInputTypes().size() != function.getInputNames().size())
-				throw new ExecutorException(true, "The same number of input types & names have to be defined.");
+				throw new ExecutorException("The same number of input types & names have to be defined.");
 			if (function.getOutputTypes().size() != 1 || function.getOutputTypes().size() != function.getOutputNames().size())
-				throw new ExecutorException(true, "Exactly one output type has to be defined for a C# sample.");
+				throw new ExecutorException("Exactly one output type has to be defined for a C# sample.");
 
 			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
 
@@ -257,15 +131,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	/**
-	 * Generates the C# test case signatures.
-	 *
-	 * @param testCases test cases to generate signatures for
-	 *
-	 * @return C# test case signatures
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -275,9 +141,9 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 			//validate input / output types & values
 			if (testCase.getInputValues().size() != testCase.getFunction().getInputTypes().size())
-				throw new ExecutorException(true, "The same number of input values & types have to be defined.");
+				throw new ExecutorException("The same number of input values & types have to be defined.");
 			if (testCase.getExpectedOutputValues().size() != 1 || testCase.getExpectedOutputValues().size() != testCase.getFunction().getOutputTypes().size())
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a C# sample.");
+				throw new ExecutorException("Exactly one output value has to be defined for a C# sample.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
@@ -327,15 +193,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	/**
-	 * Gets the C# literal for an arbitrary value.
-	 *
-	 * @param value value to get literal for
-	 *
-	 * @return C# literal for value
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getValueLiteral(Value value) throws ExecutorException {
 
 		switch (value.getType().getBaseType()) {
@@ -363,7 +221,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 				if (!value.get2DCollection().isEmpty())
 					for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
 						if (element.size() != 2) //validate key/value pair
-							throw new ExecutorException(true, "Map entries always need a key and a value.");
+							throw new ExecutorException("Map entries always need a key and a value.");
 
 						if (first) first = false;
 						else sb.append(", ");
@@ -388,7 +246,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 			case INT32:
 			case INT64:
 				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value.getSingle()).matches())
-					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
+					throw new ExecutorException(String.format("Value %s is not a valid numeric integer literal.", value));
 
 				return value.getType().getBaseType() == ValueType.BaseType.INT64 ? String.format("%sL", value.getSingle()) : value.getSingle();
 
@@ -396,7 +254,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 			case FLOAT64:
 			case DECIMAL:
 				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
-					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
+					throw new ExecutorException(String.format("Value %s is not a valid numeric literal.", value));
 
 				switch (value.getType().getBaseType()) {
 					case FLOAT32:
@@ -411,19 +269,11 @@ public class CSharpExecutor extends CodeExecutorBase {
 				}
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", value.getType()));
+				throw new ExecutorException(String.format("Value type %s is not supported.", value.getType()));
 		}
 	}
 
-	/**
-	 * Gets the C# name of an arbitrary type.
-	 *
-	 * @param type type to get name of
-	 *
-	 * @return C# name of type
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getTypeName(ValueType type) throws ExecutorException {
 
 		switch (type.getBaseType()) {
@@ -467,7 +317,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 				return "decimal";
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(String.format("Value type %s is not supported.", type));
 		}
 	}
 }

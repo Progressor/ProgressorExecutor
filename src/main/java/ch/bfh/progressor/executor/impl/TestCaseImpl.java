@@ -66,7 +66,7 @@ public class TestCaseImpl implements TestCase {
 			try {
 				FunctionSignature function = _functions.stream().filter(f -> f.getName().equals(testCase.getFunctionName())).findAny().get();
 				if (function.getInputTypes().size() != testCase.getInputValuesSize() || function.getOutputTypes().size() != testCase.getExpectedOutputValuesSize())
-					throw new ExecutorException(true, "Could not find a matching function signature.");
+					throw new ExecutorException("Could not find a matching function signature.");
 
 				List<Value> inputValues = new ArrayList<>(testCase.getInputValuesSize()), expectedOutputValues = new ArrayList<>(testCase.getExpectedOutputValuesSize());
 				for (int i = 0; i < testCase.getInputValuesSize(); i++)
@@ -76,7 +76,7 @@ public class TestCaseImpl implements TestCase {
 				result.add(new TestCaseImpl(function, inputValues, expectedOutputValues));
 
 			} catch (NoSuchElementException ex) {
-				throw new ExecutorException(true, "Could not find a matching function.", ex);
+				throw new ExecutorException("Could not find a matching function.", ex);
 			}
 
 		return result;

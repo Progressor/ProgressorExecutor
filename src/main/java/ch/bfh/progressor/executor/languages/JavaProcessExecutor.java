@@ -1,14 +1,8 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.FunctionSignature;
@@ -17,8 +11,6 @@ import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
-import ch.bfh.progressor.executor.impl.PerformanceIndicatorsImpl;
-import ch.bfh.progressor.executor.impl.ResultImpl;
 
 /**
  * Code execution engine for Java code. <br>
@@ -59,152 +51,49 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	}
 
 	@Override
-	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
+	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
-		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 		final File codeFile = new File(codeDirectory, String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME));
 
-		String containerID = null;
+		//*********************
+		//*** GENERATE CODE ***
+		//*********************
+		this.generateCodeFile(codeFile, codeFragment, testCases);
 
-		List<Result> results = new ArrayList<>(testCases.size());
+		//********************
+		//*** COMPILE CODE ***
+		//********************
 		try {
-			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
-				throw new ExecutorException(true, "Could not create a temporary directory for the user code.");
-
-			//*********************
-			//*** GENERATE CODE ***
-			//*********************
-			this.generateCodeFile(codeDirectory, codeFragment, testCases);
-
-			//********************
-			//*** COMPILE CODE ***
-			//********************
-			String[] javacArguments = { "javac", codeFile.getName() };
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
-
-				Process dockerProcess = this.startDockerProcess(codeDirectory);
-				if (dockerProcess.waitFor(JavaProcessExecutor.CONTAINER_START_TIMEOUT, TimeUnit.SECONDS)) {
-					if (dockerProcess.exitValue() != 0)
-						throw new ExecutorException(true, "Could not start dockercontainer.", this.readConsole(dockerProcess));
-				} else {
-					dockerProcess.destroyForcibly(); //destroy()
-					throw new ExecutorException(true, "Could not start dockercontainer in time.");
-				}
-				containerID = this.getContainerID(dockerProcess);
-				dockerProcess.destroy();
-				javacArguments = this.getDockerCommandLine(containerID, javacArguments);
-			}
-
-			long javacStart = System.nanoTime();
-			Process javacProcess = new ProcessBuilder(javacArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			if (javacProcess.waitFor(JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (javacProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not compile the user code.", this.readConsole(javacProcess));
-			} else {
-				javacProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException(true, "Could not compile the user code in time.");
-			}
-			long javacEnd = System.nanoTime();
-
-			//********************
-			//*** EXECUTE CODE ***
-			//********************
-			String[] javaArguments = { "java", JavaProcessExecutor.CODE_CLASS_NAME };
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER)
-				this.getDockerCommandLine(containerID, javaArguments);
-
-			long javaStart = System.nanoTime();
-			Process javaProcess = new ProcessBuilder(javaArguments).directory(codeDirectory).redirectErrorStream(true).start();
-			if (javaProcess.waitFor(JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				if (javaProcess.exitValue() != 0)
-					throw new ExecutorException(true, "Could not execute the user code.", this.readConsole(javaProcess));
-
-			} else {
-				javaProcess.destroyForcibly(); //destroy()
-				throw new ExecutorException(true, "Could not execute the user code in time.");
-			}
-			long javaEnd = System.nanoTime();
-
-			//****************************
-			//*** TEST CASE EVALUATION ***
-			//****************************
-			try (Scanner outStm = new Scanner(this.getSafeReader(javaProcess.getInputStream())).useDelimiter(String.format("%n%n"))) {
-				while (outStm.hasNext()) { //create a scanner to read the console output case by case
-					String res = outStm.next(); //get output lines of next test case
-					results.add(new ResultImpl(res.startsWith("OK"), false,
-																		 res.substring(3),
-																		 new PerformanceIndicatorsImpl((javaEnd - javaStart) / 1e6)));
-				}
-			}
-			if (CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER) {
-				Process dockerStopProcess = this.stopDockerProcess(containerID);
-				if (dockerStopProcess.waitFor(JavaProcessExecutor.CONTAINER_STOP_TIMEOUT, TimeUnit.SECONDS)) {
-					if (dockerStopProcess.exitValue() != 0)
-						throw new ExecutorException(true, "Could not stop dockercontainer.", this.readConsole(dockerStopProcess));
-				} else {
-					javacProcess.destroyForcibly(); //destroy()
-					throw new ExecutorException(true, "Could not stop dockercontainer in time");
-				}
-			}
-			//**************************
-			//*** EXCEPTION HANDLING ***
-			//**************************
-		} catch (Exception ex) {
-			ExecutorException exEx;
-			Result result;
-			if (ex instanceof ExecutorException && (exEx = (ExecutorException)ex).getOutput() != null)
-				result = new ResultImpl(false, exEx.isFatal(), String.format("%s:%n%s", ex.getMessage(), exEx.getOutput()), null);
-			else
-				result = new ResultImpl(false, false, String.format("%s:%n%s", "Could not invoke the user code.", ex), null);
-
-			while (results.size() < testCases.size())
-				results.add(result);
-
-		} finally {
-			if (codeDirectory.exists())
-				this.tryDeleteRecursive(codeDirectory);
+			this.executeCommand(codeDirectory, JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, "javac", codeFile.getName());
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not compile the user code.", ex);
 		}
 
+		//********************
+		//*** EXECUTE CODE ***
+		//********************
+		long executionStart = System.nanoTime();
+
+		Process executionProcess;
+		try {
+			executionProcess = this.executeCommand(codeDirectory, JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, "java", JavaProcessExecutor.CODE_CLASS_NAME);
+
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not execute the user code.", ex);
+		}
+
+		long executionEnd = System.nanoTime();
+
+		//****************************
+		//*** TEST CASE EVALUATION ***
+		//****************************
+		List<Result> results = new ArrayList<>(testCases.size());
+		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
+			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
 		return results;
 	}
 
-	/**
-	 * Generates the Java code file with the user's code fragment.
-	 *
-	 * @param directory    directory to create code file in
-	 * @param codeFragment code fragment to write into the file
-	 * @param testCases    test cases to generate tests for
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
-	protected void generateCodeFile(File directory, String codeFragment, List<TestCase> testCases) throws ExecutorException {
-
-		try {
-			StringBuilder code = this.getTemplate(); //read the template
-
-			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
-
-			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
-
-			Files.write(Paths.get(directory.getPath(), String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME)), //create a Java source file in the temporary directory
-									code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
-
-		} catch (ExecutorException | IOException ex) {
-			throw new ExecutorException(true, "Could not generate the code file.", ex);
-		}
-	}
-
-	/**
-	 * Generates the Java function signatures.
-	 *
-	 * @param functions functions to generate signatures for
-	 *
-	 * @return Java function signatures
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -212,13 +101,13 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 			if (function.getOutputTypes().size() != 1)
-				throw new ExecutorException(true, "Exactly one output type has to be defined for a Java sample.");
+				throw new ExecutorException("Exactly one output type has to be defined for a Java sample.");
 
-			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
+			sb.append("public ").append(this.getPrimitiveTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypes().size(); i++) {
 				if (i > 0) sb.append(", ");
-				sb.append(this.getTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
+				sb.append(this.getPrimitiveTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
 			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
@@ -227,15 +116,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	/**
-	 * Generates the Java test case signatures.
-	 *
-	 * @param testCases test cases to generate signatures for
-	 *
-	 * @return Java test case signatures
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
 		final String newLine = String.format("%n");
@@ -243,12 +124,12 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
-				throw new ExecutorException(true, "Exactly one output value has to be defined for a Java sample.");
+				throw new ExecutorException("Exactly one output value has to be defined for a Java sample.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
 			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunction().getName()).append('(');
+			sb.append(this.getPrimitiveTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunction().getName()).append('(');
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
@@ -293,15 +174,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		return sb.toString();
 	}
 
-	/**
-	 * Gets the Java literal for an arbitrary value.
-	 *
-	 * @param value value to get literal for
-	 *
-	 * @return Java literal for value
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
+	@Override
 	protected String getValueLiteral(Value value) throws ExecutorException {
 
 		switch (value.getType().getBaseType()) { //switch over basic types
@@ -313,11 +186,11 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 				StringBuilder sb = new StringBuilder();
 				if (isArr) //begin array initialisation syntax
-					sb.append("new ").append(this.getTypeName(value.getType())).append(" { ");
+					sb.append("new ").append(this.getPrimitiveTypeName(value.getType())).append(" { ");
 				else if (isLst) //begin list initialisation using helper method
-					sb.append("Arrays.<").append(this.getClassName(value.getType().getGenericParameters().get(0))).append(">asList(");
+					sb.append("Arrays.<").append(this.getTypeName(value.getType().getGenericParameters().get(0))).append(">asList(");
 				else {//begin set initialisation using constructor and helper method
-					String elmCls = this.getClassName(value.getType().getGenericParameters().get(0));
+					String elmCls = this.getTypeName(value.getType().getGenericParameters().get(0));
 					sb.append("new HashSet<").append(elmCls).append(">(Arrays.<").append(elmCls).append(">asList(");
 				}
 
@@ -333,13 +206,13 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 			case MAP:
 				sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
-				sb.append("new HashMap<").append(this.getClassName(value.getType().getGenericParameters().get(0))).append(", ");
-				sb.append(this.getClassName(value.getType().getGenericParameters().get(1))).append(">() {{ ");
+				sb.append("new HashMap<").append(this.getTypeName(value.getType().getGenericParameters().get(0))).append(", ");
+				sb.append(this.getTypeName(value.getType().getGenericParameters().get(1))).append(">() {{ ");
 
 				if (!value.get2DCollection().isEmpty())
 					for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
 						if (element.size() != 2) //validate key/value pair
-							throw new ExecutorException(true, "Map entries always need a key and a value.");
+							throw new ExecutorException("Map entries always need a key and a value.");
 
 						sb.append("put(").append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append("); ");
 					}
@@ -362,12 +235,12 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			case INT32:
 			case INT64:
 				if (!CodeExecutorBase.NUMERIC_INTEGER_PATTERN.matcher(value.getSingle()).matches())
-					throw new ExecutorException(true, String.format("Value %s is not a valid numeric integer literal.", value));
+					throw new ExecutorException(String.format("Value %s is not a valid numeric integer literal.", value));
 
 				switch (value.getType().getBaseType()) {
 					case INT8:
 					case INT16:
-						return String.format("(%s)%s", this.getTypeName(value.getType()), value.getSingle());
+						return String.format("(%s)%s", this.getPrimitiveTypeName(value.getType()), value.getSingle());
 
 					case INT32:
 						return value.getSingle();
@@ -380,7 +253,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 			case FLOAT64:
 			case DECIMAL:
 				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
-					throw new ExecutorException(true, String.format("Value %s is not a valid numeric literal.", value));
+					throw new ExecutorException(String.format("Value %s is not a valid numeric literal.", value));
 
 				switch (value.getType().getBaseType()) {
 					case FLOAT32:
@@ -394,7 +267,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 				}
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", value.getType()));
+				throw new ExecutorException(String.format("Value type %s is not supported.", value.getType()));
 		}
 	}
 
@@ -407,7 +280,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	 *
 	 * @throws ExecutorException if generation failed
 	 */
-	protected String getTypeName(ValueType type) throws ExecutorException {
+	protected String getPrimitiveTypeName(ValueType type) throws ExecutorException {
 
 		switch (type.getBaseType()) { //switch over primitive types
 			case CHARACTER:
@@ -435,32 +308,24 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 				return "double";
 
 			default:
-				return this.getClassName(type);
+				return this.getTypeName(type);
 		}
 	}
 
-	/**
-	 * Gets the Java class name of an arbitrary type.
-	 *
-	 * @param type type to get name of
-	 *
-	 * @return Java class name of type
-	 *
-	 * @throws ExecutorException if generation failed
-	 */
-	protected String getClassName(ValueType type) throws ExecutorException {
+	@Override
+	protected String getTypeName(ValueType type) throws ExecutorException {
 
 		switch (type.getBaseType()) {
 			case ARRAY:
 			case LIST:
 			case SET:
 				if (type.getBaseType() == ValueType.BaseType.ARRAY)
-					return String.format("%s[]", this.getTypeName(type.getGenericParameters().get(0))); //return class name
+					return String.format("%s[]", this.getPrimitiveTypeName(type.getGenericParameters().get(0))); //return class name
 				else
-					return String.format(type.getBaseType() == ValueType.BaseType.LIST ? "List<%s>" : "Set<%s>", this.getClassName(type.getGenericParameters().get(0))); //return class name
+					return String.format(type.getBaseType() == ValueType.BaseType.LIST ? "List<%s>" : "Set<%s>", this.getTypeName(type.getGenericParameters().get(0))); //return class name
 
 			case MAP:
-				return String.format("Map<%s, %s>", this.getClassName(type.getGenericParameters().get(0)), this.getClassName(type.getGenericParameters().get(1))); //return class name
+				return String.format("Map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0)), this.getTypeName(type.getGenericParameters().get(1))); //return class name
 
 			case STRING:
 				return "String";
@@ -493,7 +358,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 				return "BigDecimal";
 
 			default:
-				throw new ExecutorException(true, String.format("Value type %s is not supported.", type));
+				throw new ExecutorException(String.format("Value type %s is not supported.", type));
 		}
 	}
 }

@@ -41,7 +41,7 @@ public class ValueTypeImpl implements ValueType {
 		ValueType result = ValueTypeImpl.parse(type, index);
 
 		if (index.get() != type.length())
-			throw new ExecutorException(true, String.format("Expected end of type '%s' at %d.", type, index.get()));
+			throw new ExecutorException(String.format("Expected end of type '%s' at %d.", type, index.get()));
 
 		return result;
 	}
@@ -50,7 +50,7 @@ public class ValueTypeImpl implements ValueType {
 
 		ValueType.BaseType type = Arrays.stream(ValueType.BaseType.values()).filter(t -> input.length() >= index.get() + t.getName().length() && input.substring(index.get(), index.get() + t.getName().length()).equals(t.getName())).findAny().orElse(null);
 		if (type == null)
-			throw new ExecutorException(true, String.format("Unknown type in '%s' at %d.", input, index.get()));
+			throw new ExecutorException(String.format("Unknown type in '%s' at %d.", input, index.get()));
 		index.addAndGet(type.getName().length());
 
 		List<ValueType> genericTypes = new ArrayList<>();
@@ -63,12 +63,12 @@ public class ValueTypeImpl implements ValueType {
 			while ((matcher = ValueTypeImpl.ELEMENT_SEPARATOR_PATTERN.matcher(input.substring(index.get()))).lookingAt());
 
 			if (!(matcher = ValueTypeImpl.DELIMITER_CLOSE_PATTERN.matcher(input.substring(index.get()))).lookingAt())
-				throw new ExecutorException(true, String.format("Missing closing pointy bracket in '%s' at %d.", input, index.get()));
+				throw new ExecutorException(String.format("Missing closing pointy bracket in '%s' at %d.", input, index.get()));
 			index.addAndGet(matcher.group().length());
 		}
 
 		if (genericTypes.size() != type.getDimensions())
-			throw new ExecutorException(true, String.format("Mismatch in number of generic types for %s. Found: %d, expected: %d.", type, genericTypes.size(), type.getDimensions()));
+			throw new ExecutorException(String.format("Mismatch in number of generic types for %s. Found: %d, expected: %d.", type, genericTypes.size(), type.getDimensions()));
 
 		return new ValueTypeImpl(type, genericTypes);
 	}

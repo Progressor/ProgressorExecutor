@@ -39,7 +39,7 @@ public abstract class ValueImpl implements Value {
 		Value result = ValueImpl.parse(type, value, index);
 
 		if (index.get() != value.length())
-			throw new ExecutorException(true, String.format("Expected end of value '%s' at %d.", value, index.get()));
+			throw new ExecutorException(String.format("Expected end of value '%s' at %d.", value, index.get()));
 
 		return result;
 	}
@@ -50,13 +50,13 @@ public abstract class ValueImpl implements Value {
 			case 0:
 				Matcher matcher = Pattern.compile(String.format(delimiters.length > 0 ? ".*?(?=(%s))" : ".*", String.join(")|(", Arrays.stream(delimiters).map(Pattern::pattern).collect(Collectors.toList())))).matcher(input.substring(index.get()));
 				if (!matcher.lookingAt())
-					throw new ExecutorException(true, String.format("Error in value '%s' at %d.", input, index.get()));
+					throw new ExecutorException(String.format("Error in value '%s' at %d.", input, index.get()));
 				index.addAndGet(matcher.group().length());
 				return new ValueImpl.Single(type, matcher.group());
 
 			case 1:
 				if (!(matcher = ValueImpl.DELIMITER_OPEN_PATTERN.matcher(input.substring(index.get()))).lookingAt())
-					throw new ExecutorException(true, String.format("Missing opening curly bracket in '%s' at %d.", input, index.get()));
+					throw new ExecutorException(String.format("Missing opening curly bracket in '%s' at %d.", input, index.get()));
 				index.addAndGet(matcher.group().length());
 
 				List<Value> collection = new ArrayList<>();
@@ -67,7 +67,7 @@ public abstract class ValueImpl implements Value {
 					} else if (i > 0 && (matcher = ValueImpl.SEPARATOR_PATTERNS.get(0).matcher(input.substring(index.get()))).lookingAt())
 						index.addAndGet(matcher.group().length());
 					else if (i > 0)
-						throw new ExecutorException(true, String.format("Missing element separator in '%s' at %d.", input, index.get()));
+						throw new ExecutorException(String.format("Missing element separator in '%s' at %d.", input, index.get()));
 
 					collection.add(ValueImpl.parse(type.getGenericParameters().get(0), input, index, ValueImpl.DELIMITER_CLOSE_PATTERN, ValueImpl.SEPARATOR_PATTERNS.get(0)));
 				}
@@ -75,7 +75,7 @@ public abstract class ValueImpl implements Value {
 
 			case 2:
 				if (!(matcher = ValueImpl.DELIMITER_OPEN_PATTERN.matcher(input.substring(index.get()))).lookingAt())
-					throw new ExecutorException(true, String.format("Missing opening curly bracket in '%s' at %d.", input, index.get()));
+					throw new ExecutorException(String.format("Missing opening curly bracket in '%s' at %d.", input, index.get()));
 				index.addAndGet(matcher.group().length());
 
 				List<List<Value>> collection2D = new ArrayList<>();
@@ -86,7 +86,7 @@ public abstract class ValueImpl implements Value {
 					} else if (i > 0 && (matcher = ValueImpl.SEPARATOR_PATTERNS.get(0).matcher(input.substring(index.get()))).lookingAt())
 						index.addAndGet(matcher.group().length());
 					else if (i > 0)
-						throw new ExecutorException(true, String.format("Missing element separator in '%s' at %d.", input, index.get()));
+						throw new ExecutorException(String.format("Missing element separator in '%s' at %d.", input, index.get()));
 
 					collection = new ArrayList<>();
 					for (int j = 0; true; j++) {
@@ -96,7 +96,7 @@ public abstract class ValueImpl implements Value {
 						} else if (j > 0 && (matcher = ValueImpl.SEPARATOR_PATTERNS.get(1).matcher(input.substring(index.get()))).lookingAt())
 							index.addAndGet(matcher.group().length());
 						else if (j > 0)
-							throw new ExecutorException(true, String.format("Missing sub-element separator in '%s' at %d.", input, index.get()));
+							throw new ExecutorException(String.format("Missing sub-element separator in '%s' at %d.", input, index.get()));
 
 						collection.add(ValueImpl.parse(type.getGenericParameters().get(j), input, index, ValueImpl.DELIMITER_CLOSE_PATTERN, ValueImpl.SEPARATOR_PATTERNS.get(0), ValueImpl.SEPARATOR_PATTERNS.get(1)));
 					}
@@ -105,7 +105,7 @@ public abstract class ValueImpl implements Value {
 				return new ValueImpl.Collection2D(type, collection2D);
 
 			default:
-				throw new ExecutorException(true, String.format("Unsupported number of dimensions: %d.", type.getBaseType().getDimensions()));
+				throw new ExecutorException(String.format("Unsupported number of dimensions: %d.", type.getBaseType().getDimensions()));
 		}
 	}
 

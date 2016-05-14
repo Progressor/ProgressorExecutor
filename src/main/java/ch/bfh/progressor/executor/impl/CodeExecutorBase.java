@@ -6,14 +6,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import org.apache.commons.io.input.BOMInputStream;
 import org.json.JSONArray;
@@ -23,7 +27,11 @@ import org.json.JSONTokener;
 import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
+import ch.bfh.progressor.executor.api.FunctionSignature;
 import ch.bfh.progressor.executor.api.Result;
+import ch.bfh.progressor.executor.api.TestCase;
+import ch.bfh.progressor.executor.api.Value;
+import ch.bfh.progressor.executor.api.ValueType;
 
 /**
  * Base class with helper methods for code execution engines.
@@ -65,12 +73,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Maximum time to use for for the Dockercontainer of the user to start (in seconds).
 	 */
-	public static final int CONTAINER_START_TIMEOUT = 3;
+	public static final int DOCKER_CONTAINER_START_TIMEOUT = 3;
 
 	/**
 	 * Maximum time to use for the Dockercontainer of the user to stop (in seconds).
 	 */
-	public static final int CONTAINER_STOP_TIMEOUT = 3;
+	public static final int DOCKER_CONTAINER_STOP_TIMEOUT = 3;
 
 	/**
 	 * Regular expression pattern for numeric integer literals.
@@ -88,12 +96,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
+	private static final Logger LOGGER = Logger.getLogger(CodeExecutorBase.class.getName());
+
 	private List<String> blacklist;
 	private StringBuilder template;
+	private String dockerContainerId;
 
-	//********************************
-	//*** INTERFACE IMPLEMENTATION ***
-	//********************************
+	//***************************
+	//*** CODE EXECUTOR LOGIC ***
+	//***************************
 
 	/**
 	 * Gets the path to the blacklist file.
@@ -127,7 +138,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				}
 
 			} catch (IOException | JSONException | ClassCastException ex) {
-				throw new ExecutorException(true, "Could not read the blacklist.", ex);
+				throw new ExecutorException("Could not read the blacklist.", ex);
 			}
 
 		return Collections.unmodifiableList(this.blacklist);
@@ -161,24 +172,148 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 					this.template.append(line).append(newLine);
 
 			} catch (IOException ex) {
-				throw new ExecutorException(true, "Could not read the code template.", ex);
+				throw new ExecutorException("Could not read the code template.", ex);
 			}
 
 		return new StringBuilder(this.template); //return a new string builder every time
 	}
 
-	//**********************
-	//*** HELPER METHODS ***
-	//**********************
+	@Override
+	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
+		return this.getFunctionSignatures(functions);
+	}
+
+	@Override
+	public List<Result> execute(String codeFragment, List<TestCase> testCases) {
+
+		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
+
+		boolean dockerStarted = false;
+		try {
+			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
+				throw new ExecutorException("Could not create a temporary directory for the user code.");
+
+			if (this.shouldUseDocker())
+				try {
+					this.startDocker(codeDirectory);
+				} catch (Exception ex) {
+					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not start Docker.", ex);
+				}
+
+			return this.executeTestCases(codeFragment, testCases, codeDirectory);
+
+		} catch (Exception ex) {
+			String newLine = String.format("%n");
+
+			StringBuilder sb = new StringBuilder("Could not invoke the user code.").append(newLine);
+			Throwable throwable = ex;
+			do sb.append(throwable).append(newLine);
+			while ((throwable = throwable.getCause()) != null);
+
+			return Collections.nCopies(testCases.size(), this.getResult(false, true, sb.toString()));
+
+		} finally {
+			if (this.willUseDocker())
+				try {
+					this.stopDocker(codeDirectory);
+				} catch (Exception ex) {
+					CodeExecutorBase.LOGGER.log(Level.WARNING, "Could not stop Docker.", ex);
+				}
+
+			if (codeDirectory.exists())
+				this.tryDeleteRecursive(codeDirectory);
+		}
+	}
 
 	/**
-	 * Concatenate several arrays.
+	 * Executes a provided code fragment.
 	 *
-	 * @param arrays arrays to concatenate
+	 * @param codeFragment  code fragment to execute
+	 * @param testCases     test cases to execute
+	 * @param codeDirectory directory to place code file in
 	 *
-	 * @return a concatenated array
+	 * @return a {@link List} containing the {@link Result} for each test case
+	 *
+	 * @throws ExecutorException if the execution failed
 	 */
-	protected <T> T[] concat(T[]... arrays) {
+	protected abstract List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException;
+
+	/**
+	 * Generates the code file with the user's code fragment.
+	 *
+	 * @param codeFile     file to generate
+	 * @param codeFragment code fragment to write into the file
+	 * @param testCases    test cases to generate tests for
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected void generateCodeFile(File codeFile, String codeFragment, List<TestCase> testCases) throws ExecutorException {
+
+		try {
+			StringBuilder code = this.getTemplate(); //read the template
+
+			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
+			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
+
+			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
+			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
+
+			Files.write(codeFile.toPath(), code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
+
+		} catch (ExecutorException | IOException ex) {
+			throw new ExecutorException("Could not generate the code file.", ex);
+		}
+	}
+
+	/**
+	 * Generates the function signatures.
+	 *
+	 * @param functions functions to generate signatures for
+	 *
+	 * @return function signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected abstract String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException;
+
+	/**
+	 * Generates the test case signatures.
+	 *
+	 * @param testCases test cases to generate signatures for
+	 *
+	 * @return test case signatures
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected abstract String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException;
+
+	/**
+	 * Gets the literal for an arbitrary value.
+	 *
+	 * @param value value to get literal for
+	 *
+	 * @return literal for value
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected abstract String getValueLiteral(Value value) throws ExecutorException;
+
+	/**
+	 * Gets the name of an arbitrary type.
+	 *
+	 * @param type type to get name of
+	 *
+	 * @return name of type
+	 *
+	 * @throws ExecutorException if generation failed
+	 */
+	protected abstract String getTypeName(ValueType type) throws ExecutorException;
+
+	//**********************
+	//*** SYSTEM HELPERS ***
+	//**********************
+
+	private <T> T[] concat(T[]... arrays) {
 
 		if (arrays.length == 0) return (T[])new Object[0];
 
@@ -191,59 +326,95 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return combined;
 	}
 
-	/**
-	 * @param dockerContainerName the ID of the started dockercontainer.
-	 * @param arguments           additional arguments to pass to Docker
-	 *
-	 * @return the combined command line argument
-	 */
-	protected String[] getDockerCommandLine(String dockerContainerName, String... arguments) {
+	private Process executeSystemCommand(File directory, long timeoutSeconds, String... command) throws ExecutorException {
 
-		return this.concat(new String[] { "docker", "exec", dockerContainerName }, arguments);
+		try {
+			Process process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start();
+			if (process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+				if (process.exitValue() == 0)
+					return process;
+				else
+					throw new ExecutorException("Could not successfully execute command.", this.readAll(process));
 
-	}
+			} else {
+				process.destroyForcibly(); //destroy()
+				throw new ExecutorException("Could not execute command in time.");
+			}
 
-	/**
-	 * Gets the Docker command line to run a specific command for scriptlanguages.
-	 * For example Kotlinscript, Python, etc.
-	 *
-	 * @param workingDirectory the working directory for Docker to run in
-	 * @param arguments        additional arguments to pass to Docker
-	 *
-	 * @return the combined command line arguments
-	 */
-	protected String[] getDockerCommandLine(File workingDirectory, String... arguments) {
-		return this.concat(new String[] { "docker", "run", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME }, arguments);
-	}
+		} catch (IOException ex) {
+			throw new ExecutorException("Could not execute command.", ex);
 
-	protected String[] startDockerCommandLine(File workingDirectory) {
-		return this.concat(new String[] { "docker", "run", "-td", "-v", String.format("%s:%sopt", workingDirectory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME });
-	}
-
-	protected String[] dockerContainerStop(String containerID) {
-		return this.concat(new String[] { "docker", "stop", containerID });
-	}
-
-	protected Process startDockerProcess(File codeDirectory) throws IOException {
-		return new ProcessBuilder(startDockerCommandLine(codeDirectory)).redirectErrorStream(true).start();
-	}
-
-	protected Process stopDockerProcess(String containerID) throws IOException {
-		return new ProcessBuilder(this.dockerContainerStop(containerID)).redirectErrorStream(true).start();
-	}
-
-	protected String getContainerID(Process process) {
-		String containerID = null;
-		try (Scanner out = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter(String.format("%n"))) {
-			if (out.hasNext()) containerID = out.next();
-			else throw new ExecutorException (true,"No containerID available. Container not started", this.readConsole(process));
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ExecutorException e) {
-			process.destroyForcibly();
+		} catch (InterruptedException ex) {
+			throw new ExecutorException("Could not wait for command to execute in time.", ex);
 		}
-		return containerID;
 	}
+
+	/**
+	 * Gets whether or not to use Docker.
+	 *
+	 * @return whether or not to use Docker
+	 */
+	private boolean shouldUseDocker() {
+		return CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER;
+	}
+
+	/**
+	 * Gets whether or not to use Docker.
+	 *
+	 * @return whether or not to use Docker
+	 */
+	protected boolean willUseDocker() {
+		return /*this.shouldUseDocker() &&*/ this.dockerContainerId != null;
+	}
+
+	/**
+	 * Starts a Docker container.
+	 *
+	 * @param directory the working directory for Docker to run in
+	 *
+	 * @throws ExecutorException if the command cannot be executed successfully
+	 */
+	private void startDocker(File directory) throws ExecutorException {
+
+		this.dockerContainerId = this.readFirstLine(this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_START_TIMEOUT, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME));
+	}
+
+	/**
+	 * Executes a system command.
+	 *
+	 * @param directory      the working directory for the command
+	 * @param timeoutSeconds time ot wait for the command to execute (in seconds)
+	 * @param command        command to execute
+	 *
+	 * @return the {@link Process} the command was executed in
+	 *
+	 * @throws ExecutorException if the command cannot be executed successfully
+	 */
+	protected Process executeCommand(File directory, long timeoutSeconds, String... command) throws ExecutorException {
+
+		if (this.willUseDocker())
+			return this.executeSystemCommand(directory, timeoutSeconds, this.concat(new String[] { "docker", "exec", this.dockerContainerId }, command));
+		else
+			return this.executeSystemCommand(directory, timeoutSeconds, command);
+	}
+
+	/**
+	 * Starts a Docker container.
+	 *
+	 * @param directory the working directory for Docker to run in
+	 *
+	 * @return the {@link Process} the command was executed in
+	 *
+	 * @throws ExecutorException if the command cannot be executed successfully
+	 */
+	private void stopDocker(File directory) throws ExecutorException {
+
+		this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_STOP_TIMEOUT, "docker", "stop", this.dockerContainerId);
+	}
+
+	//******************************
+	//*** INPUT / OUTPUT HELPERS ***
+	//******************************
 
 	/**
 	 * Recursively deletes a directory and all its sub-directories and files.
@@ -274,10 +445,31 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @throws IOException if no safe reader could be created for the input stream
 	 */
-	protected InputStreamReader getSafeReader(InputStream stream) throws IOException {
+	private InputStreamReader getSafeReader(InputStream stream) throws IOException {
 
 		BOMInputStream bom = new BOMInputStream(stream);
 		return new InputStreamReader(bom, (bom.getBOM() != null ? Charset.forName(bom.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder());
+	}
+
+	/**
+	 * Reads the first line of the console output of a specified process. <br>
+	 * Note that the process' error stream needs to be redirected to read error output as well
+	 * (e.g. using {@link ProcessBuilder#redirectErrorStream(boolean)}).
+	 *
+	 * @param process process to read console output of
+	 *
+	 * @return first line of the console output of a specified process
+	 *
+	 * @throws ExecutorException if the console output could not be read
+	 */
+	protected String readFirstLine(Process process) throws ExecutorException {
+
+		try (BufferedReader reader = new BufferedReader(this.getSafeReader(process.getInputStream()))) {
+			return reader.readLine();
+
+		} catch (IOException ex) {
+			throw new ExecutorException("Could not read console output.", ex);
+		}
 	}
 
 	/**
@@ -291,26 +483,65 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @throws ExecutorException if the console output could not be read
 	 */
-	protected String readConsole(Process process) throws ExecutorException {
+	protected String readAll(Process process) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
-		try (BufferedReader reader = new BufferedReader(this.getSafeReader(process.getInputStream()))) {
-			StringBuilder sb = new StringBuilder();
-
-			String line; //read every line
-			while ((line = reader.readLine()) != null)
-				sb.append(line).append(newLine);
-
-			return sb.toString(); //create concatenated string
+		try (Scanner scanner = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter("\\Z")) {
+			return scanner.next();
 
 		} catch (IOException ex) {
-			throw new ExecutorException(false, "Could not read the console output.", ex);
+			throw new ExecutorException("Could not read console output.", ex);
 		}
 	}
 
 	/**
+	 * Reads the complete console output of a specified process. <br>
+	 * Note that the process' error stream needs to be redirected to read error output as well
+	 * (e.g. using {@link ProcessBuilder#redirectErrorStream(boolean)}).
+	 *
+	 * @param process   process to read console output of
+	 * @param delimiter delimiter to use to split console output
+	 *
+	 * @return {@link List} of delimited parts of the console output read from the specified process
+	 *
+	 * @throws ExecutorException if the console output could not be read
+	 */
+	protected List<String> readDelimited(Process process, String delimiter) throws ExecutorException {
+
+		List<String> parts = new ArrayList<>();
+		try (Scanner scanner = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter(delimiter)) {
+			while (scanner.hasNext())
+				parts.add(scanner.next());
+
+		} catch (IOException ex) {
+			throw new ExecutorException("Could not read console output.", ex);
+		}
+
+		return parts;
+	}
+
+	//*****************************
+	//*** MISCELLANEOUS HELPERS ***
+	//*****************************
+
+	/**
 	 * Constructs a result object.
+	 *
+	 * @param success whether or not the execution was a success
+	 * @param fatal   whether or not a fatal error occurred
+	 * @param result  the actual result
+	 *
+	 * @return a result object with the specified information
+	 */
+	protected Result getResult(boolean success, boolean fatal, String result) {
+
+		if (success && fatal)
+			throw new IllegalArgumentException("Cannot be a fatal success.");
+
+		return new ResultImpl(success, fatal, result, null);
+	}
+
+	/**
+	 * Constructs a result object including performance indicators.
 	 *
 	 * @param success             whether or not the execution was a success
 	 * @param fatal               whether or not a fatal error occurred
@@ -324,9 +555,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		if (success && fatal)
 			throw new IllegalArgumentException("Cannot be a fatal success.");
 
-		return new ResultImpl(success, fatal, result, new PerformanceIndicatorsImpl(runtimeMilliseconds));
+		return new ResultImpl(success, fatal, result,
+													new PerformanceIndicatorsImpl(runtimeMilliseconds));
 	}
-
 }
-
-

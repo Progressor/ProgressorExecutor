@@ -2,6 +2,7 @@ package ch.bfh.progressor.executor;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,13 +131,13 @@ public final class Executor {
 			if (!thread.isAlive())
 				Executor.LOGGER.info("Server stopped.");
 			else
-				Executor.LOGGER.log(Level.SEVERE, "Could not stop server. Forcefully abort application!");
+				Executor.LOGGER.log(Level.WARNING, "Could not stop server. Forcefully abort application!");
 
 		} catch (TTransportException ex) {
 			Executor.LOGGER.log(Level.SEVERE, "Could not successfully start server.", ex);
 
 		} catch (InterruptedException ex) {
-			Executor.LOGGER.log(Level.SEVERE, "Could not wait for server to stop.", ex);
+			Executor.LOGGER.log(Level.WARNING, "Could not wait for server to stop.", ex);
 		}
 	}
 
@@ -161,7 +162,7 @@ public final class Executor {
 					}
 
 				if (!this.codeExecutors.containsKey(language)) //if no executor found, throw exception
-					throw new ExecutorException(true, String.format("Could not find an executor for language '%s'.", language));
+					throw new ExecutorException(String.format("Could not find an executor for language '%s'.", language));
 			}
 
 			return this.codeExecutors.get(language); //return the instance
@@ -218,17 +219,15 @@ public final class Executor {
 
 				List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
 				if (!blacklist.isEmpty()) { //validate fragment against blacklist
-					Result result = new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null);
-					results = new ArrayList<>(testCases.size());
-					while (results.size() < testCases.size())
-						results.add(result);
+					results = Collections.nCopies(testCases.size(),
+																				new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null));
 
 				} else {
 					results = codeExecutor.execute(fragment, TestCaseImpl.convertFromThrift(functions, testCases)); //delegate execution call
 
-					Result result = new ResultImpl(false, true, "Could not read execution result for test case.", null);
-					while (results.size() < testCases.size())
-						results.add(result);
+					if (results.size() < testCases.size())
+						results.addAll(Collections.nCopies(testCases.size() - results.size(),
+																							 new ResultImpl(false, true, "Could not read execution result for test case.", null)));
 				}
 
 				return ResultImpl.convertToThrift(results);
