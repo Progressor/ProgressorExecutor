@@ -97,7 +97,7 @@ public class PythonExecutor extends CodeExecutorBase {
 				sb.append(function.getInputNames().get(i));
 			}
 
-			sb.append(") :").append(newLine).append('\t').append(newLine);
+			sb.append("):").append(newLine).append('\t').append(newLine);
 		}
 
 		return sb.toString();
@@ -157,7 +157,7 @@ public class PythonExecutor extends CodeExecutorBase {
 			case LIST:
 			case SET:
 				StringBuilder sb = new StringBuilder();
-				sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? "set([" : "[");
+				sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? "{ " : "[ ");
 				boolean first = true; //generate collection elements
 				if (!value.getCollection().isEmpty())
 					for (Value element : value.getCollection()) {
@@ -166,10 +166,10 @@ public class PythonExecutor extends CodeExecutorBase {
 						sb.append(this.getValueLiteral(element));
 					}
 
-				return sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? "])" : "]").toString(); //finish collection initialisation and return literal
+				return sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? " }" : " ]").toString(); //finish collection initialisation and return literal
 
 			case MAP:
-				sb = new StringBuilder("{"); //begin map initialisation
+				sb = new StringBuilder("{ "); //begin map initialisation
 
 				first = true; //generate key/value pairs
 				if (!value.get2DCollection().isEmpty())
@@ -182,7 +182,7 @@ public class PythonExecutor extends CodeExecutorBase {
 						sb.append(this.getValueLiteral(element.get(0))).append(": ").append(this.getValueLiteral(element.get(1)));
 					}
 
-				return sb.append('}').toString(); //finish initialisation and return literal
+				return sb.append(" }").toString(); //finish initialisation and return literal
 
 			case STRING:
 			case CHARACTER:

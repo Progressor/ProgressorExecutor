@@ -212,10 +212,10 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 
 						if (first) first = false;
 						else sb.append(", ");
-						sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append("}");
+						sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append('}');
 					}
 
-				return sb.append('}').toString(); //finish initialisation and return literal
+				return sb.append(" }").toString(); //finish initialisation and return literal
 
 			case STRING:
 			case CHARACTER:
