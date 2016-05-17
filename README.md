@@ -35,7 +35,7 @@ To use the languages, the following compilers (and other tools) need to be insta
 2. *C/C++*: `g++`
 3. *C#*: `csc` (Windows) or `msc` (Linux)
 4. *Kotlin*: `kotlinc` and `kotlin`
-5. *Python*: `python`
+5. *Python*: `python` (Windows)
 
 ### Java
 

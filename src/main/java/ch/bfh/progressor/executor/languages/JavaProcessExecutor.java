@@ -46,11 +46,6 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	}
 
 	@Override
-	public String getFragment(List<FunctionSignature> functions) throws ExecutorException {
-		return this.getFunctionSignatures(functions);
-	}
-
-	@Override
 	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
 		final File codeFile = new File(codeDirectory, String.format("%s.java", JavaProcessExecutor.CODE_CLASS_NAME));

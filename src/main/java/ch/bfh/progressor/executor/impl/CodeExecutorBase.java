@@ -364,7 +364,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return whether or not to use Docker
 	 */
 	protected boolean willUseDocker() {
-		return /*this.shouldUseDocker() &&*/ this.dockerContainerId != null;
+		return this.shouldUseDocker() && this.dockerContainerId != null;
 	}
 
 	/**
@@ -376,7 +376,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	private void startDocker(File directory) throws ExecutorException {
 
-		this.dockerContainerId = this.readFirstLine(this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_START_TIMEOUT, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME));
+		this.dockerContainerId = this.readFirstLine(this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_START_TIMEOUT,
+																																					"docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME));
 	}
 
 	/**
@@ -392,10 +393,9 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected Process executeCommand(File directory, long timeoutSeconds, String... command) throws ExecutorException {
 
-		if (this.willUseDocker())
-			return this.executeSystemCommand(directory, timeoutSeconds, this.concat(new String[] { "docker", "exec", this.dockerContainerId }, command));
-		else
-			return this.executeSystemCommand(directory, timeoutSeconds, command);
+		return this.executeSystemCommand(directory, timeoutSeconds, this.willUseDocker()
+																																? this.concat(new String[] { "docker", "exec", this.dockerContainerId }, command)
+																																: command);
 	}
 
 	/**
@@ -486,11 +486,14 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected String readAll(Process process) throws ExecutorException {
 
 		try (Scanner scanner = new Scanner(this.getSafeReader(process.getInputStream())).useDelimiter("\\Z")) {
-			return scanner.next();
+			if (scanner.hasNext())
+				return scanner.next();
 
 		} catch (IOException ex) {
 			throw new ExecutorException("Could not read console output.", ex);
 		}
+
+		return null;
 	}
 
 	/**

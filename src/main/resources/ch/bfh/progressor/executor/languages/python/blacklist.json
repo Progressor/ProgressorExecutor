@@ -1,1 +1,55 @@
-[]
+[
+	{
+		"group": "keywords",
+		"elements": [
+			{"keyword": "assert"},
+			{"keyword": "class"},
+			{"keyword": "except"},
+			{"keyword": "finally"},
+			{"keyword": "from"},
+			{"keyword": "import"},
+			{"keyword": "None"},
+			{"keyword": "pass"},
+			{"keyword": "raise"},
+			{"keyword": "try"},
+			{"keyword": "with"}
+		]
+	},
+	{
+		"group": "methods",
+		"elements": [
+			{"keyword": "__import__"},
+			{"keyword": "classmethod"},
+			{"keyword": "compile"},
+			{"keyword": "delattr"},
+			{"keyword": "dir"},
+			{"keyword": "eval"},
+			{"keyword": "exec"},
+			{"keyword": "getattr"},
+			{"keyword": "globals"},
+			{"keyword": "hasattr"},
+			{"keyword": "help"},
+			{"keyword": "id"},
+			{"keyword": "input"},
+			{"keyword": "isinstance"},
+			{"keyword": "issubclass"},
+			{"keyword": "locals"},
+			{"keyword": "memoryview"},
+			{"keyword": "object"},
+			{"keyword": "open"},
+			{"keyword": "print"},
+			{"keyword": "property"},
+			{"keyword": "setattr"},
+			{"keyword": "staticmethod"},
+			{"keyword": "super"},
+			{"keyword": "vars"}
+		]
+	},
+	{
+		"group": "constants",
+		"elements": [
+			{"keyword": "quit"},
+			{"keyword": "exit"}
+		]
+	}
+]
