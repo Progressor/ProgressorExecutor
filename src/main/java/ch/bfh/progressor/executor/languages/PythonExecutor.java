@@ -74,7 +74,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		//*** TEST CASE EVALUATION ***
 		//****************************
 		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
+		for (String result : this.readDelimited(executionProcess, "\n\n"))
 			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
 		return results;
 	}
@@ -113,6 +113,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		for (TestCase testCase : testCases) {
 			sb.append(newLine).append("try:").append(newLine); //begin test case block
 
+			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
 			sb.append(indentation).append("ret = ").append(testCase.getFunction().getName()).append('(');
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
@@ -120,12 +121,12 @@ public class PythonExecutor extends CodeExecutorBase {
 			}
 			sb.append(')').append(newLine);
 
-			String comparisonSeparator = " == ";
-			/*
+			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (oType.getBaseType()) {
 				case FLOAT32:
 				case FLOAT64:
-					comparisonSeparator = ".hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
+					comparisonPrefix = "hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
+					comparisonSeparator = ", ";
 					comparisonSuffix = ")";
 					break;
 
@@ -133,14 +134,13 @@ public class PythonExecutor extends CodeExecutorBase {
 					comparisonSeparator = " == "; //compare objects using equality operator
 					break;
 			}
-			*/
 
-			sb.append(indentation).append("suc = ").append("ret").append(comparisonSeparator);
-			sb.append(indentation).append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(newLine);
-			sb.append(indentation).append("print(('%s:%s' % ('OK' if suc else 'ER', ret)))").append(newLine); //print result to the console
+			sb.append(indentation).append("suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
+			sb.append(indentation).append("print('%s:%s' % ('OK' if suc else 'ER', ret))").append(newLine); //print result to the console
 
 			sb.append("except:").append(newLine); //finish test case block / begin exception handling
-			sb.append(indentation).append("print(('ER: %s' % (sys.exc_info()[0])))").append(newLine);
+			sb.append(indentation).append("print('ER:%s (%s)' % sys.exc_info()[0:2])").append(newLine);
 
 			sb.append("finally:").append(newLine); //add empty line
 			sb.append(indentation).append("print()").append(newLine);
@@ -189,7 +189,7 @@ public class PythonExecutor extends CodeExecutorBase {
 				String valueSafe = IntStream.range(0, value.getSingle().length()).map(value.getSingle()::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				return String.format("%1$c%2$s%1$c", '\'', valueSafe);
+				return String.format("u'%s'", valueSafe);
 
 			case BOOLEAN:
 				return "true".equalsIgnoreCase(value.getSingle()) ? "True" : "False";
@@ -204,10 +204,14 @@ public class PythonExecutor extends CodeExecutorBase {
 
 			case FLOAT32:
 			case FLOAT64:
-			case DECIMAL:
 				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
 					throw new ExecutorException(String.format("Value %s is not a valid numeric literal.", value));
 				return value.getSingle();
+
+			case DECIMAL:
+				if (!CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.matcher(value.getSingle()).matches())
+					throw new ExecutorException(String.format("Value %s is not a valid numeric literal.", value));
+				return String.format("Decimal('%s')", value.getSingle());
 
 			default:
 				throw new ExecutorException(String.format("Value type %s is not supported.", value.getType()));
