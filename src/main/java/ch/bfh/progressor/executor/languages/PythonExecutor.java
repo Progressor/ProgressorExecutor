@@ -56,7 +56,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		//********************
 		String[] executionArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
 																	? new String[] { "python", codeFile.getName() }
-																	: new String[] { new File(localDirectory, codeFile.getName()).getPath() };
+																	: new String[] { "python3", codeFile.getName() };
 
 		long executionStart = System.nanoTime();
 
