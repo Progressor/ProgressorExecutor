@@ -112,7 +112,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return default path to the blacklist file
 	 */
 	protected String getBlackListPath() {
-		return String.format("%s%sblacklist.json", this.getLanguage(), File.separator);
+		return String.format("%s/blacklist.json", this.getLanguage());
 	}
 
 	@Override
@@ -150,7 +150,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @return default path to the template file
 	 */
 	protected String getTemplatePath() {
-		return String.format("%s%stemplate.txt", this.getLanguage(), File.separator);
+		return String.format("%s/template.txt", this.getLanguage());
 	}
 
 	/**
