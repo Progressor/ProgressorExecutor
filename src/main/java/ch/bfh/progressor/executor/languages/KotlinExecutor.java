@@ -34,7 +34,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 	/**
 	 * Maximum time to use for for the compilation of the user code (in seconds).
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 10;
+	public static final int COMPILE_TIMEOUT_SECONDS = 13;
 
 	/**
 	 * Maximum time to use for the execution of the user code (in seconds).
