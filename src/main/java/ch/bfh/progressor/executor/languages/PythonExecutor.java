@@ -54,15 +54,12 @@ public class PythonExecutor extends CodeExecutorBase {
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
-		String[] executionArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
-																	? new String[] { "python", codeFile.getName() }
-																	: new String[] { "python3", codeFile.getName() };
-
 		long executionStart = System.nanoTime();
 
 		Process executionProcess;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, PythonExecutor.EXECUTION_TIMEOUT_SECONDS, executionArguments);
+			executionProcess = this.executeCommand(codeDirectory, PythonExecutor.EXECUTION_TIMEOUT_SECONDS,
+																						 CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
