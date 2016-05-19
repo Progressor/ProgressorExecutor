@@ -215,7 +215,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		} finally {
 			if (this.willUseDocker())
 				try {
-					this.stopDocker(codeDirectory);
+					this.stopDocker(codeDirectory); //stop dockerContainer
+					Process deleteContainer = new ProcessBuilder("docker","rm", this.dockerContainerId).redirectErrorStream(true).start(); //delete docker Container
 				} catch (Exception ex) {
 					CodeExecutorBase.LOGGER.log(Level.WARNING, "Could not stop Docker.", ex);
 				}
@@ -410,6 +411,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private void stopDocker(File directory) throws ExecutorException {
 
 		this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_STOP_TIMEOUT, "docker", "stop", this.dockerContainerId);
+
 	}
 
 	//******************************
