@@ -131,7 +131,7 @@ public final class Executor {
 			if (!thread.isAlive())
 				Executor.LOGGER.info("Server stopped.");
 			else
-				Executor.LOGGER.log(Level.WARNING, "Could not stop server. Forcefully abort application!");
+				Executor.LOGGER.log(Level.SEVERE, "Could not stop server. Forcefully abort application!");
 
 		} catch (TTransportException ex) {
 			Executor.LOGGER.log(Level.SEVERE, "Could not successfully start server.", ex);

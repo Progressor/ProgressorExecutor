@@ -71,12 +71,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
 
 	/**
-	 * Maximum time to use for for the Dockercontainer of the user to start (in seconds).
+	 * Maximum time to use for for the Docker container to start (in seconds).
 	 */
 	public static final int DOCKER_CONTAINER_START_TIMEOUT = 3;
 
 	/**
-	 * Maximum time to use for the Dockercontainer of the user to stop (in seconds).
+	 * Maximum time to use for the Docker container to stop (in seconds).
 	 */
 	public static final int DOCKER_CONTAINER_STOP_TIMEOUT = 3;
 
@@ -188,7 +188,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
 
-		boolean dockerStarted = false;
 		try {
 			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
 				throw new ExecutorException("Could not create a temporary directory for the user code.");
@@ -215,14 +214,14 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		} finally {
 			if (this.willUseDocker())
 				try {
-					this.stopDocker(codeDirectory); //stop dockerContainer
-					Process deleteContainer = new ProcessBuilder("docker","rm", this.dockerContainerId).redirectErrorStream(true).start(); //delete docker Container
+					this.stopDocker(codeDirectory);
 				} catch (Exception ex) {
-					CodeExecutorBase.LOGGER.log(Level.WARNING, "Could not stop Docker.", ex);
+					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not stop Docker.", ex);
 				}
 
 			if (codeDirectory.exists())
-				this.tryDeleteRecursive(codeDirectory);
+				if (!this.tryDeleteRecursive(codeDirectory))
+					CodeExecutorBase.LOGGER.warning("Could not delete temporary folder.");
 		}
 	}
 
@@ -369,7 +368,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
-	 * Starts a Docker container.
+	 * Starts a Docker container and remembers its identifier for futher use.
 	 *
 	 * @param directory the working directory for Docker to run in
 	 *
@@ -400,18 +399,17 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
-	 * Starts a Docker container.
+	 * Stops and deletes the Docker container.
 	 *
 	 * @param directory the working directory for Docker to run in
-	 *
-	 * @return the {@link Process} the command was executed in
 	 *
 	 * @throws ExecutorException if the command cannot be executed successfully
 	 */
 	private void stopDocker(File directory) throws ExecutorException {
 
 		this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_STOP_TIMEOUT, "docker", "stop", this.dockerContainerId);
-
+		this.executeSystemCommand(directory, CodeExecutorBase.DOCKER_CONTAINER_STOP_TIMEOUT, "docker", "rm", this.dockerContainerId);
+		this.dockerContainerId = null;
 	}
 
 	//******************************
