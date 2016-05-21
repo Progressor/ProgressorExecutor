@@ -20,6 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.io.ByteOrderMark;
 import org.apache.commons.io.input.BOMInputStream;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -74,13 +75,19 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
+	private static final Logger LOGGER = Logger.getLogger(CodeExecutorBase.class.getName());
+
 	private static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
 	private static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
-
-	private static final Logger LOGGER = Logger.getLogger(CodeExecutorBase.class.getName());
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
+
+	private static final int BUFFER_SIZE = 1024;
+	private static final long MAX_JOIN_TIMEOUT = 125;
+	private static final long MAX_BUFFER_TIMEOUT = CodeExecutorBase.MAX_JOIN_TIMEOUT * 10;
+	private static final long MAX_TOTAL_TIMEOUT = CodeExecutorBase.MAX_JOIN_TIMEOUT * 15;
+	private static final ByteOrderMark[] BYTE_ORDER_MARKS = { ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE };
 
 	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;
@@ -353,11 +360,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private String executeSystemCommand(File directory, String... command) throws ExecutorException {
 
-		final int bufferSize = 1024;
-		final long maxJoinTimeout = 125;
-		final long maxBufferTimeout = maxJoinTimeout * 10;
-		final long maxTotalTimeout = maxJoinTimeout * 15;
-
 		Process process = null;
 		try {
 			process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start();
@@ -365,19 +367,19 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 			long start = System.currentTimeMillis();
 
-			try (BOMInputStream inputStream = new BOMInputStream(process.getInputStream());
+			try (BOMInputStream inputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS);
 					 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, (inputStream.hasBOM() ? Charset.forName(inputStream.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder()))) {
-				char[] charBuffer = new char[bufferSize];
+				char[] charBuffer = new char[CodeExecutorBase.BUFFER_SIZE];
 
 				long currentTimeMillis = System.currentTimeMillis();
-				long maxBufferTimeMillis = currentTimeMillis + maxBufferTimeout;
-				long maxTotalTimeMillis = currentTimeMillis + maxTotalTimeout;
+				long maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT;
+				long maxTotalTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_TOTAL_TIMEOUT;
 				while ((currentTimeMillis = System.currentTimeMillis()) < maxBufferTimeMillis && currentTimeMillis < maxTotalTimeMillis) {
 
 					int readResult = bufferedReader.ready() ? bufferedReader.read(charBuffer, 0, charBuffer.length) : 0;
 					if (readResult > 0) {
 						stringBuilder.append(charBuffer, 0, readResult);
-						maxBufferTimeMillis = currentTimeMillis + maxBufferTimeout;
+						maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT;
 
 					} else if (readResult < 0)
 						break;
@@ -386,7 +388,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 			long duration = System.currentTimeMillis() - start;
 
-			if (process.waitFor(maxJoinTimeout, TimeUnit.MILLISECONDS))
+			if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT, TimeUnit.MILLISECONDS))
 				if (process.exitValue() == 0)
 					return stringBuilder.toString();
 				else
