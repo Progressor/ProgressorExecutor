@@ -3,7 +3,7 @@
 # Based on Ubuntu
 ############################################################
 
-FROM chug/ubuntu14.04x64 
+FROM chug/ubuntu14.04x64
 MAINTAINER Thomas Strub, Marc Touw, Janick Weidmann
 
 # Update the repository sources list
@@ -52,9 +52,9 @@ RUN apt-get -qq -y install curl
 RUN apt-get -y install unzip
 
 #Install Kotlin
-RUN curl -O -J -L https://github.com/JetBrains/kotlin/releases/download/build-1.0.0/kotlin-compiler-1.0.0.zip
+RUN curl -O -J -L https://github.com/JetBrains/kotlin/releases/download/1.0.2/kotlin-compiler-1.0.2.zip
 RUN mkdir -p /kotlin-compiler
-RUN unzip kotlin-compiler-1.0.0.zip -d /kotlin-compiler
+RUN unzip kotlin-compiler-1.0.2.zip -d /kotlin-compiler
 
 ENV KOTLIN_HOME /kotlin-compiler/kotlinc
 ENV PATH $KOTLIN_HOME/bin:$PATH
