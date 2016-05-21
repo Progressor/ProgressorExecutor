@@ -11,6 +11,13 @@ import java.util.Set;
 public interface CodeExecutor {
 
 	/**
+	 * Sets the configuration to use.
+	 *
+	 * @param configuration configuration to use
+	 */
+	void setConfiguration(Configuration configuration);
+
+	/**
 	 * Gets the unique name of the language the executor supports.
 	 *
 	 * @return unique name of the supported language

@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.apache.thrift.TException;
 import ch.bfh.progressor.executor.api.CodeExecutor;
+import ch.bfh.progressor.executor.api.Configuration;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.Result;
@@ -30,10 +31,22 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 
 	private int logId;
 	private final Map<String, CodeExecutor> codeExecutors = new HashMap<>();
+	private final Configuration configuration;
+
+	public ExecutorService(Configuration configuration) {
+
+		this.configuration = configuration;
+	}
 
 	private synchronized int getLogId() {
 
 		return this.logId++;
+	}
+
+	private void addCodeExecutor(CodeExecutor codeExecutor) {
+
+		codeExecutor.setConfiguration(configuration);
+		this.codeExecutors.put(codeExecutor.getLanguage(), codeExecutor);
 	}
 
 	private void loadCodeExecutors() {
@@ -42,7 +55,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 		for (CodeExecutor executor : executors)
 			if (!this.codeExecutors.containsKey(executor.getLanguage())) { //store the unloaded executor instances
 				ExecutorService.LOGGER.fine(String.format("Bulk loaded code executor '%s'.", executor.getClass().getName()));
-				this.codeExecutors.put(executor.getLanguage(), executor);
+				this.addCodeExecutor(executor);
 			}
 	}
 
@@ -52,7 +65,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 		for (CodeExecutor executor : executors)
 			if (language.equals(executor.getLanguage())) { //store the executor instance for the chosen language
 				ExecutorService.LOGGER.fine(String.format("Loaded code executor '%s'.", executor.getClass().getName()));
-				this.codeExecutors.put(language, executor);
+				this.addCodeExecutor(executor);
 				return true;
 			}
 

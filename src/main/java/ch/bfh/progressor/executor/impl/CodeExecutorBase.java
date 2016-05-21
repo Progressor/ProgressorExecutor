@@ -26,6 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import ch.bfh.progressor.executor.api.CodeExecutor;
+import ch.bfh.progressor.executor.api.Configuration;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.FunctionSignature;
@@ -76,18 +77,24 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
 	private static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
-	private static final boolean USE_DOCKER = true;
 	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
 
 	private static final Logger LOGGER = Logger.getLogger(CodeExecutorBase.class.getName());
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
 
+	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;
 	private StringBuilder template;
 
 	//***************************
 	//*** CODE EXECUTOR LOGIC ***
 	//***************************
+
+	@Override
+	public void setConfiguration(Configuration configuration) {
+
+		this.configuration = configuration;
+	}
 
 	@Override
 	public final VersionInformation getVersionInformation() throws ExecutorException {
@@ -401,7 +408,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	private boolean shouldUseDocker() {
-		return CodeExecutorBase.PLATFORM.hasDockerSupport() && CodeExecutorBase.USE_DOCKER;
+		return CodeExecutorBase.PLATFORM.hasDockerSupport() && this.configuration.shouldUseDocker();
 	}
 
 	/**
