@@ -1,8 +1,10 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.FunctionSignature;
@@ -10,6 +12,7 @@ import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 
 /**
@@ -31,18 +34,41 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 	protected static final String CODE_CLASS_NAME = "Program";
 
 	/**
-	 * Maximum time to use for for the compilation of the user code (in seconds).
+	 * Regular expression pattern for extracting the Java compiler version.
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 5;
+	protected static final Pattern JAVAC_VERSION_PATTERN = Pattern.compile("[\\d\\._]+");
 
 	/**
-	 * Maximum time to use for the execution of the user code (in seconds).
+	 * Regular expression pattern for extracting the Java language version.
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
+	protected static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("java\\b.+\\bse\\b.+\\bruntime\\b.+?([\\d\\._]+(-b\\d+|))", Pattern.CASE_INSENSITIVE);
 
 	@Override
 	public String getLanguage() {
 		return JavaProcessExecutor.CODE_LANGUAGE;
+	}
+
+	@Override
+	public VersionInformation fetchVersionInformation() throws ExecutorException {
+
+		String javaVersion = null, javacVersion = null;
+
+		String javaOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "java", "-version");
+		Matcher javaMatcher = JavaProcessExecutor.JAVA_VERSION_PATTERN.matcher(javaOutput);
+		if (javaMatcher.find())
+			javaVersion = javaMatcher.group(1);
+
+		String javacOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "javac", "-version");
+		Matcher javacMatcher = JavaProcessExecutor.JAVAC_VERSION_PATTERN.matcher(javacOutput);
+		if (javacMatcher.find())
+			javacVersion = javacMatcher.group();
+
+		return this.getVersionInformation(javaVersion, "javac", javacVersion);
+	}
+
+	@Override
+	protected String getTemplatePath() {
+		return String.format("%s/template.java", this.getLanguage());
 	}
 
 	@Override
@@ -58,20 +84,24 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		//********************
 		//*** COMPILE CODE ***
 		//********************
+		long compilationStart = System.nanoTime();
+
 		try {
-			this.executeCommand(codeDirectory, JavaProcessExecutor.COMPILE_TIMEOUT_SECONDS, "javac", codeFile.getName());
+			this.executeCommand(codeDirectory, "javac", codeFile.getName());
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
+
+		long compilationEnd = System.nanoTime();
 
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
 		long executionStart = System.nanoTime();
 
-		Process executionProcess;
+		String executionOutput;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, JavaProcessExecutor.EXECUTION_TIMEOUT_SECONDS, "java", JavaProcessExecutor.CODE_CLASS_NAME);
+			executionOutput = this.executeCommand(codeDirectory, "java", JavaProcessExecutor.CODE_CLASS_NAME);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -82,10 +112,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
-			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
-		return results;
+		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

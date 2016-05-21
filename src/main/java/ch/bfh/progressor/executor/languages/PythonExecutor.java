@@ -1,8 +1,10 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
@@ -11,6 +13,7 @@ import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 
 /**
@@ -31,9 +34,9 @@ public class PythonExecutor extends CodeExecutorBase {
 	protected static final String EXECUTABLE_NAME = "main";
 
 	/**
-	 * Maximum time to use for the execution of the user code (in seconds).
+	 * Regular expression pattern for extracting the language/compiler version.
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
+	protected static final Pattern VERSION_PATTERN = Pattern.compile("[\\d\\.]+");
 
 	@Override
 	public String getLanguage() {
@@ -41,9 +44,27 @@ public class PythonExecutor extends CodeExecutorBase {
 	}
 
 	@Override
+	public VersionInformation fetchVersionInformation() throws ExecutorException {
+
+		String compiler = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3";
+		String version = null;
+
+		String versionOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, compiler, "--version");
+		Matcher versionMatcher = PythonExecutor.VERSION_PATTERN.matcher(versionOutput);
+		if (versionMatcher.find())
+			version = versionMatcher.group();
+
+		return this.getVersionInformation(version, compiler, version);
+	}
+
+	@Override
+	protected String getTemplatePath() {
+		return String.format("%s/template.py", this.getLanguage());
+	}
+
+	@Override
 	public List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
-		final File localDirectory = new File(".");
 		final File codeFile = new File(codeDirectory, String.format("%s.py", PythonExecutor.EXECUTABLE_NAME));
 
 		//*********************
@@ -56,10 +77,9 @@ public class PythonExecutor extends CodeExecutorBase {
 		//********************
 		long executionStart = System.nanoTime();
 
-		Process executionProcess;
+		String executionOutput;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, PythonExecutor.EXECUTION_TIMEOUT_SECONDS,
-																						 CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3", codeFile.getName());
+			executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -70,10 +90,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, "\n\n"))
-			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
-		return results;
+		return this.getResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

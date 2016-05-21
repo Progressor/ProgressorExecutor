@@ -8,9 +8,23 @@ package ch.bfh.progressor.executor.api;
 public interface PerformanceIndicators {
 
 	/**
-	 * Gets the runtime in milliseconds.
+	 * Gets the total compilation time in milliseconds.
 	 *
-	 * @return runtime in milliseconds
+	 * @return total compilation time in milliseconds
 	 */
-	double getRuntimeMilliseconds();
+	double getTotalCompileTimeMilliseconds();
+
+	/**
+	 * Gets the total execution time in milliseconds.
+	 *
+	 * @return total execution time in milliseconds
+	 */
+	double getTotalExecutionTimeMilliseconds();
+
+	/**
+	 * Gets the current test case's execution time in milliseconds.
+	 *
+	 * @return current test case's execution time in milliseconds
+	 */
+	double getTestCaseExecutionTimeMilliseconds();
 }

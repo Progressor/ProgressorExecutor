@@ -1,7 +1,7 @@
 package ch.bfh.progressor.executor.api;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Interface to be implemented by all code execution engines.
@@ -18,6 +18,13 @@ public interface CodeExecutor {
 	String getLanguage();
 
 	/**
+	 * Gets the version information for the language the executor supports.
+	 *
+	 * @return version information for the supported language
+	 */
+	VersionInformation getVersionInformation() throws ExecutorException;
+
+	/**
 	 * Gets the fragment(s) for the function signatures in the language the executor supports.
 	 *
 	 * @param functions function signatures to get fragment(s) for
@@ -31,11 +38,11 @@ public interface CodeExecutor {
 	/**
 	 * Gets the blacklist containing the strings not allowed in the code fragment.
 	 *
-	 * @return a {@link Collection} containing the strings not allowed in the code fragment
+	 * @return a {@link Set} containing the strings not allowed in the code fragment
 	 *
 	 * @throws ExecutorException if the blacklist could not be read
 	 */
-	Collection<String> getBlacklist() throws ExecutorException;
+	Set<String> getBlacklist() throws ExecutorException;
 
 	/**
 	 * Executes a provided code fragment.

@@ -21,6 +21,15 @@ const string TypeFloat32 = "float32";
 const string TypeFloat64 = "float64";
 const string TypeDecimal = "decimal";
 
+struct VersionInformation {
+	1: string languageVersion,
+	2: string compilerName,
+	3: string compilerVersion,
+	4: string platformName,
+	5: string platformVersion,
+	6: string platformArchitecture
+}
+
 struct FunctionSignature {
 	1: string name,
 	2: list<string> inputNames,
@@ -43,12 +52,22 @@ struct Result {
 }
 
 struct PerformanceIndicators {
-	1: double runtimeMilliseconds
+	1: double totalCompileTimeMilliseconds,
+	2: double totalExecutionTimeMilliseconds,
+	3: double testCaseExecutionTimeMilliseconds
 }
 
 service ExecutorService {
 
-	list<string> getBlacklist(
+	void ping()
+
+	set<string> getSupportedLanguages()
+
+	VersionInformation getVersionInformation(
+		1: string language
+	)
+
+	set<string> getBlacklist(
 		1: string language
 	)
 

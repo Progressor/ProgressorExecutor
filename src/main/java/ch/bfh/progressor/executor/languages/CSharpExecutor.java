@@ -1,8 +1,10 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
@@ -11,6 +13,7 @@ import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 
 /**
@@ -31,14 +34,19 @@ public class CSharpExecutor extends CodeExecutorBase {
 	protected static final String EXECUTABLE_NAME = "main";
 
 	/**
-	 * Maximum time to use for for the compilation of the user code (in seconds).
+	 * Regular expression pattern for extracting the language version.
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 5;
+	protected static final Pattern LANGUAGE_VERSION_PATTERN = Pattern.compile("[/-]langversion:.+?(((iso-|)\\d+)(,[\\s\\r\\n]+))+", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	/**
-	 * Maximum time to use for the execution of the user code (in seconds).
+	 * Regular expression pattern for extracting the compiler name.
 	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 10;
+	protected static final Pattern COMPILER_NAME_PATTERN = Pattern.compile(".+compiler", Pattern.CASE_INSENSITIVE);
+
+	/**
+	 * Regular expression pattern for extracting the compiler version.
+	 */
+	protected static final Pattern COMPILER_VERSION_PATTERN = Pattern.compile("[\\d\\.]+");
 
 	@Override
 	public String getLanguage() {
@@ -46,9 +54,48 @@ public class CSharpExecutor extends CodeExecutorBase {
 	}
 
 	@Override
+	public VersionInformation fetchVersionInformation() throws ExecutorException {
+
+		String languageOutput, compilerOutput;
+		String languageVersion = null, compilerName = null, compilerVersion = null;
+
+		switch (CodeExecutorBase.PLATFORM) {
+			case WINDOWS:
+				languageOutput = compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "csc", "/help");
+				break;
+
+			case UNIX_LINUX:
+				languageOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "/help");
+				compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "--version");
+				break;
+
+			default:
+				throw new ExecutorException(String.format("Platform %s is nt supported.", CodeExecutorBase.PLATFORM));
+		}
+
+		Matcher languageMatcher = CSharpExecutor.LANGUAGE_VERSION_PATTERN.matcher(languageOutput);
+		if (languageMatcher.find())
+			languageVersion = languageMatcher.group(2);
+
+		Matcher compilerNameMatcher = CSharpExecutor.COMPILER_NAME_PATTERN.matcher(compilerOutput);
+		if (compilerNameMatcher.find())
+			compilerName = compilerNameMatcher.group();
+
+		Matcher compilerVersionMatcher = CSharpExecutor.COMPILER_VERSION_PATTERN.matcher(compilerOutput);
+		if (compilerVersionMatcher.find())
+			compilerVersion = compilerVersionMatcher.group();
+
+		return this.getVersionInformation(languageVersion, compilerName, compilerVersion);
+	}
+
+	@Override
+	protected String getTemplatePath() {
+		return String.format("%s/template.cs", this.getLanguage());
+	}
+
+	@Override
 	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
-		final File localDirectory = new File(".");
 		final File codeFile = new File(codeDirectory, String.format("%s.cs", CSharpExecutor.EXECUTABLE_NAME));
 		final File executableFile = new File(codeDirectory, String.format("%s.exe", CSharpExecutor.EXECUTABLE_NAME));
 
@@ -60,29 +107,29 @@ public class CSharpExecutor extends CodeExecutorBase {
 		//********************
 		//*** COMPILE CODE ***
 		//********************
-		String[] compilationArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
-																		? new String[] { "csc", codeFile.getName(), "/debug" }
-																		: new String[] { "mcs", codeFile.getName(), "-debug" };
+		long compilationStart = System.nanoTime();
 
 		try {
-			this.executeCommand(codeDirectory, CSharpExecutor.COMPILE_TIMEOUT_SECONDS, compilationArguments);
+			this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "csc" : "mcs", codeFile.getName(), "/debug");
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
+
+		long compilationEnd = System.nanoTime();
 
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
 		String[] executionArguments = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS
 																	? new String[] { executableFile.getAbsolutePath() }
-																	: new String[] { "mono", this.willUseDocker() ? new File(localDirectory, executableFile.getName()).getPath() : executableFile.getAbsolutePath(), "--debug" };
+																	: new String[] { "mono", this.willUseDocker() ? new File(CodeExecutorBase.CURRENT_DIRECTORY, executableFile.getName()).getPath() : executableFile.getAbsolutePath(), "--debug" };
 
 		long executionStart = System.nanoTime();
 
-		Process executionProcess;
+		String executionOutput;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, CSharpExecutor.EXECUTION_TIMEOUT_SECONDS, executionArguments);
+			executionOutput = this.executeCommand(codeDirectory, executionArguments);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -93,10 +140,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
-			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
-		return results;
+		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

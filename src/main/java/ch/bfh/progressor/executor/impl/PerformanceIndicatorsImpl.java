@@ -12,21 +12,37 @@ import ch.bfh.progressor.executor.api.PerformanceIndicators;
  */
 public class PerformanceIndicatorsImpl implements PerformanceIndicators {
 
-	private final double runtimeMilliseconds;
+	private final double totalCompileTimeMilliseconds;
+	private final double totalExecutionTimeMilliseconds;
+	private final double testCaseExecutionTimeMilliseconds;
 
 	/**
 	 * Construct a new {@link PerformanceIndicators}.
 	 *
-	 * @param runtimeMilliseconds runtime in milliseconds
+	 * @param totalCompileTimeMilliseconds      total compilation time in milliseconds
+	 * @param totalExecutionTimeMilliseconds    total execution time in milliseconds
+	 * @param testCaseExecutionTimeMilliseconds current test case's execution time in milliseconds
 	 */
-	public PerformanceIndicatorsImpl(double runtimeMilliseconds) {
+	public PerformanceIndicatorsImpl(double totalCompileTimeMilliseconds, double totalExecutionTimeMilliseconds, double testCaseExecutionTimeMilliseconds) {
 
-		this.runtimeMilliseconds = runtimeMilliseconds;
+		this.totalCompileTimeMilliseconds = totalCompileTimeMilliseconds;
+		this.totalExecutionTimeMilliseconds = totalExecutionTimeMilliseconds;
+		this.testCaseExecutionTimeMilliseconds = testCaseExecutionTimeMilliseconds;
 	}
 
 	@Override
-	public double getRuntimeMilliseconds() {
-		return this.runtimeMilliseconds;
+	public double getTotalCompileTimeMilliseconds() {
+		return this.totalExecutionTimeMilliseconds;
+	}
+
+	@Override
+	public double getTotalExecutionTimeMilliseconds() {
+		return this.totalExecutionTimeMilliseconds;
+	}
+
+	@Override
+	public double getTestCaseExecutionTimeMilliseconds() {
+		return this.testCaseExecutionTimeMilliseconds;
 	}
 
 	/**
@@ -42,7 +58,9 @@ public class PerformanceIndicatorsImpl implements PerformanceIndicators {
 
 		List<ch.bfh.progressor.executor.thrift.PerformanceIndicators> output = new ArrayList<>(indicators.size());
 		for (PerformanceIndicators indicator : indicators)
-			output.add(new ch.bfh.progressor.executor.thrift.PerformanceIndicators(indicator.getRuntimeMilliseconds()));
+			output.add(new ch.bfh.progressor.executor.thrift.PerformanceIndicators(indicator.getTotalCompileTimeMilliseconds(),
+																																						 indicator.getTotalExecutionTimeMilliseconds(),
+																																						 indicator.getTestCaseExecutionTimeMilliseconds()));
 
 		return output;
 	}

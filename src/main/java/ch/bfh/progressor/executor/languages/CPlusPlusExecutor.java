@@ -1,8 +1,10 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.FunctionSignature;
@@ -10,6 +12,7 @@ import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
+import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 
 /**
@@ -30,14 +33,9 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	protected static final String EXECUTABLE_NAME = "main";
 
 	/**
-	 * Maximum time to use for the compilation of the user code (in seconds).
+	 * Regular expression pattern for extracting the GCC version.
 	 */
-	public static final int COMPILE_TIMEOUT_SECONDS = 3;
-
-	/**
-	 * Maximum time to use for the execution of the user code (in seconds).
-	 */
-	public static final int EXECUTION_TIMEOUT_SECONDS = 5;
+	protected static final Pattern GCC_VERSION_PATTERN = Pattern.compile("[\\d\\.]+");
 
 	@Override
 	public String getLanguage() {
@@ -45,9 +43,26 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	}
 
 	@Override
+	public VersionInformation fetchVersionInformation() throws ExecutorException {
+
+		String compilerVersion = null;
+
+		String compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "g++", "--version");
+		Matcher compilerMatcher = CPlusPlusExecutor.GCC_VERSION_PATTERN.matcher(compilerOutput);
+		if (compilerMatcher.find())
+			compilerVersion = compilerMatcher.group();
+
+		return this.getVersionInformation("C++11", "GCC", compilerVersion);
+	}
+
+	@Override
+	protected String getTemplatePath() {
+		return String.format("%s/template.cpp", this.getLanguage());
+	}
+
+	@Override
 	protected List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException {
 
-		final File localDirectory = new File(".");
 		final File codeFile = new File(codeDirectory, String.format("%s.cpp", CPlusPlusExecutor.EXECUTABLE_NAME));
 		final File executableFile = new File(codeDirectory, CPlusPlusExecutor.EXECUTABLE_NAME);
 
@@ -59,21 +74,24 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		//********************
 		//*** COMPILE CODE ***
 		//********************
+		long compilationStart = System.nanoTime();
+
 		try {
-			this.executeCommand(codeDirectory, CPlusPlusExecutor.COMPILE_TIMEOUT_SECONDS, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
+			this.executeCommand(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
+
+		long compilationEnd = System.nanoTime();
 
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
 		long executionStart = System.nanoTime();
 
-		Process executionProcess;
+		String executionOutput;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, CPlusPlusExecutor.EXECUTION_TIMEOUT_SECONDS,
-																						 this.willUseDocker() ? new File(localDirectory, executableFile.getName()).getPath() : executableFile.getAbsolutePath());
+			executionOutput = this.executeCommand(codeDirectory, this.willUseDocker() ? new File(CodeExecutorBase.CURRENT_DIRECTORY, executableFile.getName()).getPath() : executableFile.getAbsolutePath());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -84,10 +102,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
-			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
-		return results;
+		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

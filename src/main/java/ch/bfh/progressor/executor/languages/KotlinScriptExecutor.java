@@ -1,8 +1,8 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.Result;
@@ -19,7 +19,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 
 	@Override
 	protected String getTemplatePath() {
-		return String.format("%s/template-script.txt", this.getLanguage());
+		return String.format("%s/template.kts", this.getLanguage());
 	}
 
 	@Override
@@ -37,10 +37,9 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 		//********************
 		long executionStart = System.nanoTime();
 
-		Process executionProcess;
+		String executionOutput;
 		try {
-			executionProcess = this.executeCommand(codeDirectory, KotlinExecutor.COMPILE_TIMEOUT_SECONDS + KotlinExecutor.EXECUTION_TIMEOUT_SECONDS,
-																						 CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
+			executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -51,9 +50,6 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		List<Result> results = new ArrayList<>(testCases.size());
-		for (String result : this.readDelimited(executionProcess, String.format("%n%n")))
-			results.add(this.getResult(result.startsWith("OK"), false, result.substring(3), (executionEnd - executionStart) / 1e6));
-		return results;
+		return this.getResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 }

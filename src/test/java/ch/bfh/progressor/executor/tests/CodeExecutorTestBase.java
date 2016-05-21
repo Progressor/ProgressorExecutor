@@ -3,6 +3,7 @@ package ch.bfh.progressor.executor.tests;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -10,6 +11,7 @@ import org.testng.annotations.Test;
 import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.Result;
+import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.FunctionSignatureImpl;
 import ch.bfh.progressor.executor.impl.TestCaseImpl;
 import ch.bfh.progressor.executor.thrift.FunctionSignature;
@@ -118,15 +120,32 @@ public abstract class CodeExecutorTestBase {
 	}
 
 	@Test
+	public void testGetVersionInformation() throws ExecutorException {
+
+		VersionInformation versionInformation = this.codeExecutor.getVersionInformation();
+		Assert.assertNotEquals(versionInformation.getLanguageVersion().length(), 0, "language version is empty");
+		Assert.assertNotEquals(versionInformation.getCompilerName().length(), 0, "compiler name is empty");
+		Assert.assertNotEquals(versionInformation.getCompilerVersion().length(), 0, "compiler version is empty");
+
+		this.logger.info(String.format("v%s (compiler: %s v%s)", versionInformation.getLanguageVersion(), versionInformation.getCompilerName(), versionInformation.getCompilerVersion()));
+	}
+
+	@Test
 	public void testGetBlacklist() throws ExecutorException {
 
-		this.logger.info(String.join(" ; ", this.codeExecutor.getBlacklist()));
+		Set<String> blacklist = this.codeExecutor.getBlacklist();
+		Assert.assertNotEquals(blacklist.size(), 0, "blacklist is empty");
+
+		this.logger.info(String.join(" ; ", blacklist));
 	}
 
 	@Test
 	public void testGetFragment() throws ExecutorException {
 
-		this.logger.info(this.codeExecutor.getFragment(FunctionSignatureImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS)));
+		String fragment = this.codeExecutor.getFragment(FunctionSignatureImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS));
+		Assert.assertNotEquals(fragment.length(), 0, "fragment is empty");
+
+		this.logger.info(fragment);
 	}
 
 	@Test
