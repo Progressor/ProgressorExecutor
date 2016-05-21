@@ -63,5 +63,3 @@ ENV PATH $KOTLIN_HOME/bin:$PATH
 WORKDIR /opt
 # define default command
 CMD ["bash"]
-
-
