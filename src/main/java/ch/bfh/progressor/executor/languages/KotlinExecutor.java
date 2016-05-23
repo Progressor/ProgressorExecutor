@@ -54,7 +54,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		if (versionMatcher.find())
 			version = versionMatcher.group();
 
-		return this.getVersionInformation(version, "kotlinc", version);
+		return this.createVersionInformation(version, "kotlinc", version);
 	}
 
 	@Override
@@ -103,7 +103,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

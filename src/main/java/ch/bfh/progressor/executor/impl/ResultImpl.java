@@ -22,6 +22,17 @@ public class ResultImpl implements Result {
 	/**
 	 * Construct a new {@link Result}.
 	 *
+	 * @param success whether or not the execution completed successfully
+	 * @param fatal   whether or not the execution ran into a fatal error
+	 * @param result  execution's actual result
+	 */
+	public ResultImpl(boolean success, boolean fatal, String result) {
+		this(success, fatal, result, null);
+	}
+
+	/**
+	 * Construct a new {@link Result}.
+	 *
 	 * @param success     whether or not the execution completed successfully
 	 * @param fatal       whether or not the execution ran into a fatal error
 	 * @param result      execution's actual result

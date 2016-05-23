@@ -54,7 +54,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		if (versionMatcher.find())
 			version = versionMatcher.group();
 
-		return this.getVersionInformation(version, compiler, version);
+		return this.createVersionInformation(version, compiler, version);
 	}
 
 	@Override
@@ -90,7 +90,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

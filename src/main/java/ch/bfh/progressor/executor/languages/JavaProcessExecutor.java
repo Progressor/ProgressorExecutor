@@ -63,7 +63,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		if (javacMatcher.find())
 			javacVersion = javacMatcher.group();
 
-		return this.getVersionInformation(javaVersion, "javac", javacVersion);
+		return this.createVersionInformation(javaVersion, "javac", javacVersion);
 	}
 
 	@Override
@@ -112,7 +112,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

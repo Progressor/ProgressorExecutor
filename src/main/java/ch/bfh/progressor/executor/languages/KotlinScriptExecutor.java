@@ -50,6 +50,6 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 }

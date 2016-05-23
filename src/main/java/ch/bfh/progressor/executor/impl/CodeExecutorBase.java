@@ -84,10 +84,11 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
 
 	private static final int BUFFER_SIZE = 1024;
-	private static final long MAX_JOIN_TIMEOUT = 125;
-	private static final long MAX_BUFFER_TIMEOUT = CodeExecutorBase.MAX_JOIN_TIMEOUT * 10;
-	private static final long MAX_TOTAL_TIMEOUT = CodeExecutorBase.MAX_JOIN_TIMEOUT * 15;
 	private static final ByteOrderMark[] BYTE_ORDER_MARKS = { ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE };
+
+	private static final long MAX_JOIN_TIMEOUT_MILLIS = 125;
+	private static final long MAX_BUFFER_TIMEOUT_MILLIS = 1500;
+	private static final long MAX_TOTAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 15;
 
 	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;
@@ -108,13 +109,24 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 		try {
 			if (this.shouldUseDocker())
-				this.startDocker(CodeExecutorBase.CURRENT_DIRECTORY);
+				try {
+					this.startDocker(CodeExecutorBase.CURRENT_DIRECTORY);
+				} catch (Exception ex) {
+					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not start Docker (for version information).", ex);
+				}
 
 			return this.fetchVersionInformation();
 
+		} catch (Exception ex) {
+			throw new ExecutorException("Could not fetch version information.", ex);
+
 		} finally {
 			if (this.willUseDocker())
-				this.stopDocker(CodeExecutorBase.CURRENT_DIRECTORY);
+				try {
+					this.stopDocker(CodeExecutorBase.CURRENT_DIRECTORY);
+				} catch (Exception ex) {
+					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not stop Docker (for version information).", ex);
+				}
 		}
 	}
 
@@ -228,7 +240,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			do sb.append(throwable).append(newLine);
 			while ((throwable = throwable.getCause()) != null);
 
-			return Collections.nCopies(testCases.size(), this.getResult(false, true, sb.toString()));
+			return Collections.nCopies(testCases.size(), new ResultImpl(false, true, sb.toString()));
 
 		} finally {
 			if (this.willUseDocker())
@@ -372,14 +384,14 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				char[] charBuffer = new char[CodeExecutorBase.BUFFER_SIZE];
 
 				long currentTimeMillis = System.currentTimeMillis();
-				long maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT;
-				long maxTotalTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_TOTAL_TIMEOUT;
+				long maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
+				long maxTotalTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_TOTAL_TIMEOUT_MILLIS;
 				while ((currentTimeMillis = System.currentTimeMillis()) < maxBufferTimeMillis && currentTimeMillis < maxTotalTimeMillis) {
 
 					int readResult = bufferedReader.ready() ? bufferedReader.read(charBuffer, 0, charBuffer.length) : 0;
 					if (readResult > 0) {
 						stringBuilder.append(charBuffer, 0, readResult);
-						maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT;
+						maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
 
 					} else if (readResult < 0)
 						break;
@@ -388,7 +400,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 			long duration = System.currentTimeMillis() - start;
 
-			if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT, TimeUnit.MILLISECONDS))
+			if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
 				if (process.exitValue() == 0)
 					return stringBuilder.toString();
 				else
@@ -471,47 +483,9 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @return a version information object
 	 */
-	protected VersionInformation getVersionInformation(String languageVersion, String compilerName, String compilerVersion) {
+	protected VersionInformation createVersionInformation(String languageVersion, String compilerName, String compilerVersion) {
 
 		return new VersionInformationImpl(languageVersion, compilerName, compilerVersion);
-	}
-
-	/**
-	 * Constructs a result object.
-	 *
-	 * @param success whether or not the execution was a success
-	 * @param fatal   whether or not a fatal error occurred
-	 * @param result  the actual result
-	 *
-	 * @return a result object with the specified information
-	 */
-	protected Result getResult(boolean success, boolean fatal, String result) {
-
-		if (success && fatal)
-			throw new IllegalArgumentException("Cannot be a fatal success.");
-
-		return new ResultImpl(success, fatal, result, null);
-	}
-
-	/**
-	 * Constructs a result object including performance indicators.
-	 *
-	 * @param success                           whether or not the execution was a success
-	 * @param fatal                             whether or not a fatal error occurred
-	 * @param result                            the actual result
-	 * @param totalCompileTimeMilliseconds      total compilation time in milliseconds
-	 * @param totalExecutionTimeMilliseconds    total execution time in milliseconds
-	 * @param testCaseExecutionTimeMilliseconds current test case's execution time in milliseconds
-	 *
-	 * @return a result object with the specified information
-	 */
-	protected Result getResult(boolean success, boolean fatal, String result, double totalCompileTimeMilliseconds, double totalExecutionTimeMilliseconds, double testCaseExecutionTimeMilliseconds) {
-
-		if (success && fatal)
-			throw new IllegalArgumentException("Cannot be a fatal success.");
-
-		return new ResultImpl(success, fatal, result,
-													new PerformanceIndicatorsImpl(totalCompileTimeMilliseconds, totalExecutionTimeMilliseconds, testCaseExecutionTimeMilliseconds));
 	}
 
 	/**
@@ -524,7 +498,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @return a {@link List} containing the result objects
 	 */
-	protected List<Result> getResults(String output, long totalCompileTime, long totalExecutionTime, TimeUnit timeUnit) {
+	protected List<Result> createResults(String output, long totalCompileTime, long totalExecutionTime, TimeUnit timeUnit) {
 
 		final Pattern doubleNewlinePattern = Pattern.compile("(\\r\\n|\\r|\\n){2}");
 		final Pattern resultSuccessPattern = Pattern.compile("(OK|ER):", Pattern.CASE_INSENSITIVE);
@@ -550,10 +524,10 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 					resultOffset = executionTimeMatcher.end();
 				}
 
-				results.add(this.getResult(success, false, result.substring(resultOffset),
-																	 totalCompileTime > 0 ? timeUnit.toMillis(totalCompileTime) : Double.NaN,
-																	 timeUnit.toMillis(totalExecutionTime),
-																	 executionTime));
+				results.add(new ResultImpl(success, false, result.substring(resultOffset),
+																	 new PerformanceIndicatorsImpl(totalCompileTime > 0 ? timeUnit.toMillis(totalCompileTime) : Double.NaN,
+																																 timeUnit.toMillis(totalExecutionTime),
+																																 executionTime)));
 			}
 		}
 

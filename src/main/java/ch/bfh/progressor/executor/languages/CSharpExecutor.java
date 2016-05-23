@@ -85,7 +85,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		if (compilerVersionMatcher.find())
 			compilerVersion = compilerVersionMatcher.group();
 
-		return this.getVersionInformation(languageVersion, compilerName, compilerVersion);
+		return this.createVersionInformation(languageVersion, compilerName, compilerVersion);
 	}
 
 	@Override
@@ -140,7 +140,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

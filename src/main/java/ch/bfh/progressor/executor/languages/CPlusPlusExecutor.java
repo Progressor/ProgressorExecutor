@@ -52,7 +52,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		if (compilerMatcher.find())
 			compilerVersion = compilerMatcher.group();
 
-		return this.getVersionInformation("C++11", "GCC", compilerVersion);
+		return this.createVersionInformation("C++11", "GCC", compilerVersion);
 	}
 
 	@Override
@@ -102,7 +102,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.getResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
 	}
 
 	@Override

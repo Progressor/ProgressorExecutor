@@ -216,14 +216,14 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
 			if (!blacklist.isEmpty()) { //validate fragment against blacklist
 				results = Collections.nCopies(testCases.size(),
-																			new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist)), null));
+																			new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist))));
 
 			} else {
 				results = codeExecutor.execute(fragment, TestCaseImpl.convertFromThrift(functions, testCases)); //delegate execution call
 
 				if (results.size() < testCases.size())
 					results.addAll(Collections.nCopies(testCases.size() - results.size(),
-																						 new ResultImpl(false, true, "Could not read execution result for test case.", null)));
+																						 new ResultImpl(false, true, "Could not read execution result for test case.")));
 			}
 
 			return ResultImpl.convertToThrift(results);
