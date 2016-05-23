@@ -85,7 +85,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
 
 	private static final int BUFFER_SIZE = 1024 * 8;
-	private static final ByteOrderMark[] BYTE_ORDER_MARKS = { ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE };
+	private static final ByteOrderMark[] BYTE_ORDER_MARKS = CodeExecutorBase.duplicateByteOrderMarks(ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE);
 
 	private static final long MAX_JOIN_TIMEOUT_MILLIS = 150;
 	private static final long MAX_BUFFER_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 10;
@@ -370,6 +370,24 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			System.arraycopy(arrays[i], 0, combined, position, arrays[i].length);
 
 		return combined;
+	}
+
+	private static ByteOrderMark[] duplicateByteOrderMarks(ByteOrderMark... byteOrderMarks) {
+
+		ByteOrderMark[] output = new ByteOrderMark[byteOrderMarks.length * 2];
+		for (int i = 0; i < byteOrderMarks.length; i++) {
+
+			int[] bytes = new int[byteOrderMarks[i].length() * 2];
+			for (int j = 0; j < byteOrderMarks[i].length(); j++) {
+				bytes[j] = byteOrderMarks[i].get(j);
+				bytes[j + byteOrderMarks[i].length()] = byteOrderMarks[i].get(j);
+			}
+
+			output[i] = byteOrderMarks[i];
+			output[i + byteOrderMarks.length] = new ByteOrderMark(byteOrderMarks[i].getCharsetName(), bytes);
+		}
+
+		return output;
 	}
 
 	private String readProcessOutput(Process process) throws TimeoutException, InterruptedException, IOException {
