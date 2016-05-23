@@ -94,8 +94,8 @@ public final class Executor {
 					throw new IllegalArgumentException(String.format("Command-line argument '%s' is invalid.", args[i]));
 			}
 
-		Executor.LOGGER.fine(String.format("Using port %d.", port));
-		Executor.LOGGER.fine(useDocker ? "Using Docker containers." : "Not using Docker containers.");
+		Executor.LOGGER.config(String.format("Using port %d.", port));
+		Executor.LOGGER.config(useDocker ? "Using Docker containers." : "Not using Docker containers.");
 
 		Configuration configuration = new ConfigurationImpl(useDocker);
 

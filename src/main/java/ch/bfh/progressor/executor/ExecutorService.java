@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -45,7 +46,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 
 	private void addCodeExecutor(CodeExecutor codeExecutor) {
 
-		codeExecutor.setConfiguration(configuration);
+		codeExecutor.setConfiguration(this.configuration);
 		this.codeExecutors.put(codeExecutor.getLanguage(), codeExecutor);
 	}
 
@@ -116,6 +117,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 	public ch.bfh.progressor.executor.thrift.VersionInformation getVersionInformation(String language) throws TException {
 
 		final int logId = this.getLogId();
+		final long startNano = System.nanoTime();
 		ExecutorService.LOGGER.info(String.format("%-6d: getVersionInformation(language=%s)", logId, language));
 
 		try {
@@ -130,7 +132,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			throw new TException(msg, ex);
 
 		} finally {
-			ExecutorService.LOGGER.finer(String.format("%-6d: finished", logId));
+			ExecutorService.LOGGER.finer(String.format("%-6d: finished in %d ms", logId, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano)));
 		}
 	}
 
@@ -147,6 +149,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 	public Set<String> getBlacklist(String language) throws TException {
 
 		final int logId = this.getLogId();
+		final long startNano = System.nanoTime();
 		ExecutorService.LOGGER.info(String.format("%-6d: getBlacklist(language=%s)", logId, language));
 
 		try {
@@ -158,7 +161,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			throw new TException(msg, ex);
 
 		} finally {
-			ExecutorService.LOGGER.finer(String.format("%-6d: finished", logId));
+			ExecutorService.LOGGER.finer(String.format("%-6d: finished in %d ms", logId, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano)));
 		}
 	}
 
@@ -176,6 +179,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 	public String getFragment(String language, List<ch.bfh.progressor.executor.thrift.FunctionSignature> functions) throws TException {
 
 		final int logId = this.getLogId();
+		final long startNano = System.nanoTime();
 		ExecutorService.LOGGER.info(String.format("%-6d: getFragment(language=%s)", logId, language));
 
 		try {
@@ -187,7 +191,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			throw new TException(msg, ex);
 
 		} finally {
-			ExecutorService.LOGGER.finer(String.format("%-6d: finished", logId));
+			ExecutorService.LOGGER.finer(String.format("%-6d: finished in %d ms", logId, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano)));
 		}
 	}
 
@@ -207,6 +211,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 	public List<ch.bfh.progressor.executor.thrift.Result> execute(String language, String fragment, List<ch.bfh.progressor.executor.thrift.FunctionSignature> functions, List<ch.bfh.progressor.executor.thrift.TestCase> testCases) throws TException {
 
 		final int logId = this.getLogId();
+		final long startNano = System.nanoTime();
 		ExecutorService.LOGGER.info(String.format("%-6d: execute(language=%s, fragment=..., %d testCases: %s...)", logId, language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
 
 		try {
@@ -234,7 +239,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			throw new TException(msg, ex);
 
 		} finally {
-			ExecutorService.LOGGER.finer(String.format("%-6d: finished", logId));
+			ExecutorService.LOGGER.finer(String.format("%-6d: finished in %d ms", logId, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano)));
 		}
 	}
 }
