@@ -105,6 +105,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	//*** CODE EXECUTOR LOGIC ***
 	//***************************
 
+	/**
+	 * Gets the configuration to use.
+	 *
+	 * @return configuration to use
+	 */
+	public Configuration getConfiguration() {
+		return this.configuration;
+	}
+
 	@Override
 	public void setConfiguration(Configuration configuration) {
 
@@ -462,7 +471,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	private boolean shouldUseDocker() {
-		return CodeExecutorBase.PLATFORM.hasDockerSupport() && this.configuration.shouldUseDocker();
+		return CodeExecutorBase.PLATFORM.hasDockerSupport() && this.getConfiguration().shouldUseDocker();
 	}
 
 	/**
