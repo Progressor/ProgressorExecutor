@@ -20,8 +20,6 @@ import ch.bfh.progressor.executor.thrift.executorConstants;
 
 public abstract class CodeExecutorTestBase {
 
-	protected static final String NEWLINE = String.format("%n");
-
 	protected static final List<FunctionSignature> FUNCTIONS = Arrays.asList(new FunctionSignature("helloWorld", Collections.emptyList(), Collections.emptyList(), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeString)),
 																																					 new FunctionSignature("concatStrings", Arrays.asList("a", "b"), Arrays.asList(executorConstants.TypeString, executorConstants.TypeString), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeString)),
 																																					 new FunctionSignature("minChar", Arrays.asList("a", "b"), Arrays.asList(executorConstants.TypeCharacter, executorConstants.TypeCharacter), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeCharacter)),

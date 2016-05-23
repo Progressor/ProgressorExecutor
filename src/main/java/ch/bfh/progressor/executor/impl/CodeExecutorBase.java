@@ -51,6 +51,11 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	public static final Charset CHARSET = Charset.forName("UTF-8");
 
 	/**
+	 * The system-dependent newline character.
+	 */
+	public static final String NEWLINE = String.format("%n");
+
+	/**
 	 * The platform the executor runs on.
 	 */
 	protected static final ExecutorPlatform PLATFORM = ExecutorPlatform.determine();
@@ -59,11 +64,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * The current directory.
 	 */
 	protected static final File CURRENT_DIRECTORY = new File(".");
-
-	/**
-	 * The system-dependent newline character.
-	 */
-	protected static final String NEWLINE = String.format("%n");
 
 	/**
 	 * Regular expression pattern for numeric integer literals.

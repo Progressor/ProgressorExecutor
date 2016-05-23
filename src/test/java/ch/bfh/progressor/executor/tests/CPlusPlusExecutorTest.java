@@ -1,25 +1,26 @@
 package ch.bfh.progressor.executor.tests;
 
 import ch.bfh.progressor.executor.api.CodeExecutor;
+import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 import ch.bfh.progressor.executor.languages.CPlusPlusExecutor;
 
 public class CPlusPlusExecutorTest extends CodeExecutorTestBase {
 
-	protected static final String FRAGMENT = new StringBuilder().append("string helloWorld() { return \"Hello, World!\"; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("string concatStrings(string a, string b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("char minChar(char a, char b) { return a < b ? a : b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("bool exor(bool a, bool b) { return a ^ b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int8_t sumInt8(int8_t a, int8_t b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int16_t sumInt16(int16_t a, int16_t b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int32_t sumInt32(int32_t a, int32_t b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int64_t sumInt64(int64_t a, int64_t b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("float sumFloat32(float a, float b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("double sumFloat64(double a, double b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("long double sumDecimal(long double a, long double b) { return a + b; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int32_t sumInt32Array(int32_t* a, int32_t l) { int32_t s = 0; for (int i = 0; i < l; i++) s += a[i]; return s; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int32_t sumInt32List(vector<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("int32_t sumInt32Set(set<int32_t> s) { int32_t u = 0; for (auto i : s) u += i; return u; }").append(CodeExecutorTestBase.NEWLINE)
-																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").append(CodeExecutorTestBase.NEWLINE)
+	protected static final String FRAGMENT = new StringBuilder().append("string helloWorld() { return \"Hello, World!\"; }").append(CodeExecutorBase.NEWLINE)
+																															.append("string concatStrings(string a, string b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("char minChar(char a, char b) { return a < b ? a : b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("bool exor(bool a, bool b) { return a ^ b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int8_t sumInt8(int8_t a, int8_t b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int16_t sumInt16(int16_t a, int16_t b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t sumInt32(int32_t a, int32_t b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int64_t sumInt64(int64_t a, int64_t b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("float sumFloat32(float a, float b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("double sumFloat64(double a, double b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("long double sumDecimal(long double a, long double b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t sumInt32Array(int32_t* a, int32_t l) { int32_t s = 0; for (int i = 0; i < l; i++) s += a[i]; return s; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t sumInt32List(vector<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t sumInt32Set(set<int32_t> s) { int32_t u = 0; for (auto i : s) u += i; return u; }").append(CodeExecutorBase.NEWLINE)
+																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").append(CodeExecutorBase.NEWLINE)
 																															.append("string getMapListEntry(map<int32_t, vector<string>> m, int k, int i) { return m[k][i]; }").toString();
 
 	@Override
