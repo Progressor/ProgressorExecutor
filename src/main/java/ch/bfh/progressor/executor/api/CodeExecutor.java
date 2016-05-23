@@ -28,6 +28,8 @@ public interface CodeExecutor {
 	 * Gets the version information for the language the executor supports.
 	 *
 	 * @return version information for the supported language
+	 *
+	 * @throws ExecutorException if fetching the version information failed
 	 */
 	VersionInformation getVersionInformation() throws ExecutorException;
 

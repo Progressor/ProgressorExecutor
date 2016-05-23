@@ -166,8 +166,11 @@ public class KotlinExecutor extends CodeExecutorBase {
 			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) / 1e6, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
 
 			sb.append("} catch (ex: Exception) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
-			sb.append("out.write(\"ER:\");").append(CodeExecutorBase.NEWLINE);
-			sb.append("ex.printStackTrace(System.out);").append(CodeExecutorBase.NEWLINE);
+			sb.append("out.write(\"ER:\"); out.flush()").append(CodeExecutorBase.NEWLINE);
+			sb.append("ex.printStackTrace(System.out)").append(CodeExecutorBase.NEWLINE);
+
+			sb.append("} finally {").append(CodeExecutorBase.NEWLINE);
+			sb.append("out.flush()").append(CodeExecutorBase.NEWLINE);
 			sb.append('}');
 		}
 

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -16,7 +17,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -89,13 +89,18 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
 
-	private static final int BUFFER_SIZE = 1024 * 8;
+	private static final int BUFFER_SIZE = 1024;
+	private static final int BUFFER_FACTOR = 2;
 	private static final ByteOrderMark[] BYTE_ORDER_MARKS = CodeExecutorBase.duplicateByteOrderMarks(ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE);
 
 	private static final long MAX_JOIN_TIMEOUT_MILLIS = 150;
 	private static final long MAX_BUFFER_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 10;
-	private static final long MAX_INITIAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 3;
+	private static final long MAX_INITIAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 8;
 	private static final long MAX_TOTAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 15;
+
+	private static final Pattern DOUBLE_NEWLINE_PATTERN = Pattern.compile("(\\r\\n|\\r(?!\\n)|(?<!\\r)\\n){2}");
+	private static final Pattern RESULT_SUCCESS_PATTERN = Pattern.compile("(OK|ER):", Pattern.CASE_INSENSITIVE);
+	private static final Pattern RESULT_EXECUTION_TIME_PATTERN = Pattern.compile("(\\d+(\\.\\d+|)):", Pattern.CASE_INSENSITIVE);
 
 	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;
@@ -400,63 +405,62 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return output;
 	}
 
-	private String readProcessOutput(Process process) throws TimeoutException, InterruptedException, IOException {
-
-		StringBuilder stringBuilder = new StringBuilder(CodeExecutorBase.BUFFER_SIZE);
-
-		try (BOMInputStream bomInputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS);
-				 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(bomInputStream, (bomInputStream.hasBOM() ? Charset.forName(bomInputStream.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder()), CodeExecutorBase.BUFFER_SIZE)) {
-			boolean processFinished = false;
-			char[] charBuffer = new char[CodeExecutorBase.BUFFER_SIZE];
-			int bufferOffset = 0;
-
-			long maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_INITIAL_TIMEOUT_MILLIS;
-			final long maxTotalTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_TOTAL_TIMEOUT_MILLIS;
-			while (true) {
-				if (System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis)
-					throw new TimeoutException("Process did not respond in time.");
-
-				int readChars = processFinished || bufferedReader.ready() ? bufferedReader.read(charBuffer, bufferOffset, charBuffer.length - bufferOffset) : 0;
-				if (readChars > 0) {
-					bufferOffset += readChars;
-					maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
-					if (bufferOffset >= charBuffer.length) {
-						stringBuilder.append(charBuffer, 0, bufferOffset);
-						bufferOffset = 0;
-					}
-
-				} else if (!processFinished) {
-					if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
-						processFinished = true;
-
-					else if (readChars < 0)
-						throw new TimeoutException("Process did not finish in time.");
-
-				} else
-					break;
-			}
-
-			if (bufferOffset > 0)
-				stringBuilder.append(charBuffer, 0, bufferOffset);
-		}
-
-		return stringBuilder.toString();
-	}
-
 	private String executeSystemCommand(File directory, String... command) throws ExecutorException {
 
 		Process process = null;
 		try {
 			process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start();
-			String output = this.readProcessOutput(process);
 
-			if (process.exitValue() == 0)
-				return output;
-			else
+			boolean timeoutException;
+			String output; //source: http://stackoverflow.com/a/16313762/1325979
+			try (BOMInputStream bomInputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS)) {
+				boolean processFinished = false;
+				ByteBuffer byteBuffer = ByteBuffer.allocate(CodeExecutorBase.BUFFER_SIZE);
+
+				long maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_INITIAL_TIMEOUT_MILLIS;
+				final long maxTotalTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_TOTAL_TIMEOUT_MILLIS;
+				while (true) {
+					if (!byteBuffer.hasArray())
+						throw new ExecutorException("Could not properly read process output.");
+					if (timeoutException = (System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis))
+						break;
+
+					int bytesToRead = Math.min(bomInputStream.available(), byteBuffer.remaining());
+					int readBytes = bomInputStream.read(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), bytesToRead);
+					if (readBytes > 0) {
+						byteBuffer.position(byteBuffer.position() + readBytes);
+						maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
+						if (!byteBuffer.hasRemaining()) {
+							ByteBuffer newBuffer = ByteBuffer.allocate(byteBuffer.capacity() * CodeExecutorBase.BUFFER_FACTOR);
+							byteBuffer.flip();
+							newBuffer.put(byteBuffer);
+							byteBuffer = newBuffer;
+						}
+
+					} else if (!processFinished && process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+						processFinished = true;
+
+					else if (processFinished || readBytes < 0)
+						break;
+				}
+
+				Charset charset = CodeExecutorBase.CHARSET;
+				int bomLength = Arrays.stream(CodeExecutorBase.BYTE_ORDER_MARKS).mapToInt(ByteOrderMark::length).max().orElse(0);
+				if (byteBuffer.position() >= bomLength && bomInputStream.hasBOM())
+					charset = Charset.forName(bomInputStream.getBOMCharsetName());
+
+				byteBuffer.flip();
+				output = charset.newDecoder().decode(byteBuffer.slice()).toString();
+			}
+
+			if (timeoutException)
+				throw new ExecutorException("Could not execute command in time.", output);
+			if (!process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+				throw new ExecutorException("Could not finish command in time.", output);
+			if (process.exitValue() != 0)
 				throw new ExecutorException("Could not successfully execute command.", output);
 
-		} catch (TimeoutException ex) {
-			throw new ExecutorException("Could not execute command in time.", ex);
+			return output;
 
 		} catch (InterruptedException ex) {
 			throw new ExecutorException("Could not wait for command to execute in time.", ex);
@@ -544,28 +548,25 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 * @param timeUnit           the unit of the compilation and execution times
 	 *
 	 * @return a {@link List} containing the result objects
+	 *
+	 * @throws ExecutorException if parsing failed
 	 */
-	protected List<Result> createResults(String output, long totalCompileTime, long totalExecutionTime, TimeUnit timeUnit) {
-
-		final Pattern doubleNewlinePattern = Pattern.compile("(\\r\\n|\\r|\\n){2}");
-		final Pattern resultSuccessPattern = Pattern.compile("(OK|ER):", Pattern.CASE_INSENSITIVE);
-		final Pattern resultExecutionTimePattern = Pattern.compile("(\\d+(\\.\\d+|)):", Pattern.CASE_INSENSITIVE);
+	protected List<Result> createResults(String output, long totalCompileTime, long totalExecutionTime, TimeUnit timeUnit) throws ExecutorException {
 
 		List<Result> results = new ArrayList<>();
-		try (Scanner scanner = new Scanner(output).useDelimiter(doubleNewlinePattern)) {
+		try (Scanner scanner = new Scanner(output).useDelimiter(CodeExecutorBase.DOUBLE_NEWLINE_PATTERN)) {
 			while (scanner.hasNext()) {
 				String result = scanner.next();
-				int resultOffset = 0;
 
-				boolean success = false;
-				Matcher successMatcher = resultSuccessPattern.matcher(result.substring(resultOffset));
-				if (successMatcher.lookingAt()) {
-					success = "OK".equalsIgnoreCase(successMatcher.group(1));
-					resultOffset += successMatcher.end();
-				}
+				Matcher successMatcher = CodeExecutorBase.RESULT_SUCCESS_PATTERN.matcher(result);
+				if (!successMatcher.lookingAt())
+					throw new ExecutorException("Execution result block did not start properly.");
+
+				boolean success = "OK".equalsIgnoreCase(successMatcher.group(1));
+				int resultOffset = successMatcher.end();
 
 				double executionTime = Double.NaN;
-				Matcher executionTimeMatcher = resultExecutionTimePattern.matcher(result.substring(resultOffset));
+				Matcher executionTimeMatcher = CodeExecutorBase.RESULT_EXECUTION_TIME_PATTERN.matcher(result.substring(resultOffset));
 				if (executionTimeMatcher.lookingAt()) {
 					executionTime = Double.parseDouble(executionTimeMatcher.group(1));
 					resultOffset += executionTimeMatcher.end();

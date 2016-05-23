@@ -21,7 +21,10 @@ public class JavaProcessExecutorTest extends CodeExecutorTestBase {
 																															.append("public int sumInt32List(List<Integer> l) { return l.stream().mapToInt(i -> i).sum(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public int sumInt32Set(Set<Integer> s) { return s.stream().mapToInt(i -> i).sum(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public String getMapEntry(Map<Integer, String> m, int k) { return m.get(k); }").append(CodeExecutorBase.NEWLINE)
-																															.append("public String getMapListEntry(Map<Integer, List<String>> m, int k, int i) { return m.get(k).get(i); }").toString();
+																															.append("public String getMapListEntry(Map<Integer, List<String>> m, int k, int i) { return m.get(k).get(i); }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int infiniteLoop() { while(true); }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int recursion() { return recursion(); }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int error() { throw new RuntimeException(); }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

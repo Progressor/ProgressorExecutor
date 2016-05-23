@@ -21,7 +21,10 @@ public class CSharpExecutorTest extends CodeExecutorTestBase {
 																															.append("public int sumInt32List(List<int> l) { return l.Sum(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public int sumInt32Set(HashSet<int> s) { return s.Sum(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public string getMapEntry(Dictionary<int, string> d, int k) { return d[k]; }").append(CodeExecutorBase.NEWLINE)
-																															.append("public string getMapListEntry(Dictionary<int, List<string>> d, int k, int i) { return d[k][i]; }").toString();
+																															.append("public string getMapListEntry(Dictionary<int, List<string>> d, int k, int i) { return d[k][i]; }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int infiniteLoop() { while(true); }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int recursion() { return recursion(); }").append(CodeExecutorBase.NEWLINE)
+																															.append("public int error() { throw new Exception(); }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

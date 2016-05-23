@@ -21,7 +21,10 @@ public class KotlinExecutorTest extends CodeExecutorTestBase {
 																															.append("fun sumInt32List(l: List<Int>) = l.sum()").append(CodeExecutorBase.NEWLINE)
 																															.append("fun sumInt32Set(s: Set<Int>) = s.sum()").append(CodeExecutorBase.NEWLINE)
 																															.append("fun getMapEntry(m: Map<Int, String>, k: Int) = m[k]").append(CodeExecutorBase.NEWLINE)
-																															.append("fun getMapListEntry(m: Map<Int, List<String>>, k: Int, i: Int) = m[k]!![i]").toString();
+																															.append("fun getMapListEntry(m: Map<Int, List<String>>, k: Int, i: Int) = m[k]!![i]").append(CodeExecutorBase.NEWLINE)
+																															.append("fun infiniteLoop(): Int { while(true); }").append(CodeExecutorBase.NEWLINE)
+																															.append("fun recursion(): Int = recursion()").append(CodeExecutorBase.NEWLINE)
+																															.append("fun error(): Int { throw Exception(); }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {

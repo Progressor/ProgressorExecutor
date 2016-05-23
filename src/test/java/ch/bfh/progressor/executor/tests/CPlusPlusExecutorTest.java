@@ -21,7 +21,10 @@ public class CPlusPlusExecutorTest extends CodeExecutorTestBase {
 																															.append("int32_t sumInt32List(vector<int32_t> l) { int32_t s = 0; for (auto i : l) s += i; return s; }").append(CodeExecutorBase.NEWLINE)
 																															.append("int32_t sumInt32Set(set<int32_t> s) { int32_t u = 0; for (auto i : s) u += i; return u; }").append(CodeExecutorBase.NEWLINE)
 																															.append("string getMapEntry(map<int32_t, string> m, int k) { return m[k]; }").append(CodeExecutorBase.NEWLINE)
-																															.append("string getMapListEntry(map<int32_t, vector<string>> m, int k, int i) { return m[k][i]; }").toString();
+																															.append("string getMapListEntry(map<int32_t, vector<string>> m, int k, int i) { return m[k][i]; }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t infiniteLoop() { while(true); }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t recursion() { return recursion(); }").append(CodeExecutorBase.NEWLINE)
+																															.append("int32_t error() { throw runtime_error(\"exception\"); }").toString();
 
 	@Override
 	protected CodeExecutor getCodeExecutor() {
