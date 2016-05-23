@@ -96,8 +96,6 @@ public class PythonExecutor extends CodeExecutorBase {
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 
@@ -111,7 +109,7 @@ public class PythonExecutor extends CodeExecutorBase {
 				sb.append(function.getInputNames().get(i));
 			}
 
-			sb.append("):").append(newLine).append('\t').append(newLine);
+			sb.append("):").append(CodeExecutorBase.NEWLINE).append('\t').append(CodeExecutorBase.NEWLINE);
 		}
 
 		return sb.toString();
@@ -120,7 +118,6 @@ public class PythonExecutor extends CodeExecutorBase {
 	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
-		final String newLine = String.format("%n");
 		final String indentation = "\t";
 
 		StringBuilder sb = new StringBuilder();
@@ -128,16 +125,16 @@ public class PythonExecutor extends CodeExecutorBase {
 			if (testCase.getExpectedOutputValues().size() != 1)
 				throw new ExecutorException("Exactly one output value has to be defined for a Python example.");
 
-			sb.append(newLine).append("try:").append(newLine); //begin test case block
+			sb.append(CodeExecutorBase.NEWLINE).append("try:").append(CodeExecutorBase.NEWLINE); //begin test case block
 
-			sb.append(indentation).append("start = time.time()").append(newLine);
+			sb.append(indentation).append("start = time.time()").append(CodeExecutorBase.NEWLINE);
 			sb.append(indentation).append("result = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
-			sb.append(')').append(newLine);
-			sb.append(indentation).append("end = time.time()").append(newLine);
+			sb.append(')').append(CodeExecutorBase.NEWLINE);
+			sb.append(indentation).append("end = time.time()").append(CodeExecutorBase.NEWLINE);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
@@ -154,15 +151,15 @@ public class PythonExecutor extends CodeExecutorBase {
 			}
 
 			sb.append(indentation).append("success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(CodeExecutorBase.NEWLINE);
 
-			sb.append(indentation).append("print('%s:%f:%s' % ('OK' if success else 'ER', (end - start) * 1e3, result))").append(newLine); //print result to the console
+			sb.append(indentation).append("print('%s:%f:%s' % ('OK' if success else 'ER', (end - start) * 1e3, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
 
-			sb.append("except:").append(newLine); //finish test case block / begin exception handling
-			sb.append(indentation).append("print('ER:%s (%s)' % sys.exc_info()[0:2])").append(newLine);
+			sb.append("except:").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
+			sb.append(indentation).append("print('ER:%s (%s)' % sys.exc_info()[0:2])").append(CodeExecutorBase.NEWLINE);
 
-			sb.append("finally:").append(newLine); //add empty line
-			sb.append(indentation).append("print()").append(newLine);
+			sb.append("finally:").append(CodeExecutorBase.NEWLINE); //add empty line
+			sb.append(indentation).append("print()").append(CodeExecutorBase.NEWLINE);
 		}
 
 		return sb.toString();

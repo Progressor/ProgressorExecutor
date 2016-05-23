@@ -146,8 +146,6 @@ public class CSharpExecutor extends CodeExecutorBase {
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 
@@ -164,7 +162,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 				sb.append(this.getTypeName(function.getInputTypes().get(i))).append(' ').append(function.getInputNames().get(i));
 			}
 
-			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
+			sb.append(") {").append(CodeExecutorBase.NEWLINE).append('\t').append(CodeExecutorBase.NEWLINE).append('}').append(CodeExecutorBase.NEWLINE);
 		}
 
 		return sb.toString();
@@ -173,24 +171,22 @@ public class CSharpExecutor extends CodeExecutorBase {
 	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
 				throw new ExecutorException("Exactly one output value has to be defined for a C# example.");
 
-			sb.append(newLine).append("try {").append(newLine); //begin test case block
+			sb.append(CodeExecutorBase.NEWLINE).append("try {").append(CodeExecutorBase.NEWLINE); //begin test case block
 
-			sb.append("var watch = new System.Diagnostics.Stopwatch();").append(newLine);
-			sb.append("watch.Start();").append(newLine);
+			sb.append("var watch = new System.Diagnostics.Stopwatch();").append(CodeExecutorBase.NEWLINE);
+			sb.append("watch.Start();").append(CodeExecutorBase.NEWLINE);
 			sb.append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0))).append(" result = ").append("inst.").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
-			sb.append(");").append(newLine);
-			sb.append("watch.Stop();").append(newLine);
+			sb.append(");").append(CodeExecutorBase.NEWLINE);
+			sb.append("watch.Stop();").append(CodeExecutorBase.NEWLINE);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
@@ -219,12 +215,12 @@ public class CSharpExecutor extends CodeExecutorBase {
 			}
 
 			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
 
-			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);").append(newLine).append("Console.WriteLine();").append(newLine); //print result to the console
+			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);").append(CodeExecutorBase.NEWLINE).append("Console.WriteLine();").append(CodeExecutorBase.NEWLINE); //print result to the console
 
-			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
-			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(newLine).append("Console.WriteLine();").append(newLine);
+			sb.append("} catch (Exception ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
+			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(CodeExecutorBase.NEWLINE).append("Console.WriteLine();").append(CodeExecutorBase.NEWLINE);
 			sb.append('}'); //finish exception handling
 		}
 

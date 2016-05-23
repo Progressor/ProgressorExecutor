@@ -108,8 +108,6 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 			if (function.getOutputTypes().size() != 1)
@@ -122,7 +120,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				sb.append(this.getTypeName(function.getInputTypes().get(i), true)).append(' ').append(function.getInputNames().get(i));
 			}
 
-			sb.append(") {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
+			sb.append(") {").append(CodeExecutorBase.NEWLINE).append('\t').append(CodeExecutorBase.NEWLINE).append('}').append(CodeExecutorBase.NEWLINE);
 		}
 
 		return sb.toString();
@@ -131,24 +129,22 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
 				throw new ExecutorException("Exactly one output value has to be defined for a C/C++ example.");
 
-			sb.append(newLine).append("try {").append(newLine); //begin test case block
+			sb.append(CodeExecutorBase.NEWLINE).append("try {").append(CodeExecutorBase.NEWLINE); //begin test case block
 
-			sb.append("high_resolution_clock::time_point start = high_resolution_clock::now();").append(newLine);
+			sb.append("high_resolution_clock::time_point start = high_resolution_clock::now();").append(CodeExecutorBase.NEWLINE);
 			sb.append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0), true)).append(" result = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
-			sb.append(");").append(newLine);
-			sb.append("high_resolution_clock::time_point end = high_resolution_clock::now();").append(newLine);
-			sb.append("duration<double, milli> duration = end - start;").append(newLine);
+			sb.append(");").append(CodeExecutorBase.NEWLINE);
+			sb.append("high_resolution_clock::time_point end = high_resolution_clock::now();").append(CodeExecutorBase.NEWLINE);
+			sb.append("duration<double, milli> duration = end - start;").append(CodeExecutorBase.NEWLINE);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
@@ -166,7 +162,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 			}
 
 			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
 
 			String resultPrefix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
@@ -180,15 +176,15 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 					resultPrefix = "+";
 			}
 
-			sb.append("cout << (success ? \"OK\" : \"ER\") << \":\" << ").append("duration.count()").append(" << \":\" << ").append(resultPrefix).append("result << endl << endl;").append(newLine); //print result to the console
-			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
-			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
-			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception C++-string)
-			sb.append("cout << \"ER:\" << ex << endl << endl;").append(newLine);
-			sb.append("} catch (char const* const &ex) {").append(newLine); //tertiary exception handling (exception C-string)
-			sb.append("cout << \"ER:\" << ex << endl << endl;").append(newLine);
-			sb.append("} catch (...) {").append(newLine); //last resort (handling all unknown exceptions)
-			sb.append("cout << \"ER:unknown exception\" << endl << endl;").append(newLine);
+			sb.append("cout << (success ? \"OK\" : \"ER\") << \":\" << ").append("duration.count()").append(" << \":\" << ").append(resultPrefix).append("result << endl << endl;").append(CodeExecutorBase.NEWLINE); //print result to the console
+			sb.append("} catch (const exception &ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling (standard exception class)
+			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(CodeExecutorBase.NEWLINE);
+			sb.append("} catch (const string &ex) {").append(CodeExecutorBase.NEWLINE); //secondary exception handling (exception C++-string)
+			sb.append("cout << \"ER:\" << ex << endl << endl;").append(CodeExecutorBase.NEWLINE);
+			sb.append("} catch (char const* const &ex) {").append(CodeExecutorBase.NEWLINE); //tertiary exception handling (exception C-string)
+			sb.append("cout << \"ER:\" << ex << endl << endl;").append(CodeExecutorBase.NEWLINE);
+			sb.append("} catch (...) {").append(CodeExecutorBase.NEWLINE); //last resort (handling all unknown exceptions)
+			sb.append("cout << \"ER:unknown exception\" << endl << endl;").append(CodeExecutorBase.NEWLINE);
 			sb.append('}'); //finish exception handling
 		}
 

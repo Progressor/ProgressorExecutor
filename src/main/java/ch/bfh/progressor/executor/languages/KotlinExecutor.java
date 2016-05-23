@@ -109,8 +109,6 @@ public class KotlinExecutor extends CodeExecutorBase {
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 
@@ -124,7 +122,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 				sb.append(function.getInputNames().get(i)).append(": ").append(this.getTypeName(function.getInputTypes().get(i)));
 			}
 
-			sb.append(") : ").append(this.getTypeName(function.getOutputTypes().get(0))).append(" {").append(newLine).append('\t').append(newLine).append('}').append(newLine);
+			sb.append(") : ").append(this.getTypeName(function.getOutputTypes().get(0))).append(" {").append(CodeExecutorBase.NEWLINE).append('\t').append(CodeExecutorBase.NEWLINE).append('}').append(CodeExecutorBase.NEWLINE);
 		}
 
 		return sb.toString();
@@ -133,23 +131,21 @@ public class KotlinExecutor extends CodeExecutorBase {
 	@Override
 	protected String getTestCaseSignatures(List<TestCase> testCases) throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
 				throw new ExecutorException("Exactly one output value has to be defined for a Kotlin example.");
 
-			sb.append(newLine).append("try {").append(newLine); //begin test case block
+			sb.append(CodeExecutorBase.NEWLINE).append("try {").append(CodeExecutorBase.NEWLINE); //begin test case block
 
-			sb.append("val start = System.nanoTime()").append(newLine);
+			sb.append("val start = System.nanoTime()").append(CodeExecutorBase.NEWLINE);
 			sb.append("val result: ").append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0))).append("? = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
-			sb.append(')').append(newLine);
-			sb.append("val end = System.nanoTime()").append(newLine);
+			sb.append(')').append(CodeExecutorBase.NEWLINE);
+			sb.append("val end = System.nanoTime()").append(CodeExecutorBase.NEWLINE);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
@@ -165,13 +161,13 @@ public class KotlinExecutor extends CodeExecutorBase {
 			}
 
 			sb.append("val success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(CodeExecutorBase.NEWLINE);
 
-			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) / 1e6, result))").append(newLine); //print result to the console
+			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) / 1e6, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
 
-			sb.append("} catch (ex: Exception) {").append(newLine); //finish test case block / begin exception handling
-			sb.append("out.write(\"ER:\");").append(newLine);
-			sb.append("ex.printStackTrace(System.out);").append(newLine);
+			sb.append("} catch (ex: Exception) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
+			sb.append("out.write(\"ER:\");").append(CodeExecutorBase.NEWLINE);
+			sb.append("ex.printStackTrace(System.out);").append(CodeExecutorBase.NEWLINE);
 			sb.append('}');
 		}
 

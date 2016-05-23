@@ -61,6 +61,11 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected static final File CURRENT_DIRECTORY = new File(".");
 
 	/**
+	 * The system-dependent newline character.
+	 */
+	protected static final String NEWLINE = String.format("%n");
+
+	/**
 	 * Regular expression pattern for numeric integer literals.
 	 */
 	protected static final Pattern NUMERIC_INTEGER_PATTERN = Pattern.compile("[-+]?[0-9]+");
@@ -195,14 +200,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected synchronized StringBuilder getTemplate() throws ExecutorException {
 
-		final String newLine = String.format("%n");
-
 		if (this.template == null)
 			try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(this.getTemplatePath()), CodeExecutorBase.CHARSET))) {
 				this.template = new StringBuilder();
 				String line;
 				while ((line = reader.readLine()) != null) //read template to StringBuilder
-					this.template.append(line).append(newLine);
+					this.template.append(line).append(CodeExecutorBase.NEWLINE);
 
 			} catch (IOException ex) {
 				throw new ExecutorException("Could not read the code template.", ex);
@@ -235,11 +238,9 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			return this.executeTestCases(codeFragment, testCases, codeDirectory);
 
 		} catch (Exception ex) {
-			String newLine = String.format("%n");
-
-			StringBuilder sb = new StringBuilder("Could not invoke the user code.").append(newLine);
+			StringBuilder sb = new StringBuilder("Could not invoke the user code.").append(CodeExecutorBase.NEWLINE);
 			Throwable throwable = ex;
-			do sb.append(throwable).append(newLine);
+			do sb.append(throwable).append(CodeExecutorBase.NEWLINE);
 			while ((throwable = throwable.getCause()) != null);
 
 			return Collections.nCopies(testCases.size(), new ResultImpl(false, true, sb.toString()));
@@ -474,8 +475,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	private void startDocker(File directory) throws ExecutorException {
-
-		final String newLine = String.format("%n");
 
 		String output = this.executeSystemCommand(directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
 
