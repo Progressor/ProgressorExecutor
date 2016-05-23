@@ -166,10 +166,8 @@ public abstract class CodeExecutorTestBase {
 			Assert.assertNotNull(results.get(i).getResult(), String.format("actual result %d is missing", i));
 			Assert.assertNotEquals(results.get(i).getResult().length(), 0, String.format("actual result %d is empty", i));
 			Assert.assertNotNull(results.get(i).getPerformance(), String.format("performance for test case %d is missing", i));
-			Assert.assertTrue(Double.isNaN(results.get(i).getPerformance().getTotalCompilationTimeMilliseconds()) //for interpreted languages
-												|| results.get(i).getPerformance().getTotalCompilationTimeMilliseconds() > 0.0, String.format("total compile time in test case %d is zero", i));
-			Assert.assertTrue(results.get(i).getPerformance().getTotalExecutionTimeMilliseconds() > 0.0, String.format("total execution time in test case %d is zero", i));
-			Assert.assertTrue(results.get(i).getPerformance().getTestCaseExecutionTimeMilliseconds() > 0.0, String.format("execution time for test case %d is zero", i));
+			Assert.assertFalse(Double.isNaN(results.get(i).getPerformance().getTotalExecutionTimeMilliseconds()), String.format("total execution time in test case %d is missing", i));
+			Assert.assertFalse(Double.isNaN(results.get(i).getPerformance().getTestCaseExecutionTimeMilliseconds()), String.format("execution time for test case %d is missing", i));
 		}
 	}
 }

@@ -550,17 +550,17 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				int resultOffset = 0;
 
 				boolean success = false;
-				Matcher successMatcher = resultSuccessPattern.matcher(result);
+				Matcher successMatcher = resultSuccessPattern.matcher(result.substring(resultOffset));
 				if (successMatcher.lookingAt()) {
 					success = "OK".equalsIgnoreCase(successMatcher.group(1));
-					resultOffset = successMatcher.end();
+					resultOffset += successMatcher.end();
 				}
 
 				double executionTime = Double.NaN;
-				Matcher executionTimeMatcher = resultExecutionTimePattern.matcher(result);
+				Matcher executionTimeMatcher = resultExecutionTimePattern.matcher(result.substring(resultOffset));
 				if (executionTimeMatcher.lookingAt()) {
 					executionTime = Double.parseDouble(executionTimeMatcher.group(1));
-					resultOffset = executionTimeMatcher.end();
+					resultOffset += executionTimeMatcher.end();
 				}
 
 				results.add(new ResultImpl(success, false, result.substring(resultOffset),

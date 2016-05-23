@@ -136,20 +136,22 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
-				throw new ExecutorException("Exactly one output value has to be defined for a C/C++ sample.");
+				throw new ExecutorException("Exactly one output value has to be defined for a C/C++ example.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getTypeName(oType, true)).append(" ret = ").append(testCase.getFunction().getName()).append('(');
+			sb.append("high_resolution_clock::time_point start = high_resolution_clock::now();").append(newLine);
+			sb.append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0), true)).append(" result = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(");").append(newLine);
+			sb.append("high_resolution_clock::time_point end = high_resolution_clock::now();").append(newLine);
+			sb.append("duration<double, milli> duration = end - start;").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType.getBaseType()) {
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
@@ -163,11 +165,11 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 					break;
 			}
 
-			sb.append("bool suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(newLine);
 
-			String returnPrefix = "";
-			switch (oType.getBaseType()) {
+			String resultPrefix = "";
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case INT8: //force numeric types to be printed as numbers (not chars or the like)
 				case INT16:
 				case INT32:
@@ -175,10 +177,10 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
-					returnPrefix = "+";
+					resultPrefix = "+";
 			}
 
-			sb.append("cout << (suc ? \"OK\" : \"ER\") << \":\" << ").append(returnPrefix).append("ret << endl << endl;").append(newLine); //print result to the console
+			sb.append("cout << (success ? \"OK\" : \"ER\") << \":\" << ").append("duration.count()").append(" << \":\" << ").append(resultPrefix).append("result << endl << endl;").append(newLine); //print result to the console
 			sb.append("} catch (const exception &ex) {").append(newLine); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(newLine);
 			sb.append("} catch (const string &ex) {").append(newLine); //secondary exception handling (exception C++-string)

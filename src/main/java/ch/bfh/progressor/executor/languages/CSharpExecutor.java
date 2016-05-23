@@ -177,25 +177,23 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
-
-			//validate input / output types & values
-			if (testCase.getInputValues().size() != testCase.getFunction().getInputTypes().size())
-				throw new ExecutorException("The same number of input values & types have to be defined.");
-			if (testCase.getExpectedOutputValues().size() != 1 || testCase.getExpectedOutputValues().size() != testCase.getFunction().getOutputTypes().size())
-				throw new ExecutorException("Exactly one output value has to be defined for a C# sample.");
+			if (testCase.getExpectedOutputValues().size() != 1)
+				throw new ExecutorException("Exactly one output value has to be defined for a C# example.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunction().getName()).append('(');
+			sb.append("var watch = new System.Diagnostics.Stopwatch();").append(newLine);
+			sb.append("watch.Start();").append(newLine);
+			sb.append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0))).append(" result = ").append("inst.").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(");").append(newLine);
+			sb.append("watch.Stop();").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType.getBaseType()) {
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case STRING:
 				case CHARACTER:
 				case BOOLEAN:
@@ -220,9 +218,10 @@ public class CSharpExecutor extends CodeExecutorBase {
 					break;
 			}
 
-			sb.append("bool suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(newLine);
-			sb.append("Console.WriteLine(\"{0}:{1}\", suc ? \"OK\" : \"ER\", ret);").append(newLine).append("Console.WriteLine();").append(newLine); //print result to the console
+
+			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);").append(newLine).append("Console.WriteLine();").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(newLine).append("Console.WriteLine();").append(newLine);

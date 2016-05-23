@@ -137,18 +137,22 @@ public class KotlinExecutor extends CodeExecutorBase {
 
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
+			if (testCase.getExpectedOutputValues().size() != 1)
+				throw new ExecutorException("Exactly one output value has to be defined for a Kotlin example.");
+
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append("val ret = ").append(testCase.getFunction().getName()).append('(');
+			sb.append("val start = System.nanoTime()").append(newLine);
+			sb.append("val result: ").append(this.getTypeName(testCase.getFunction().getOutputTypes().get(0))).append("? = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(')').append(newLine);
+			sb.append("val end = System.nanoTime()").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType.getBaseType()) {
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case FLOAT32:
 				case FLOAT64:
 					comparisonSeparator = ".hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
@@ -160,9 +164,10 @@ public class KotlinExecutor extends CodeExecutorBase {
 					break;
 			}
 
-			sb.append("val suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append("val success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
-			sb.append("out.write(\"%s:%s%n%n\".format(if (suc) \"OK\" else \"ER\", ret))").append(newLine); //print result to the console
+
+			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) / 1e6, result))").append(newLine); //print result to the console
 
 			sb.append("} catch (ex: Exception) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("out.write(\"ER:\");").append(newLine);

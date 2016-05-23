@@ -4,16 +4,16 @@ java.io.OutputStreamWriter(System.out, java.nio.charset.Charset.forName("UTF-8")
 $TestCases$
 }
 
-fun Float.hasMinimalDifference(other: Float): Boolean {
+fun Float?.hasMinimalDifference(other: Float?): Boolean {
 
-	if (!this.isFinite() || !other.isFinite()) return this == other
-	if (this == other) return true
-	return Math.abs(this - other) <= Math.ulp(this)
+	if (this === null || !this.isFinite() || other === null || !other.isFinite()) return this == other
+	else if (this == other) return true
+	else return Math.abs(this - other) <= Math.ulp(this)
 }
 
-fun Double.hasMinimalDifference(other: Double): Boolean {
+fun Double?.hasMinimalDifference(other: Double?): Boolean {
 
-	if (!this.isFinite() || !other.isFinite()) return this == other
-	if (this == other) return true
-	return Math.abs(this - other) <= Math.ulp(this)
+	if (this === null || !this.isFinite() || other === null || !other.isFinite()) return this == other
+	else if (this == other) return true
+	else return Math.abs(this - other) <= Math.ulp(this)
 }

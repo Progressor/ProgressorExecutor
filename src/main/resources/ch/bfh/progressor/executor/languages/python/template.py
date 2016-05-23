@@ -26,6 +26,6 @@ def hasMinimalDifference(value1, value2):
 		return True
 	return dulpdiff(value1, value2) <= 1
 
-import sys, codecs
+import sys, codecs, time
 sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach()) #source: http://stackoverflow.com/a/4374457/1325979
 $TestCases$

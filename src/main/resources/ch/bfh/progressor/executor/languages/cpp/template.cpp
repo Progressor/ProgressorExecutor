@@ -17,6 +17,10 @@ bool hasMinimalDifference(T value1, T value2);
 #line 1
 $CustomCode$
 
+#include <chrono>
+
+using namespace std::chrono;
+
 int main() {
 	$TestCases$
 

@@ -125,18 +125,22 @@ public class PythonExecutor extends CodeExecutorBase {
 
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
+			if (testCase.getExpectedOutputValues().size() != 1)
+				throw new ExecutorException("Exactly one output value has to be defined for a Python example.");
+
 			sb.append(newLine).append("try:").append(newLine); //begin test case block
 
-			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(indentation).append("ret = ").append(testCase.getFunction().getName()).append('(');
+			sb.append(indentation).append("start = time.time()").append(newLine);
+			sb.append(indentation).append("result = ").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(')').append(newLine);
+			sb.append(indentation).append("end = time.time()").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType.getBaseType()) {
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case FLOAT32:
 				case FLOAT64:
 					comparisonPrefix = "hasMinimalDifference("; //compare floating-point numbers using custom equality comparison
@@ -149,9 +153,10 @@ public class PythonExecutor extends CodeExecutorBase {
 					break;
 			}
 
-			sb.append(indentation).append("suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append(indentation).append("success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(newLine);
-			sb.append(indentation).append("print('%s:%s' % ('OK' if suc else 'ER', ret))").append(newLine); //print result to the console
+
+			sb.append(indentation).append("print('%s:%f:%s' % ('OK' if success else 'ER', (end - start) * 1e3, result))").append(newLine); //print result to the console
 
 			sb.append("except:").append(newLine); //finish test case block / begin exception handling
 			sb.append(indentation).append("print('ER:%s (%s)' % sys.exc_info()[0:2])").append(newLine);

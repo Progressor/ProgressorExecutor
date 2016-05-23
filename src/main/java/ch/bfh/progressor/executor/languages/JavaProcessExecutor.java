@@ -146,20 +146,21 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
-				throw new ExecutorException("Exactly one output value has to be defined for a Java sample.");
+				throw new ExecutorException("Exactly one output value has to be defined for a Java example.");
 
 			sb.append(newLine).append("try {").append(newLine); //begin test case block
 
-			ValueType oType = testCase.getFunction().getOutputTypes().get(0); //test case invocation and return value storage
-			sb.append(this.getPrimitiveTypeName(oType)).append(" ret = ").append("inst.").append(testCase.getFunction().getName()).append('(');
+			sb.append("long start = System.nanoTime();").append(newLine);
+			sb.append(this.getPrimitiveTypeName(testCase.getFunction().getOutputTypes().get(0))).append(" result = ").append("inst.").append(testCase.getFunction().getName()).append('('); //test case invocation
 			for (int i = 0; i < testCase.getInputValues().size(); i++) {
 				if (i > 0) sb.append(", ");
 				sb.append(this.getValueLiteral(testCase.getInputValues().get(i)));
 			}
 			sb.append(");").append(newLine);
+			sb.append("long end = System.nanoTime();").append(newLine);
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
-			switch (oType.getBaseType()) {
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case CHARACTER:
 				case BOOLEAN:
 				case INT8:
@@ -182,10 +183,10 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 					break;
 			}
 
-			sb.append("boolean suc = ").append(comparisonPrefix).append("ret").append(comparisonSeparator);
+			sb.append("boolean success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(';').append(newLine);
 
-			sb.append("out.write(String.format(\"%s:%s%n%n\", suc ? \"OK\" : \"ER\", ret));").append(newLine); //print result to the console
+			sb.append("out.write(String.format(\"%s:%f:%s%n%n\", success ? \"OK\" : \"ER\", (end - start) / 1e6, result));").append(newLine); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(newLine); //finish test case block / begin exception handling
 			sb.append("out.write(\"ER:\");").append(newLine);
