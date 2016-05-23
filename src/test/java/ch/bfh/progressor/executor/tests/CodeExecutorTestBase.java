@@ -119,7 +119,27 @@ public abstract class CodeExecutorTestBase {
 		Assert.assertEquals(this.codeExecutor.getLanguage(), this.getExpectedLanguage(), "language name incorrect");
 	}
 
-	@Test
+	@Test(dependsOnMethods = "testGetLanguage")
+	public void testGetBlacklist() throws ExecutorException {
+
+		Set<String> blacklist = this.codeExecutor.getBlacklist();
+		Assert.assertNotNull(blacklist, "blacklist is missing");
+		Assert.assertNotEquals(blacklist.size(), 0, "blacklist is empty");
+
+		this.logger.info(String.join(" ; ", blacklist));
+	}
+
+	@Test(dependsOnMethods = "testGetBlacklist")
+	public void testGetFragment() throws ExecutorException {
+
+		String fragment = this.codeExecutor.getFragment(FunctionSignatureImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS));
+		Assert.assertNotNull(fragment, "fragment is missing");
+		Assert.assertNotEquals(fragment.length(), 0, "fragment is empty");
+
+		this.logger.info(fragment);
+	}
+
+	@Test(dependsOnMethods = "testGetFragment")
 	public void testGetVersionInformation() throws ExecutorException {
 
 		VersionInformation versionInformation = this.codeExecutor.getVersionInformation();
@@ -133,27 +153,7 @@ public abstract class CodeExecutorTestBase {
 		this.logger.info(String.format("v%s (compiler: %s v%s)", versionInformation.getLanguageVersion(), versionInformation.getCompilerName(), versionInformation.getCompilerVersion()));
 	}
 
-	@Test
-	public void testGetBlacklist() throws ExecutorException {
-
-		Set<String> blacklist = this.codeExecutor.getBlacklist();
-		Assert.assertNotNull(blacklist, "blacklist is missing");
-		Assert.assertNotEquals(blacklist.size(), 0, "blacklist is empty");
-
-		this.logger.info(String.join(" ; ", blacklist));
-	}
-
-	@Test
-	public void testGetFragment() throws ExecutorException {
-
-		String fragment = this.codeExecutor.getFragment(FunctionSignatureImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS));
-		Assert.assertNotNull(fragment, "fragment is missing");
-		Assert.assertNotEquals(fragment.length(), 0, "fragment is empty");
-
-		this.logger.info(fragment);
-	}
-
-	@Test
+	@Test(dependsOnMethods = "testGetVersionInformation")
 	public void testExecute() throws ExecutorException {
 
 		List<Result> results = this.codeExecutor.execute(this.getFragment(), TestCaseImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS, CodeExecutorTestBase.TEST_CASES));
