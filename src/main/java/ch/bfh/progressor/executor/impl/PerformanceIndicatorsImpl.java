@@ -31,7 +31,7 @@ public class PerformanceIndicatorsImpl implements PerformanceIndicators {
 	}
 
 	@Override
-	public double getTotalCompileTimeMilliseconds() {
+	public double getTotalCompilationTimeMilliseconds() {
 		return this.totalExecutionTimeMilliseconds;
 	}
 
@@ -58,7 +58,7 @@ public class PerformanceIndicatorsImpl implements PerformanceIndicators {
 
 		List<ch.bfh.progressor.executor.thrift.PerformanceIndicators> output = new ArrayList<>(indicators.size());
 		for (PerformanceIndicators indicator : indicators)
-			output.add(new ch.bfh.progressor.executor.thrift.PerformanceIndicators(indicator.getTotalCompileTimeMilliseconds(),
+			output.add(new ch.bfh.progressor.executor.thrift.PerformanceIndicators(indicator.getTotalCompilationTimeMilliseconds(),
 																																						 indicator.getTotalExecutionTimeMilliseconds(),
 																																						 indicator.getTestCaseExecutionTimeMilliseconds()));
 

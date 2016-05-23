@@ -52,7 +52,7 @@ struct Result {
 }
 
 struct PerformanceIndicators {
-	1: double totalCompileTimeMilliseconds,
+	1: double totalCompilationTimeMilliseconds,
 	2: double totalExecutionTimeMilliseconds,
 	3: double testCaseExecutionTimeMilliseconds
 }

@@ -12,7 +12,7 @@ public interface PerformanceIndicators {
 	 *
 	 * @return total compilation time in milliseconds
 	 */
-	double getTotalCompileTimeMilliseconds();
+	double getTotalCompilationTimeMilliseconds();
 
 	/**
 	 * Gets the total execution time in milliseconds.
