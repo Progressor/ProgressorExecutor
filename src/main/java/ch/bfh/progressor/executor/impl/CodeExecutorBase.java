@@ -16,6 +16,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -83,12 +84,13 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
 	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
 
-	private static final int BUFFER_SIZE = 1024;
+	private static final int BUFFER_SIZE = 1024 * 8;
 	private static final ByteOrderMark[] BYTE_ORDER_MARKS = { ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE };
 
-	private static final long MAX_JOIN_TIMEOUT_MILLIS = 125;
-	private static final long MAX_BUFFER_TIMEOUT_MILLIS = 1500;
-	private static final long MAX_TOTAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 15;
+	private static final long MAX_JOIN_TIMEOUT_MILLIS = 150;
+	private static final long MAX_BUFFER_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 10;
+	private static final long MAX_INITIAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 3;
+	private static final long MAX_TOTAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 15;
 
 	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;
@@ -370,50 +372,69 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return combined;
 	}
 
+	private String readProcessOutput(Process process) throws TimeoutException, InterruptedException, IOException {
+
+		StringBuilder stringBuilder = new StringBuilder(CodeExecutorBase.BUFFER_SIZE);
+
+		try (BOMInputStream bomInputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS);
+				 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(bomInputStream, (bomInputStream.hasBOM() ? Charset.forName(bomInputStream.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder()), CodeExecutorBase.BUFFER_SIZE)) {
+			boolean processFinished = false;
+			char[] charBuffer = new char[CodeExecutorBase.BUFFER_SIZE];
+			int bufferOffset = 0;
+
+			long maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_INITIAL_TIMEOUT_MILLIS;
+			final long maxTotalTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_TOTAL_TIMEOUT_MILLIS;
+			while (true) {
+				if (System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis)
+					throw new TimeoutException("Process did not respond in time.");
+
+				int readChars = processFinished || bufferedReader.ready() ? bufferedReader.read(charBuffer, bufferOffset, charBuffer.length - bufferOffset) : 0;
+				if (readChars > 0) {
+					bufferOffset += readChars;
+					maxBufferTimeMillis = System.currentTimeMillis() + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
+					if (bufferOffset >= charBuffer.length) {
+						stringBuilder.append(charBuffer, 0, bufferOffset);
+						bufferOffset = 0;
+					}
+
+				} else if (!processFinished) {
+					if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+						processFinished = true;
+
+					else if (readChars < 0)
+						throw new TimeoutException("Process did not finish in time.");
+
+				} else
+					break;
+			}
+
+			if (bufferOffset > 0)
+				stringBuilder.append(charBuffer, 0, bufferOffset);
+		}
+
+		return stringBuilder.toString();
+	}
+
 	private String executeSystemCommand(File directory, String... command) throws ExecutorException {
 
 		Process process = null;
 		try {
 			process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start();
-			StringBuilder stringBuilder = new StringBuilder();
+			String output = this.readProcessOutput(process);
 
-			long start = System.currentTimeMillis();
-
-			try (BOMInputStream inputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS);
-					 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, (inputStream.hasBOM() ? Charset.forName(inputStream.getBOMCharsetName()) : CodeExecutorBase.CHARSET).newDecoder()))) {
-				char[] charBuffer = new char[CodeExecutorBase.BUFFER_SIZE];
-
-				long currentTimeMillis = System.currentTimeMillis();
-				long maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
-				long maxTotalTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_TOTAL_TIMEOUT_MILLIS;
-				while ((currentTimeMillis = System.currentTimeMillis()) < maxBufferTimeMillis && currentTimeMillis < maxTotalTimeMillis) {
-
-					int readResult = bufferedReader.ready() ? bufferedReader.read(charBuffer, 0, charBuffer.length) : 0;
-					if (readResult > 0) {
-						stringBuilder.append(charBuffer, 0, readResult);
-						maxBufferTimeMillis = currentTimeMillis + CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS;
-
-					} else if (readResult < 0)
-						break;
-				}
-			}
-
-			long duration = System.currentTimeMillis() - start;
-
-			if (process.waitFor(CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
-				if (process.exitValue() == 0)
-					return stringBuilder.toString();
-				else
-					throw new ExecutorException("Could not successfully execute command.", stringBuilder.toString());
-
+			if (process.exitValue() == 0)
+				return output;
 			else
-				throw new ExecutorException("Could not execute command in time.");
+				throw new ExecutorException("Could not successfully execute command.", output);
 
-		} catch (IOException ex) {
-			throw new ExecutorException("Could not execute command.", ex);
+		} catch (TimeoutException ex) {
+			throw new ExecutorException("Could not execute command in time.", ex);
 
 		} catch (InterruptedException ex) {
 			throw new ExecutorException("Could not wait for command to execute in time.", ex);
+
+		} catch (IOException ex) {
+			throw new ExecutorException("Could not execute command.", ex);
 
 		} finally {
 			if (process != null && process.isAlive())

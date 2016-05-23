@@ -123,8 +123,11 @@ public abstract class CodeExecutorTestBase {
 	public void testGetVersionInformation() throws ExecutorException {
 
 		VersionInformation versionInformation = this.codeExecutor.getVersionInformation();
+		Assert.assertNotNull(versionInformation.getLanguageVersion(), "language version is missing");
 		Assert.assertNotEquals(versionInformation.getLanguageVersion().length(), 0, "language version is empty");
+		Assert.assertNotNull(versionInformation.getCompilerName(), "compiler name is missing");
 		Assert.assertNotEquals(versionInformation.getCompilerName().length(), 0, "compiler name is empty");
+		Assert.assertNotNull(versionInformation.getCompilerVersion(), "compiler version is missing");
 		Assert.assertNotEquals(versionInformation.getCompilerVersion().length(), 0, "compiler version is empty");
 
 		this.logger.info(String.format("v%s (compiler: %s v%s)", versionInformation.getLanguageVersion(), versionInformation.getCompilerName(), versionInformation.getCompilerVersion()));
@@ -134,6 +137,7 @@ public abstract class CodeExecutorTestBase {
 	public void testGetBlacklist() throws ExecutorException {
 
 		Set<String> blacklist = this.codeExecutor.getBlacklist();
+		Assert.assertNotNull(blacklist, "blacklist is missing");
 		Assert.assertNotEquals(blacklist.size(), 0, "blacklist is empty");
 
 		this.logger.info(String.join(" ; ", blacklist));
@@ -143,6 +147,7 @@ public abstract class CodeExecutorTestBase {
 	public void testGetFragment() throws ExecutorException {
 
 		String fragment = this.codeExecutor.getFragment(FunctionSignatureImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS));
+		Assert.assertNotNull(fragment, "fragment is missing");
 		Assert.assertNotEquals(fragment.length(), 0, "fragment is empty");
 
 		this.logger.info(fragment);
