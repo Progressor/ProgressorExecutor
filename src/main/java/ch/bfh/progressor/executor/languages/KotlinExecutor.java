@@ -75,7 +75,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		//********************
 		//*** COMPILE CODE ***
 		//********************
-		long compilationStart = System.nanoTime();
+		final long compilationStart = System.nanoTime();
 
 		try {
 			this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName());
@@ -83,12 +83,12 @@ public class KotlinExecutor extends CodeExecutorBase {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
 
-		long compilationEnd = System.nanoTime();
+		final long compilationEnd = System.nanoTime();
 
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
-		long executionStart = System.nanoTime();
+		final long executionStart = System.nanoTime();
 
 		String executionOutput;
 		try {
@@ -98,7 +98,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 			throw new ExecutorException("Could not execute the user code.", ex);
 		}
 
-		long executionEnd = System.nanoTime();
+		final long executionEnd = System.nanoTime();
 
 		//****************************
 		//*** TEST CASE EVALUATION ***

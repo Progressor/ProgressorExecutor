@@ -107,7 +107,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		//********************
 		//*** COMPILE CODE ***
 		//********************
-		long compilationStart = System.nanoTime();
+		final long compilationStart = System.nanoTime();
 
 		try {
 			this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "csc" : "mcs", codeFile.getName(), "/debug");
@@ -116,7 +116,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
 
-		long compilationEnd = System.nanoTime();
+		final long compilationEnd = System.nanoTime();
 
 		//********************
 		//*** EXECUTE CODE ***
@@ -125,7 +125,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 																	? new String[] { executableFile.getAbsolutePath() }
 																	: new String[] { "mono", this.willUseDocker() ? new File(CodeExecutorBase.CURRENT_DIRECTORY, executableFile.getName()).getPath() : executableFile.getAbsolutePath(), "--debug" };
 
-		long executionStart = System.nanoTime();
+		final long executionStart = System.nanoTime();
 
 		String executionOutput;
 		try {
@@ -135,7 +135,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 			throw new ExecutorException("Could not execute the user code.", ex);
 		}
 
-		long executionEnd = System.nanoTime();
+		final long executionEnd = System.nanoTime();
 
 		//****************************
 		//*** TEST CASE EVALUATION ***

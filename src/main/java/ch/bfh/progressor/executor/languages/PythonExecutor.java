@@ -75,7 +75,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		//********************
 		//*** EXECUTE CODE ***
 		//********************
-		long executionStart = System.nanoTime();
+		final long executionStart = System.nanoTime();
 
 		String executionOutput;
 		try {
@@ -85,7 +85,7 @@ public class PythonExecutor extends CodeExecutorBase {
 			throw new ExecutorException("Could not execute the user code.", ex);
 		}
 
-		long executionEnd = System.nanoTime();
+		final long executionEnd = System.nanoTime();
 
 		//****************************
 		//*** TEST CASE EVALUATION ***
