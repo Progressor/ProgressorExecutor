@@ -39,7 +39,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(false, codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
+			executionOutput = this.executeDeferredCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

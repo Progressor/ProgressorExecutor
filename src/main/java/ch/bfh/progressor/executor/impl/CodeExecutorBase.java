@@ -405,7 +405,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return output;
 	}
 
-	private String executeSystemCommand(boolean safe, File directory, String... command) throws ExecutorException {
+	private String executeSystemCommand(boolean safe, boolean deferred, File directory, String... command) throws ExecutorException {
 
 		Process process = null;
 		try {
@@ -422,7 +422,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				while (true) {
 					if (!byteBuffer.hasArray())
 						throw new ExecutorException("Could not properly read process output.");
-					if (!safe && (timeoutException = System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis))
+					if (!safe && (timeoutException = !deferred && System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis))
 						break;
 
 					int bytesToRead = Math.min(bomInputStream.available(), byteBuffer.remaining());
@@ -490,7 +490,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private void startDocker(File directory) throws ExecutorException {
 
-		String output = this.executeSystemCommand(true, directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
+		String output = this.executeSystemCommand(true, false, directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
 
 		try (Scanner scanner = new Scanner(output)) {
 			if (scanner.hasNextLine())
@@ -500,10 +500,29 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		}
 	}
 
+	private String executeDockerCommand(boolean safe, boolean deferred, File directory, String... command) throws ExecutorException {
+
+		return this.executeSystemCommand(safe, deferred, directory, this.willUseDocker()
+																																? this.concat(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command)
+																																: command);
+	}
+
+	private void stopDocker(File directory) throws ExecutorException {
+
+		this.executeSystemCommand(true, false, directory, "docker", "stop", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
+		this.executeSystemCommand(true, false, directory, "docker", "rm", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
+		CodeExecutorBase.DOCKER_CONTAINER_ID.set(null);
+	}
+
 	/**
-	 * Executes a system command.
+	 * Executes a standard (unsafe) system command. <br>
+	 * Several rules are enforced for unsafe processes:
+	 * <ol>
+	 * <li>an initial timeout: the processes initially has to react (write on the output stream) before a configured timeout expires</li>
+	 * <li>a buffer timeout: the processes then has to continuously react before a configured rolling timeout expires</li>
+	 * <li>a total timeout: the processes has to complete before a configured timeout expires</li>
+	 * </ol>
 	 *
-	 * @param safe      whether the command is safe to execute or to to be monitored continuously
 	 * @param directory the working directory for the command
 	 * @param command   command to execute
 	 *
@@ -511,16 +530,44 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @throws ExecutorException if the command cannot be executed successfully
 	 */
-	protected String executeCommand(boolean safe, File directory, String... command) throws ExecutorException {
+	protected String executeCommand(File directory, String... command) throws ExecutorException {
 
-		return this.executeSystemCommand(safe, directory, this.willUseDocker() ? this.concat(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command) : command);
+		return this.executeDockerCommand(false, false, directory, command);
 	}
 
-	private void stopDocker(File directory) throws ExecutorException {
+	/**
+	 * Executes an unsafe deferred system command. <br>
+	 * Only the total timeout is enforced for deferred processes.
+	 * They may bulk output data just before finishing.
+	 *
+	 * @param directory the working directory for the command
+	 * @param command   command to execute
+	 *
+	 * @return the output of the command
+	 *
+	 * @throws ExecutorException if the command cannot be executed successfully
+	 * @see #executeCommand(File, String...)
+	 */
+	protected String executeDeferredCommand(File directory, String... command) throws ExecutorException {
 
-		this.executeSystemCommand(true, directory, "docker", "stop", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
-		this.executeSystemCommand(true, directory, "docker", "rm", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
-		CodeExecutorBase.DOCKER_CONTAINER_ID.set(null);
+		return this.executeDockerCommand(false, true, directory, command);
+	}
+
+	/**
+	 * Executes a guaranteed safe system command. <br>
+	 * No rules are enforced for safe commands.
+	 * They are not being aborted and may run forever.
+	 *
+	 * @param directory the working directory for the command
+	 * @param command   command to execute
+	 *
+	 * @return the output of the command
+	 *
+	 * @throws ExecutorException if the command cannot be executed successfully
+	 */
+	protected String executeSafeCommand(File directory, String... command) throws ExecutorException {
+
+		return this.executeDockerCommand(true, false, directory, command);
 	}
 
 	//*****************************
