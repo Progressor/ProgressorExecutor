@@ -374,7 +374,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return ret;
 	}
 
-	private <T> T[] concat(T[]... arrays) {
+	/**
+	 * Concatenates several arrays.
+	 *
+	 * @param <T>    element type of the array to concatenate
+	 * @param arrays the arrays to concatenate
+	 *
+	 * @return a new array containing all the elements
+	 */
+	protected <T> T[] concatenateArrays(T[]... arrays) {
 
 		if (arrays.length == 0) return (T[])new Object[0];
 
@@ -502,9 +510,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private String executeDockerCommand(boolean safe, boolean deferred, File directory, String... command) throws ExecutorException {
 
-		return this.executeSystemCommand(safe, deferred, directory, this.willUseDocker()
-																																? this.concat(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command)
-																																: command);
+		return this.executeSystemCommand(safe, deferred, directory, this.willUseDocker() ? this.concatenateArrays(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command)
+																																										 : command);
 	}
 
 	private void stopDocker(File directory) throws ExecutorException {
