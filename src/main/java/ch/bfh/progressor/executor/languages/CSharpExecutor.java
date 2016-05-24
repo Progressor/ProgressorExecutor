@@ -61,12 +61,12 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 		switch (CodeExecutorBase.PLATFORM) {
 			case WINDOWS:
-				languageOutput = compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "csc", "/help");
+				languageOutput = compilerOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "csc", "/help");
 				break;
 
 			case UNIX_LINUX:
-				languageOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "/help");
-				compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "--version");
+				languageOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "/help");
+				compilerOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "mcs", "--version");
 				break;
 
 			default:
@@ -110,7 +110,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "csc" : "mcs", codeFile.getName(), "/debug");
+			this.executeCommand(true, codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "csc" : "mcs", codeFile.getName(), "/debug");
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
@@ -129,7 +129,7 @@ public class CSharpExecutor extends CodeExecutorBase {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(codeDirectory, executionArguments);
+			executionOutput = this.executeCommand(false, codeDirectory, executionArguments);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

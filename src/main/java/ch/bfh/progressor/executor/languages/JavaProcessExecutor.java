@@ -53,12 +53,12 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 		String javaVersion = null, javacVersion = null;
 
-		String javaOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "java", "-version");
+		String javaOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "java", "-version");
 		Matcher javaMatcher = JavaProcessExecutor.JAVA_VERSION_PATTERN.matcher(javaOutput);
 		if (javaMatcher.find())
 			javaVersion = javaMatcher.group(1);
 
-		String javacOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "javac", "-version");
+		String javacOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "javac", "-version");
 		Matcher javacMatcher = JavaProcessExecutor.JAVAC_VERSION_PATTERN.matcher(javacOutput);
 		if (javacMatcher.find())
 			javacVersion = javacMatcher.group();
@@ -87,7 +87,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeCommand(codeDirectory, "javac", codeFile.getName());
+			this.executeCommand(true, codeDirectory, "javac", codeFile.getName());
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
@@ -101,7 +101,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(codeDirectory, "java", JavaProcessExecutor.CODE_CLASS_NAME);
+			executionOutput = this.executeCommand(false, codeDirectory, "java", JavaProcessExecutor.CODE_CLASS_NAME);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

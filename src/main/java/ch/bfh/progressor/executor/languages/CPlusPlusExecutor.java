@@ -47,7 +47,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 
 		String compilerVersion = null;
 
-		String compilerOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, "g++", "--version");
+		String compilerOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, "g++", "--version");
 		Matcher compilerMatcher = CPlusPlusExecutor.GCC_VERSION_PATTERN.matcher(compilerOutput);
 		if (compilerMatcher.find())
 			compilerVersion = compilerMatcher.group();
@@ -77,7 +77,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeCommand(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
+			this.executeCommand(true, codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
@@ -91,7 +91,7 @@ public class CPlusPlusExecutor extends CodeExecutorBase {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(codeDirectory, this.willUseDocker() ? new File(CodeExecutorBase.CURRENT_DIRECTORY, executableFile.getName()).getPath() : executableFile.getAbsolutePath());
+			executionOutput = this.executeCommand(false, codeDirectory, this.willUseDocker() ? new File(CodeExecutorBase.CURRENT_DIRECTORY, executableFile.getName()).getPath() : executableFile.getAbsolutePath());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

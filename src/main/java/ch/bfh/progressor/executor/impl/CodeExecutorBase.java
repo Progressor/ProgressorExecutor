@@ -95,7 +95,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private static final long MAX_JOIN_TIMEOUT_MILLIS = 150;
 	private static final long MAX_BUFFER_TIMEOUT_MILLIS = CodeExecutorBase.MAX_JOIN_TIMEOUT_MILLIS * 10;
-	private static final long MAX_INITIAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 8;
+	private static final long MAX_INITIAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 3;
 	private static final long MAX_TOTAL_TIMEOUT_MILLIS = CodeExecutorBase.MAX_BUFFER_TIMEOUT_MILLIS * 15;
 
 	private static final Pattern DOUBLE_NEWLINE_PATTERN = Pattern.compile("(\\r\\n|\\r(?!\\n)|(?<!\\r)\\n){2}");
@@ -405,13 +405,13 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return output;
 	}
 
-	private String executeSystemCommand(File directory, String... command) throws ExecutorException {
+	private String executeSystemCommand(boolean safe, File directory, String... command) throws ExecutorException {
 
 		Process process = null;
 		try {
 			process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start();
 
-			boolean timeoutException;
+			boolean timeoutException = false;
 			String output; //source: http://stackoverflow.com/a/16313762/1325979
 			try (BOMInputStream bomInputStream = new BOMInputStream(process.getInputStream(), CodeExecutorBase.BYTE_ORDER_MARKS)) {
 				boolean processFinished = false;
@@ -422,7 +422,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				while (true) {
 					if (!byteBuffer.hasArray())
 						throw new ExecutorException("Could not properly read process output.");
-					if (timeoutException = (System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis))
+					if (!safe && (timeoutException = System.currentTimeMillis() > maxBufferTimeMillis || System.currentTimeMillis() > maxTotalTimeMillis))
 						break;
 
 					int bytesToRead = Math.min(bomInputStream.available(), byteBuffer.remaining());
@@ -470,6 +470,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 		} finally {
 			if (process != null && process.isAlive())
+				//use Java 9 ProcessHandle to destroy children as well
 				process.destroyForcibly();
 		}
 	}
@@ -489,7 +490,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private void startDocker(File directory) throws ExecutorException {
 
-		String output = this.executeSystemCommand(directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
+		String output = this.executeSystemCommand(true, directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
 
 		try (Scanner scanner = new Scanner(output)) {
 			if (scanner.hasNextLine())
@@ -502,6 +503,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Executes a system command.
 	 *
+	 * @param safe      whether the command is safe to execute or to to be monitored continuously
 	 * @param directory the working directory for the command
 	 * @param command   command to execute
 	 *
@@ -509,15 +511,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @throws ExecutorException if the command cannot be executed successfully
 	 */
-	protected String executeCommand(File directory, String... command) throws ExecutorException {
+	protected String executeCommand(boolean safe, File directory, String... command) throws ExecutorException {
 
-		return this.executeSystemCommand(directory, this.willUseDocker() ? this.concat(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command) : command);
+		return this.executeSystemCommand(safe, directory, this.willUseDocker() ? this.concat(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command) : command);
 	}
 
 	private void stopDocker(File directory) throws ExecutorException {
 
-		this.executeSystemCommand(directory, "docker", "stop", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
-		this.executeSystemCommand(directory, "docker", "rm", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
+		this.executeSystemCommand(true, directory, "docker", "stop", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
+		this.executeSystemCommand(true, directory, "docker", "rm", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
 		CodeExecutorBase.DOCKER_CONTAINER_ID.set(null);
 	}
 

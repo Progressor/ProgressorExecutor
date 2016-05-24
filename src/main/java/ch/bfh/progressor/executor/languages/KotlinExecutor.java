@@ -49,7 +49,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 
 		String version = null;
 
-		String versionOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-version");
+		String versionOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-version");
 		Matcher versionMatcher = KotlinExecutor.VERSION_PATTERN.matcher(versionOutput);
 		if (versionMatcher.find())
 			version = versionMatcher.group();
@@ -78,7 +78,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName());
+			this.executeCommand(true, codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName());
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
@@ -92,7 +92,7 @@ public class KotlinExecutor extends CodeExecutorBase {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME);
+			executionOutput = this.executeCommand(false, codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

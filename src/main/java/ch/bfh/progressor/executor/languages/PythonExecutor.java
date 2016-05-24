@@ -49,7 +49,7 @@ public class PythonExecutor extends CodeExecutorBase {
 		String compiler = CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3";
 		String version = null;
 
-		String versionOutput = this.executeCommand(CodeExecutorBase.CURRENT_DIRECTORY, compiler, "--version");
+		String versionOutput = this.executeCommand(true, CodeExecutorBase.CURRENT_DIRECTORY, compiler, "--version");
 		Matcher versionMatcher = PythonExecutor.VERSION_PATTERN.matcher(versionOutput);
 		if (versionMatcher.find())
 			version = versionMatcher.group();
@@ -79,7 +79,7 @@ public class PythonExecutor extends CodeExecutorBase {
 
 		String executionOutput;
 		try {
-			executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3", codeFile.getName());
+			executionOutput = this.executeCommand(false, codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "python" : "python3", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
