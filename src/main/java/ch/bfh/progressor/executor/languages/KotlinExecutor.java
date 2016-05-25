@@ -151,15 +151,13 @@ public class KotlinExecutor extends CodeExecutorBase {
 	@SuppressWarnings({ "LocalVariableNamingConvention", "MethodParameterNamingConvention" })
 	private String simulateKotlinCompilerScript(boolean safe, boolean KOTLIN_RUNNER, File directory, String... arguments) throws ExecutorException {
 
-		String KOTLIN_COMPILER = "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler";
+		final String KOTLIN_COMPILER = "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler";
 
-		String JAVA_HOME = System.getenv("JAVA_HOME");
-		String JAVACMD = JAVA_HOME != null ? Paths.get(JAVA_HOME, "bin", CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "java.exe" : "java").toString()
-																			 : "java";
+		final String JAVACMD = "java"; //ignore JAVA_HOME
 
-		String[] JAVA_OPTS = { "-Xmx256M", "-Xms32M" };
+		final String[] JAVA_OPTS = { "-Xmx256M", "-Xms32M" };
 
-		String KOTLIN_HOME = System.getenv("KOTLIN_HOME"); //ignored fallback: find script and extract path; ignored workaround for cygwin
+		final String KOTLIN_HOME = System.getenv("KOTLIN_HOME"); //ignored fallback: find script and extract path; ignored workaround for cygwin
 		if (KOTLIN_HOME == null)
 			throw new ExecutorException("Cannot find Kotlin libraries.");
 
