@@ -20,7 +20,7 @@ RUN apt-get install -y gcc
 RUN apt-get install -y g++
 
 
-#Install Python
+#Install Python 3
 RUN apt-get install -y python-pip
 
 #Install mono (c#)
