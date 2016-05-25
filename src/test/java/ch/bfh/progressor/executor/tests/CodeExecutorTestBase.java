@@ -41,7 +41,9 @@ public abstract class CodeExecutorTestBase {
 																																					 new FunctionSignature("error", Collections.emptyList(), Collections.emptyList(), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeInt32)));
 
 	protected static final List<TestCase> TEST_CASES_SUCCESS = Arrays.asList(new TestCase("helloWorld", Collections.emptyList(), Collections.singletonList("Hello, World!")),
+																																					 new TestCase("concatStrings", Arrays.asList("Hello, ", "World!"), Collections.singletonList("Hello, World!")),
 																																					 new TestCase("concatStrings", Arrays.asList("Héllô, ", "Wörld£"), Collections.singletonList("Héllô, Wörld£")),
+																																					 new TestCase("concatStrings", Arrays.asList("Ңӗllō, ", "Жөrld£"), Collections.singletonList("Ңӗllō, Жөrld£")),
 																																					 new TestCase("minChar", Arrays.asList("a", "b"), Collections.singletonList("a")),
 																																					 new TestCase("minChar", Arrays.asList("b", "a"), Collections.singletonList("a")),
 																																					 new TestCase("exor", Arrays.asList("false", "false"), Collections.singletonList("false")),

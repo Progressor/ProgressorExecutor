@@ -205,7 +205,7 @@ public class PythonExecutor extends CodeExecutorBase {
 				String valueSafe = IntStream.range(0, value.getSingle().length()).map(value.getSingle()::charAt).mapToObj(i -> String.format("\\u%04X", i))
 																		.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 
-				return String.format("u'%s'", valueSafe);
+				return String.format("'%s'", valueSafe);
 
 			case BOOLEAN:
 				return "true".equalsIgnoreCase(value.getSingle()) ? "True" : "False";
