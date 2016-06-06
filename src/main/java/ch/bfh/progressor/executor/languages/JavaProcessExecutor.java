@@ -340,12 +340,11 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 
 		switch (type.getBaseType()) {
 			case ARRAY:
+				return String.format("%s[]", this.getPrimitiveTypeName(type.getGenericParameters().get(0))); //return primitive type name
+
 			case LIST:
 			case SET:
-				if (type.getBaseType() == ValueType.BaseType.ARRAY)
-					return String.format("%s[]", this.getPrimitiveTypeName(type.getGenericParameters().get(0))); //return class name
-				else
-					return String.format(type.getBaseType() == ValueType.BaseType.LIST ? "List<%s>" : "Set<%s>", this.getTypeName(type.getGenericParameters().get(0))); //return class name
+				return String.format(type.getBaseType() == ValueType.BaseType.LIST ? "List<%s>" : "Set<%s>", this.getTypeName(type.getGenericParameters().get(0))); //return class name
 
 			case MAP:
 				return String.format("Map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0)), this.getTypeName(type.getGenericParameters().get(1))); //return class name

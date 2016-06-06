@@ -475,6 +475,48 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	}
 
 	/**
+	 * Gets a {@link Result} object without performance indicators.
+	 *
+	 * @param success whether or not the execution completed successfully
+	 * @param fatal   whether or not the execution ran into a fatal error
+	 * @param result  execution's actual result
+	 *
+	 * @return a {@link Result} object containing the information
+	 *
+	 * @throws ExecutorException if creation failed
+	 */
+	protected Result createResult(boolean success, boolean fatal, String result) throws ExecutorException {
+
+		if (success && fatal)
+			throw new ExecutorException("Cannot have fatal success.");
+
+		return new ResultImpl(success, fatal, result, null);
+	}
+
+	/**
+	 * Gets a {@link Result} object including performance indicators.
+	 *
+	 * @param success                           whether or not the execution completed successfully
+	 * @param fatal                             whether or not the execution ran into a fatal error
+	 * @param result                            execution's actual result
+	 * @param totalCompileTimeMilliseconds      total compilation time in milliseconds
+	 * @param totalExecutionTimeMilliseconds    total execution time in milliseconds
+	 * @param testCaseExecutionTimeMilliseconds current test case's execution time in milliseconds
+	 *
+	 * @return a {@link Result} object containing the information
+	 *
+	 * @throws ExecutorException if creation failed
+	 */
+	protected Result createResult(boolean success, boolean fatal, String result, double totalCompileTimeMilliseconds, double totalExecutionTimeMilliseconds, double testCaseExecutionTimeMilliseconds) throws ExecutorException {
+
+		if (success && fatal)
+			throw new ExecutorException("Cannot have fatal success.");
+
+		return new ResultImpl(success, fatal, result,
+													new PerformanceIndicatorsImpl(totalCompileTimeMilliseconds, totalExecutionTimeMilliseconds, testCaseExecutionTimeMilliseconds));
+	}
+
+	/**
 	 * Parses the execution output and returns the results.
 	 *
 	 * @param output             raw output of the execution
@@ -507,10 +549,10 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 					resultOffset += executionTimeMatcher.end();
 				}
 
-				results.add(new ResultImpl(success, false, result.substring(resultOffset),
-																	 new PerformanceIndicatorsImpl(totalCompileTime > 0 ? timeUnit.toMillis(totalCompileTime) : Double.NaN,
-																																 timeUnit.toMillis(totalExecutionTime),
-																																 executionTime)));
+				results.add(this.createResult(success, false, result.substring(resultOffset),
+																			totalCompileTime > 0 ? timeUnit.toMillis(totalCompileTime) : Double.NaN,
+																			totalExecutionTime > 0 ? timeUnit.toMillis(totalExecutionTime) : Double.NaN,
+																			executionTime));
 			}
 		}
 
