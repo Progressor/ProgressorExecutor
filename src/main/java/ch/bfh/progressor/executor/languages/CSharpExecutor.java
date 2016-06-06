@@ -15,13 +15,14 @@ import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
 import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
+import ch.bfh.progressor.executor.impl.CodeExecutorDockerBase;
 
 /**
  * Code execution engine for C# code.
  *
  * @author strut1, touwm1 &amp; weidj1
  */
-public class CSharpExecutor extends CodeExecutorBase {
+public class CSharpExecutor extends CodeExecutorDockerBase {
 
 	/**
 	 * Unique name of the language this executor supports.

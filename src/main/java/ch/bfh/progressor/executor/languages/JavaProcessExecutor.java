@@ -14,6 +14,7 @@ import ch.bfh.progressor.executor.api.Value;
 import ch.bfh.progressor.executor.api.ValueType;
 import ch.bfh.progressor.executor.api.VersionInformation;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
+import ch.bfh.progressor.executor.impl.CodeExecutorDockerBase;
 
 /**
  * Code execution engine for Java code. <br>
@@ -21,7 +22,7 @@ import ch.bfh.progressor.executor.impl.CodeExecutorBase;
  *
  * @author strut1, touwm1 &amp; weidj1
  */
-public class JavaProcessExecutor extends CodeExecutorBase {
+public class JavaProcessExecutor extends CodeExecutorDockerBase {
 
 	/**
 	 * Unique name of the language this executor supports.
@@ -68,7 +69,7 @@ public class JavaProcessExecutor extends CodeExecutorBase {
 
 	@Override
 	protected String getTemplatePath() {
-		return String.format("%s/template.java", this.getLanguage());
+		return String.format("%s/template-process.java", this.getLanguage());
 	}
 
 	@Override

@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,10 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.io.ByteOrderMark;
@@ -81,13 +77,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final Pattern NUMERIC_FLOATING_EXPONENTIAL_PATTERN = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?");
 
-	private static final Logger LOGGER = Logger.getLogger(CodeExecutorBase.class.getName());
+	/**
+	 * Placeholder for the custom code fragment in the template file.
+	 */
+	protected static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
 
-	private static final String CODE_CUSTOM_FRAGMENT = "$CustomCode$";
-	private static final String TEST_CASES_FRAGMENT = "$TestCases$";
-
-	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
-	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
+	/**
+	 * Placeholder for the test case fragment in the template file.
+	 */
+	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	private static final int BUFFER_SIZE = 1024;
 	private static final int BUFFER_FACTOR = 2;
@@ -124,39 +122,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 		this.configuration = configuration;
 	}
-
-	@Override
-	public final VersionInformation getVersionInformation() throws ExecutorException {
-
-		try {
-			if (this.shouldUseDocker())
-				try {
-					this.startDocker(CodeExecutorBase.CURRENT_DIRECTORY);
-				} catch (Exception ex) {
-					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not start Docker (for version information).", ex);
-				}
-
-			return this.fetchVersionInformation();
-
-		} catch (Exception ex) {
-			throw new ExecutorException("Could not fetch version information.", ex);
-
-		} finally {
-			if (this.willUseDocker())
-				try {
-					this.stopDocker(CodeExecutorBase.CURRENT_DIRECTORY);
-				} catch (Exception ex) {
-					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not stop Docker (for version information).", ex);
-				}
-		}
-	}
-
-	/**
-	 * Fetches the version information for the language the executor supports.
-	 *
-	 * @return version information for the supported language
-	 */
-	protected abstract VersionInformation fetchVersionInformation() throws ExecutorException;
 
 	/**
 	 * Gets the path to the blacklist file.
@@ -201,9 +166,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @return default path to the template file
 	 */
-	protected String getTemplatePath() {
-		return String.format("%s/template.txt", this.getLanguage());
-	}
+	protected abstract String getTemplatePath();
 
 	/**
 	 * Gets the code template for this language.
@@ -233,59 +196,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return this.getFunctionSignatures(functions);
 	}
 
-	@Override
-	public final List<Result> execute(String codeFragment, List<TestCase> testCases) {
-
-		final File codeDirectory = Paths.get("temp", UUID.randomUUID().toString()).toFile(); //create a temporary directory
-
-		try {
-			if (!codeDirectory.exists() && !codeDirectory.mkdirs())
-				throw new ExecutorException("Could not create a temporary directory for the user code.");
-
-			if (this.shouldUseDocker())
-				try {
-					this.startDocker(codeDirectory);
-				} catch (Exception ex) {
-					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not start Docker.", ex);
-				}
-
-			return this.executeTestCases(codeFragment, testCases, codeDirectory);
-
-		} catch (Exception ex) {
-			StringBuilder sb = new StringBuilder("Could not invoke the user code.").append(CodeExecutorBase.NEWLINE);
-			Throwable throwable = ex;
-			do sb.append(throwable).append(CodeExecutorBase.NEWLINE);
-			while ((throwable = throwable.getCause()) != null);
-
-			return Collections.nCopies(testCases.size(), new ResultImpl(false, true, sb.toString()));
-
-		} finally {
-			if (this.willUseDocker())
-				try {
-					this.stopDocker(codeDirectory);
-				} catch (Exception ex) {
-					CodeExecutorBase.LOGGER.log(Level.SEVERE, "Could not stop Docker.", ex);
-				}
-
-			if (codeDirectory.exists())
-				if (!this.tryDeleteRecursive(codeDirectory))
-					CodeExecutorBase.LOGGER.warning("Could not delete temporary folder.");
-		}
-	}
-
-	/**
-	 * Executes a provided code fragment.
-	 *
-	 * @param codeFragment  code fragment to execute
-	 * @param testCases     test cases to execute
-	 * @param codeDirectory directory to place code file in
-	 *
-	 * @return a {@link List} containing the {@link Result} for each test case
-	 *
-	 * @throws ExecutorException if the execution failed
-	 */
-	protected abstract List<Result> executeTestCases(String codeFragment, List<TestCase> testCases, File codeDirectory) throws ExecutorException;
-
 	/**
 	 * Generates the code file with the user's code fragment.
 	 *
@@ -295,7 +205,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @throws ExecutorException if generation failed
 	 */
-	protected final void generateCodeFile(File codeFile, String codeFragment, List<TestCase> testCases) throws ExecutorException {
+	protected void generateCodeFile(File codeFile, String codeFragment, List<TestCase> testCases) throws ExecutorException {
 
 		try {
 			StringBuilder code = this.getTemplate(); //read the template
@@ -361,7 +271,14 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	//*** SYSTEM HELPERS ***
 	//**********************
 
-	private boolean tryDeleteRecursive(File file) {
+	/**
+	 * Tries to recursively delete a file or directory.
+	 *
+	 * @param file file to directory to delete
+	 *
+	 * @return whether or not the file or directory has been deleted
+	 */
+	protected boolean tryDeleteRecursive(File file) {
 
 		boolean ret = true;
 
@@ -483,44 +400,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		}
 	}
 
-	private boolean shouldUseDocker() {
-		return CodeExecutorBase.PLATFORM.hasDockerSupport() && this.getConfiguration().shouldUseDocker();
-	}
-
-	/**
-	 * Gets whether or not to use Docker.
-	 *
-	 * @return whether or not to use Docker
-	 */
-	protected final boolean willUseDocker() {
-		return this.shouldUseDocker() && CodeExecutorBase.DOCKER_CONTAINER_ID.get() != null;
-	}
-
-	private void startDocker(File directory) throws ExecutorException {
-
-		String output = this.executeSystemCommand(true, false, directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorBase.DOCKER_IMAGE_NAME);
-
-		try (Scanner scanner = new Scanner(output)) {
-			if (scanner.hasNextLine())
-				CodeExecutorBase.DOCKER_CONTAINER_ID.set(scanner.nextLine());
-			else
-				throw new ExecutorException("Could not read identifier of created docker container.");
-		}
-	}
-
-	private String executeDockerCommand(boolean safe, boolean deferred, File directory, String... command) throws ExecutorException {
-
-		return this.executeSystemCommand(safe, deferred, directory, this.willUseDocker() ? this.concatenateArrays(new String[] { "docker", "exec", CodeExecutorBase.DOCKER_CONTAINER_ID.get() }, command)
-																																										 : command);
-	}
-
-	private void stopDocker(File directory) throws ExecutorException {
-
-		this.executeSystemCommand(true, false, directory, "docker", "stop", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
-		this.executeSystemCommand(true, false, directory, "docker", "rm", CodeExecutorBase.DOCKER_CONTAINER_ID.get());
-		CodeExecutorBase.DOCKER_CONTAINER_ID.set(null);
-	}
-
 	/**
 	 * Executes a standard (unsafe) system command. <br>
 	 * Several rules are enforced for unsafe processes:
@@ -539,7 +418,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected String executeCommand(File directory, String... command) throws ExecutorException {
 
-		return this.executeDockerCommand(false, false, directory, command);
+		return this.executeSystemCommand(false, false, directory, command);
 	}
 
 	/**
@@ -557,7 +436,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected String executeDeferredCommand(File directory, String... command) throws ExecutorException {
 
-		return this.executeDockerCommand(false, true, directory, command);
+		return this.executeSystemCommand(false, true, directory, command);
 	}
 
 	/**
@@ -574,7 +453,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected String executeSafeCommand(File directory, String... command) throws ExecutorException {
 
-		return this.executeDockerCommand(true, false, directory, command);
+		return this.executeSystemCommand(true, false, directory, command);
 	}
 
 	//*****************************
