@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -91,7 +90,9 @@ public class PythonExecutor extends CodeExecutorDockerBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.createResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput,
+															Double.NaN,
+															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
 
 	@Override
@@ -176,12 +177,11 @@ public class PythonExecutor extends CodeExecutorDockerBase {
 				StringBuilder sb = new StringBuilder();
 				sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? "{ " : "[ ");
 				boolean first = true; //generate collection elements
-				if (!value.getCollection().isEmpty())
-					for (Value element : value.getCollection()) {
-						if (first) first = false;
-						else sb.append(", ");
-						sb.append(this.getValueLiteral(element));
-					}
+				for (Value element : value.getCollection()) {
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(element));
+				}
 
 				return sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? " }" : " ]").toString(); //finish collection initialisation and return literal
 
@@ -189,15 +189,14 @@ public class PythonExecutor extends CodeExecutorDockerBase {
 				sb = new StringBuilder("{ "); //begin map initialisation
 
 				first = true; //generate key/value pairs
-				if (!value.get2DCollection().isEmpty())
-					for (List<Value> element : value.get2DCollection()) {
-						if (element.size() != 2) //validate key/value pair
-							throw new ExecutorException("Map entries always need a key and a value.");
+				for (List<Value> element : value.get2DCollection()) {
+					if (element.size() != 2) //validate key/value pair
+						throw new ExecutorException("Map entries always need a key and a value.");
 
-						if (first) first = false;
-						else sb.append(", ");
-						sb.append(this.getValueLiteral(element.get(0))).append(": ").append(this.getValueLiteral(element.get(1)));
-					}
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(element.get(0))).append(": ").append(this.getValueLiteral(element.get(1)));
+				}
 
 				return sb.append(" }").toString(); //finish initialisation and return literal
 

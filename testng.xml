@@ -6,6 +6,7 @@
 	<test name="CodeExecutors">
 		<classes>
 			<class name="ch.bfh.progressor.executor.tests.JavaProcessExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.JavaThreadExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.CPlusPlusExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.CSharpExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.PythonExecutorTest" />

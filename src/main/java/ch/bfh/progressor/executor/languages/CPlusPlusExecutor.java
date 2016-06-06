@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -103,7 +102,9 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput,
+															(compilationEnd - compilationStart) / CodeExecutorBase.MILLIS_IN_NANO,
+															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
 
 	@Override
@@ -219,15 +220,14 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 				sb.append(this.getTypeName(value.getType())).append(" { ");
 
 				first = true; //generate collection elements
-				if (!value.get2DCollection().isEmpty())
-					for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
-						if (element.size() != 2) //validate key/value pair
-							throw new ExecutorException("Map entries always need a key and a value.");
+				for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
+					if (element.size() != 2) //validate key/value pair
+						throw new ExecutorException("Map entries always need a key and a value.");
 
-						if (first) first = false;
-						else sb.append(", ");
-						sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append('}');
-					}
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append('}');
+				}
 
 				return sb.append(" }").toString(); //finish initialisation and return literal
 

@@ -2,10 +2,10 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import ch.bfh.progressor.executor.api.ExecutorException;
 import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
+import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 
 /**
  * Code execution engine for Kotlin code. <br>
@@ -49,6 +49,8 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.createResults(executionOutput, 0, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput,
+															Double.NaN,
+															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
 }

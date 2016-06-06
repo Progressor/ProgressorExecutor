@@ -86,7 +86,12 @@ public abstract class CodeExecutorDockerBase extends CodeExecutorBase {
 			do sb.append(throwable).append(CodeExecutorBase.NEWLINE);
 			while ((throwable = throwable.getCause()) != null);
 
-			return Collections.nCopies(testCases.size(), new ResultImpl(false, true, sb.toString()));
+			try {
+				return Collections.nCopies(testCases.size(), this.createResult(false, true, sb.toString()));
+
+			} catch (ExecutorException ex2) {
+				throw new RuntimeException("Could not invoke the user code.", ex);
+			}
 
 		} finally {
 			if (this.willUseDocker())

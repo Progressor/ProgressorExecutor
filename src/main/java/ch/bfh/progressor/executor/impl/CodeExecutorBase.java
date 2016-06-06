@@ -87,6 +87,12 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 */
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
+	/**
+	/**
+	 * Gets the number of milli(second)s per nano(second).
+	 */
+	protected static final double MILLIS_IN_NANO = 1e6;
+
 	private static final int BUFFER_SIZE = 1024;
 	private static final int BUFFER_FACTOR = 2;
 	private static final ByteOrderMark[] BYTE_ORDER_MARKS = CodeExecutorBase.duplicateByteOrderMarks(ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE, ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE);
@@ -496,39 +502,38 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Gets a {@link Result} object including performance indicators.
 	 *
-	 * @param success                           whether or not the execution completed successfully
-	 * @param fatal                             whether or not the execution ran into a fatal error
-	 * @param result                            execution's actual result
-	 * @param totalCompileTimeMilliseconds      total compilation time in milliseconds
-	 * @param totalExecutionTimeMilliseconds    total execution time in milliseconds
-	 * @param testCaseExecutionTimeMilliseconds current test case's execution time in milliseconds
+	 * @param success                     whether or not the execution completed successfully
+	 * @param fatal                       whether or not the execution ran into a fatal error
+	 * @param result                      execution's actual result
+	 * @param totalCompileTimeMillis      total compilation time in milliseconds
+	 * @param totalExecutionTimeMillis    total execution time in milliseconds
+	 * @param testCaseExecutionTimeMillis current test case's execution time in milliseconds
 	 *
 	 * @return a {@link Result} object containing the information
 	 *
 	 * @throws ExecutorException if creation failed
 	 */
-	protected Result createResult(boolean success, boolean fatal, String result, double totalCompileTimeMilliseconds, double totalExecutionTimeMilliseconds, double testCaseExecutionTimeMilliseconds) throws ExecutorException {
+	protected Result createResult(boolean success, boolean fatal, String result, double totalCompileTimeMillis, double totalExecutionTimeMillis, double testCaseExecutionTimeMillis) throws ExecutorException {
 
 		if (success && fatal)
 			throw new ExecutorException("Cannot have fatal success.");
 
 		return new ResultImpl(success, fatal, result,
-													new PerformanceIndicatorsImpl(totalCompileTimeMilliseconds, totalExecutionTimeMilliseconds, testCaseExecutionTimeMilliseconds));
+													new PerformanceIndicatorsImpl(totalCompileTimeMillis, totalExecutionTimeMillis, testCaseExecutionTimeMillis));
 	}
 
 	/**
 	 * Parses the execution output and returns the results.
 	 *
-	 * @param output             raw output of the execution
-	 * @param totalCompileTime   total compilation time
-	 * @param totalExecutionTime total execution time
-	 * @param timeUnit           the unit of the compilation and execution times
+	 * @param output                   raw output of the execution
+	 * @param totalCompileTimeMillis   total compilation time in milliseconds
+	 * @param totalExecutionTimeMillis total execution time in milliseconds
 	 *
 	 * @return a {@link List} containing the result objects
 	 *
 	 * @throws ExecutorException if parsing failed
 	 */
-	protected List<Result> createResults(String output, long totalCompileTime, long totalExecutionTime, TimeUnit timeUnit) throws ExecutorException {
+	protected List<Result> createResults(String output, double totalCompileTimeMillis, double totalExecutionTimeMillis) throws ExecutorException {
 
 		List<Result> results = new ArrayList<>();
 		try (Scanner scanner = new Scanner(output).useDelimiter(CodeExecutorBase.DOUBLE_NEWLINE_PATTERN)) {
@@ -542,17 +547,15 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 				boolean success = "OK".equalsIgnoreCase(successMatcher.group(1));
 				int resultOffset = successMatcher.end();
 
-				double executionTime = Double.NaN;
+				double testCaseExecutionTimeMillis = Double.NaN;
 				Matcher executionTimeMatcher = CodeExecutorBase.RESULT_EXECUTION_TIME_PATTERN.matcher(result.substring(resultOffset));
 				if (executionTimeMatcher.lookingAt()) {
-					executionTime = Double.parseDouble(executionTimeMatcher.group(1));
+					testCaseExecutionTimeMillis = Double.parseDouble(executionTimeMatcher.group(1));
 					resultOffset += executionTimeMatcher.end();
 				}
 
 				results.add(this.createResult(success, false, result.substring(resultOffset),
-																			totalCompileTime > 0 ? timeUnit.toMillis(totalCompileTime) : Double.NaN,
-																			totalExecutionTime > 0 ? timeUnit.toMillis(totalExecutionTime) : Double.NaN,
-																			executionTime));
+																			totalCompileTimeMillis, totalExecutionTimeMillis, testCaseExecutionTimeMillis));
 			}
 		}
 

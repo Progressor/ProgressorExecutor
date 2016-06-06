@@ -2,7 +2,6 @@ package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -113,7 +112,9 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 		//****************************
 		//*** TEST CASE EVALUATION ***
 		//****************************
-		return this.createResults(executionOutput, compilationEnd - compilationStart, executionEnd - executionStart, TimeUnit.NANOSECONDS);
+		return this.createResults(executionOutput,
+															(compilationEnd - compilationStart) / CodeExecutorBase.MILLIS_IN_NANO,
+															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
 
 	@Override
@@ -200,7 +201,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 	@Override
 	protected String getValueLiteral(Value value) throws ExecutorException {
 
-		switch (value.getType().getBaseType()) { //switch over basic types
+		switch (value.getType().getBaseType()) {
 			case ARRAY:
 			case LIST:
 			case SET:
@@ -218,12 +219,11 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 				}
 
 				boolean first = true; //generate collection elements
-				if (!value.getCollection().isEmpty())
-					for (Value element : value.getCollection()) {
-						if (first) first = false;
-						else sb.append(", ");
-						sb.append(this.getValueLiteral(element));
-					}
+				for (Value element : value.getCollection()) {
+					if (first) first = false;
+					else sb.append(", ");
+					sb.append(this.getValueLiteral(element));
+				}
 
 				return sb.append(isArr ? " }" : isLst ? ')' : "))").toString(); //finish collection initialisation and return literal
 
@@ -232,13 +232,12 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 				sb.append("new HashMap<").append(this.getTypeName(value.getType().getGenericParameters().get(0))).append(", ");
 				sb.append(this.getTypeName(value.getType().getGenericParameters().get(1))).append(">() {{ ");
 
-				if (!value.get2DCollection().isEmpty())
-					for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
-						if (element.size() != 2) //validate key/value pair
-							throw new ExecutorException("Map entries always need a key and a value.");
+				for (List<Value> element : value.get2DCollection()) { //generate key/value pairs
+					if (element.size() != 2) //validate key/value pair
+						throw new ExecutorException("Map entries always need a key and a value.");
 
-						sb.append("put(").append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append("); ");
-					}
+					sb.append("put(").append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append("); ");
+				}
 
 				return sb.append("}}").toString(); //finish initialisation and return literal
 

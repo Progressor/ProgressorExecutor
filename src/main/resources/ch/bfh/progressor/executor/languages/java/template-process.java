@@ -14,14 +14,12 @@ $TestCases$
 	public static boolean hasMinimalDifference(float value1, float value2) {
 
 		if (!Float.isFinite(value1) || !Float.isFinite(value2)) return value1 == value2;
-		if (value1 == value2) return true;
-		return Math.abs(value1 - value2) <= Math.ulp(value1);
+		return value1 == value2 || Math.abs(value1 - value2) <= Math.ulp(value1);
 	}
 
 	public static boolean hasMinimalDifference(double value1, double value2) {
 
 		if (!Double.isFinite(value1) || !Double.isFinite(value2)) return value1 == value2;
-		if (value1 == value2) return true;
-		return Math.abs(value1 - value2) <= Math.ulp(value1);
+		return value1 == value2 || Math.abs(value1 - value2) <= Math.ulp(value1);
 	}
 }
