@@ -44,13 +44,13 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 		return this.logId++;
 	}
 
-	private void addCodeExecutor(CodeExecutor codeExecutor) {
+	private synchronized void addCodeExecutor(CodeExecutor codeExecutor) {
 
 		codeExecutor.setConfiguration(this.configuration);
 		this.codeExecutors.put(codeExecutor.getLanguage(), codeExecutor);
 	}
 
-	private void loadCodeExecutors() {
+	private synchronized void loadCodeExecutors() {
 
 		ServiceLoader<CodeExecutor> executors = ServiceLoader.load(CodeExecutor.class); //fetch the executor classes
 		for (CodeExecutor executor : executors)
@@ -60,7 +60,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			}
 	}
 
-	private boolean tryLoadCodeExecutor(String language) {
+	private synchronized boolean tryLoadCodeExecutor(String language) {
 
 		ServiceLoader<CodeExecutor> executors = ServiceLoader.load(CodeExecutor.class); //fetch the executor classes
 		for (CodeExecutor executor : executors)
@@ -73,7 +73,7 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 		return false;
 	}
 
-	private CodeExecutor getCodeExecutor(String language) throws ExecutorException {
+	private synchronized CodeExecutor getCodeExecutor(String language) throws ExecutorException {
 
 		if (!this.codeExecutors.containsKey(language) && !this.tryLoadCodeExecutor(language)) //try to load code executor; if unable, throw exception
 			throw new ExecutorException(String.format("Could not find an executor for language '%s'.", language));
