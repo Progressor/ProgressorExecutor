@@ -64,7 +64,7 @@ The *Java Developer Toolkit* (JDK) can be downloaded from the [official *Oracle*
 This projects targets the [*GNU Compiler Collection* (GCC)](https://gcc.gnu.org/).
 Support for *C++11* is required.
 
-* For Linux, G++/GCC
+* For Linux, G++, Install using *apt-get install g++*
 * For Windows, the following packages are available:
   * [*MinGW*](http://www.mingw.org/), which can be downloaded from [*sourceforge*](https://sourceforge.net/projects/mingw/files/).
     * A [x64 version](http://mingw-w64.org/) is available on a [dedicated site](http://mingw-w64.org/doku.php/download/win-builds).
@@ -72,7 +72,9 @@ Support for *C++11* is required.
 
 ### C#
 
-* For Windows, ...
+* For Windows, C# compiler is already part of the recent Windows operationg systems. Make sure that the **PATH** environment variable is set to
+  *C:\WINDOWS\Microsoft.NET\Framework\v[your version number]\csc.exe.*
+        * If directory does not exist you can download the [*.Net Core*](https://www.microsoft.com/net/download)
 * For Linux, [*Mono*](http://www.mono-project.com/) can be downloaded from their [downloads page](http://www.mono-project.com/download/).
 
 #### Kotlin
@@ -81,7 +83,7 @@ For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinla
 
 ### Python
 
-* For Linux, Python 3 install using *apt-get python3*
-* For Windows, Download Python 3 and install (https://www.python.org/downloads/release/python-351/)
+* For Linux, Python 3 install using *apt-get install python3*
+* For Windows, Download [*Python 3*](https://www.python.org/downloads/release/python-351/) and install.
 
 
