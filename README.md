@@ -6,7 +6,8 @@ This is the code **Executor** component of the project **Progressor - The Progra
 
 This repository contains a [*Maven*](https://maven.apache.org/) project created using [*IntelliJ IDEA*](https://www.jetbrains.com/idea/).
 
-...
+Executor won't work properly if apachethrift files have not been gernerated. Luckely Maven generates these files for us when you build the project.
+So before you run the Executor run it as a Maven build: *mvn -clean -package*
 
 ### Dependencies
 
@@ -23,7 +24,13 @@ This project has four *Maven* dependencies:
 
 ## Docker
 
-...
+Docker is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with docker on Windows.
+The created dockerimage Tag is named: *progressor/executor*
+If you decide to not user docker, you can specified with starting arguments:*-docker false*
+
+Be aware, that not using docker requires you to install all the compilers of the languages you want to support on your server. If you use docker 
+you need to install the compilers in your docker image. To do that, you need to adjust the Dockerfile
+and rebuild your image.
 
 ## Programming Languages
 
@@ -48,7 +55,7 @@ The *Java Developer Toolkit* (JDK) can be downloaded from the [official *Oracle*
 This projects targets the [*GNU Compiler Collection* (GCC)](https://gcc.gnu.org/).
 Support for *C++11* is required.
 
-* For Linux, ...
+* For Linux, G++/GCC
 * For Windows, the following packages are available:
   * [*MinGW*](http://www.mingw.org/), which can be downloaded from [*sourceforge*](https://sourceforge.net/projects/mingw/files/).
     * A [x64 version](http://mingw-w64.org/) is available on a [dedicated site](http://mingw-w64.org/doku.php/download/win-builds).
@@ -65,7 +72,8 @@ For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinla
 
 ### Python
 
-...
+* For Linux, Python 3 install using *apt-get python3*
+* For Windows, Download Python 3 and install (https://www.python.org/downloads/release/python-351/)
 
 ### Extensibility
 
