@@ -72,9 +72,8 @@ Support for *C++11* is required.
 
 ### C#
 
-* For Windows, C# compiler is already part of the recent Windows operationg systems. Make sure that the **PATH** environment variable is set to
-  *C:\WINDOWS\Microsoft.NET\Framework\v[your version number]\csc.exe.*
-        * If directory does not exist you can download the [*.Net Core*](https://www.microsoft.com/net/download)
+* For Windows, C# compiler is already part of the recent Windows operationg systems. Make sure that the **PATH** environment variable is set to *C:\WINDOWS\Microsoft.NET\Framework\v[your version number]\csc.exe.*
+    * If directory does not exist you can download the [*.Net Core*](https://www.microsoft.com/net/download)
 * For Linux, [*Mono*](http://www.mono-project.com/) can be downloaded from their [downloads page](http://www.mono-project.com/download/).
 
 #### Kotlin
