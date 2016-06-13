@@ -2,6 +2,13 @@
 
 This is the code **Executor** component of the project **Progressor - The Programming Professor**.
 
+### Extensibility
+
+The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
+
+New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.api.CodeExecutor* and making it discoverable by the **Executor**.
+Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).
+
 ## Maven
 
 This repository contains a [*Maven*](https://maven.apache.org/) project created using [*IntelliJ IDEA*](https://www.jetbrains.com/idea/).
@@ -29,8 +36,7 @@ The created dockerimage Tag is named: *progressor/executor*
 If you decide to not user docker, you can specified with starting arguments:*-docker false*
 
 Be aware, that not using docker requires you to install all the compilers of the languages you want to support on your server. If you use docker 
-you need to install the compilers in your docker image. To do that, you need to adjust the Dockerfile
-and rebuild your image.
+you need to install the compilers in your docker image. To do that, you need to adjust the Dockerfile and rebuild your image.
 
 ## Programming Languages
 
@@ -43,6 +49,9 @@ To use the languages, the following compilers (and other tools) need to be insta
 3. *C#*: `csc` (Windows) or `msc` (Linux)
 4. *Kotlin*: `kotlinc` and `kotlin`
 5. *Python*: `python` (Windows)
+
+As already mentioned, if you are using docker these compilers need to be installed inside the Docker image via the Dockerfile.
+Java is the only exception, since it is needen inside the Docker image as well as on the server to run the executor.
 
 ### Java
 
@@ -75,9 +84,4 @@ For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinla
 * For Linux, Python 3 install using *apt-get python3*
 * For Windows, Download Python 3 and install (https://www.python.org/downloads/release/python-351/)
 
-### Extensibility
 
-The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
-
-New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.api.CodeExecutor* and making it discoverable by the **Executor**.
-Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).
