@@ -31,12 +31,12 @@ This project has four *Maven* dependencies:
 
 ## Docker
 
-Docker is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with docker on Windows.
-The created dockerimage Tag is named: *progressor/executor*
-If you decide to not user docker, you can specified with starting arguments:*-docker false*
+*Docker* is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with *Docker* on Windows.
+The created *Docker* image Tag is named `progressor/executor`.
+If you decide to not user *Docker*, you can specified with starting arguments `-docker false`.
 
-Be aware, that not using docker requires you to install all the compilers of the languages you want to support on your server. If you use docker 
-you need to install the compilers in your docker image. To do that, you need to adjust the Dockerfile and rebuild your image.
+Be aware, that not using *Docker* requires you to install all the compilers of the languages you want to support on your server.
+If you use *Docker* you need to install the compilers in your *Docker* image. To do that, you need to adjust the Dockerfile and rebuild your image.
 
 ## Programming Languages
 
@@ -50,8 +50,8 @@ To use the languages, the following compilers (and other tools) need to be insta
 4. *Kotlin*: `kotlinc` and `kotlin`
 5. *Python*: `python` (Windows)
 
-As already mentioned, if you are using docker these compilers need to be installed inside the Docker image via the Dockerfile.
-Java is the only exception, since it is needen inside the Docker image as well as on the server to run the executor.
+As already mentioned, if you are using *Docker* these compilers need to be installed inside the *Docker* image via the Dockerfile.
+Java is the only exception, since it is needen inside the *Docker* image as well as on the server to run the executor.
 
 ### Java
 
@@ -64,7 +64,7 @@ The *Java Developer Toolkit* (JDK) can be downloaded from the [official *Oracle*
 This projects targets the [*GNU Compiler Collection* (GCC)](https://gcc.gnu.org/).
 Support for *C++11* is required.
 
-* For Linux, G++, Install using *apt-get install g++*
+* For Linux, install *G++* using `apt-get install g++`
 * For Windows, the following packages are available:
   * [*MinGW*](http://www.mingw.org/), which can be downloaded from [*sourceforge*](https://sourceforge.net/projects/mingw/files/).
     * A [x64 version](http://mingw-w64.org/) is available on a [dedicated site](http://mingw-w64.org/doku.php/download/win-builds).
@@ -72,8 +72,9 @@ Support for *C++11* is required.
 
 ### C#
 
-* For Windows, C# compiler is already part of the recent Windows operationg systems. Make sure that the **PATH** environment variable is set to *C:\WINDOWS\Microsoft.NET\Framework\v[your version number]\csc.exe.*
-    * If directory does not exist you can download the [*.Net Core*](https://www.microsoft.com/net/download)
+* For Windows, C# compiler is already part of the recent Windows operationg systems.
+  Make sure that the *PATH* environment variable is set to `C:\WINDOWS\Microsoft.NET\Framework\v[your version number]\csc.exe.`
+    * If directory does not exist you can download the [*.NET Core*](https://www.microsoft.com/net/download)
 * For Linux, [*Mono*](http://www.mono-project.com/) can be downloaded from their [downloads page](http://www.mono-project.com/download/).
 
 #### Kotlin
