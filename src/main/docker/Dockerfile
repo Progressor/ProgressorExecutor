@@ -8,23 +8,22 @@ MAINTAINER Thomas Strub, Marc Touw, Janick Weidmann
 
 # Update the repository sources list
 RUN echo "deb http://archive.ubuntu.com/ubuntu trusty main universe" > /etc/apt/sources.list
-RUN apt-get update
 RUN apt-get upgrade
 
 #########################################################
 #Install all the languages/compilers we are supporting.##
 #########################################################
 
-#Install c/c++ Compilers
-RUN apt-get install -y gcc
-RUN apt-get install -y g++
+#Installing C\C++(GCC & G++) compiler, python3 and mono
+#Curl and unzip are later used for the Kotlin installation
+RUN apt-get update && \
+ apt-get install -y g++ \
+ gcc \
+ python3-pip \
+ mono-mcs \
+ curl \
+ unzip
 
-
-#Install Python 3
-RUN apt-get install -y python-pip
-
-#Install mono (c#)
-RUN apt-get install -y mono-mcs
 
 #Install Java 8
 RUN \
@@ -45,11 +44,6 @@ RUN \
     rm -rf /var/cache/oracle-jdk8-installer  && \
     apt-get clean  && \
     rm -rf /var/lib/apt/lists/*
-
-#Install curl and unzip (Used for Kotlin installation)
-RUN apt-get -qq update
-RUN apt-get -qq -y install curl
-RUN apt-get -y install unzip
 
 #Install Kotlin
 RUN curl -O -J -L https://github.com/JetBrains/kotlin/releases/download/1.0.2/kotlin-compiler-1.0.2.zip
