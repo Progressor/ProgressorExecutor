@@ -1,6 +1,6 @@
 ############################################################
-# Dockerfile to build sandbox for executing user code
-# Based on Ubuntu
+# Dockerfile to build sandbox for executing user code			#
+# Based on Ubuntu																					#
 ############################################################
 
 FROM chug/ubuntu14.04x64
@@ -50,6 +50,7 @@ RUN curl -O -J -L https://github.com/JetBrains/kotlin/releases/download/1.0.2/ko
 RUN mkdir -p /kotlin-compiler
 RUN unzip kotlin-compiler-1.0.2.zip -d /kotlin-compiler
 
+#Setting Kotlin environment variables
 ENV KOTLIN_HOME /kotlin-compiler/kotlinc
 ENV PATH $KOTLIN_HOME/bin:$PATH
 
