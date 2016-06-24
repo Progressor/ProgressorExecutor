@@ -21,9 +21,19 @@ RUN apt-get update && \
  gcc \
  python3-pip \
  mono-mcs \
+ mono-vbnc \
  curl \
  unzip
 
+#Installing Node
+
+RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
+RUN apt-get install -y nodejs
+
+#Install PHP 7.0
+RUN apt-get update && apt-get install -y software-properties-common
+RUN add-apt-repository ppa:ondrej/php
+RUN apt-get update && apt-get install --force-yes -y php7.0
 
 #Install Java 8
 RUN \
