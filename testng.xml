@@ -10,6 +10,8 @@
 			<class name="ch.bfh.progressor.executor.tests.CPlusPlusExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.CSharpExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.PythonExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.JavaScriptExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.PHPExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.KotlinExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.KotlinScriptExecutorTest" />
 		</classes>
