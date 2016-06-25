@@ -9,7 +9,7 @@ public class CSharpExecutorTest extends CodeExecutorTestBase {
 	protected static final String FRAGMENT = new StringBuilder().append("public string helloWorld() { return \"Hello, World!\"; }").append(CodeExecutorBase.NEWLINE)
 																															.append("public string concatStrings(string a, string b) { return a + b; }").append(CodeExecutorBase.NEWLINE)
 																															.append("public char minChar(char a, char b) { return a < b ? a : b; }").append(CodeExecutorBase.NEWLINE)
-																															.append("public bool exor(bool a, bool b) { return a ^ b;}").append(CodeExecutorBase.NEWLINE)
+																															.append("public bool exor(bool a, bool b) { return a ^ b; }").append(CodeExecutorBase.NEWLINE)
 																															.append("public sbyte sumInt8(sbyte a, sbyte b) { return (sbyte)(a + b); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public short sumInt16(short a, short b) { return (short)(a + b); }").append(CodeExecutorBase.NEWLINE)
 																															.append("public int sumInt32(int a, int b) { return a + b; }").append(CodeExecutorBase.NEWLINE)

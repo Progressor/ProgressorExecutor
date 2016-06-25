@@ -14,6 +14,7 @@
 			<class name="ch.bfh.progressor.executor.tests.PHPExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.KotlinExecutorTest" />
 			<class name="ch.bfh.progressor.executor.tests.KotlinScriptExecutorTest" />
+			<class name="ch.bfh.progressor.executor.tests.VBNetExecutorTest" />
 		</classes>
 	</test>
 

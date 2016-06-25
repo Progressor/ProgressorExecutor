@@ -1,0 +1,82 @@
+[
+	{
+		"group": "keywords",
+		"elements": [
+			{"keyword": "#Const"},
+			{"keyword": "#Else"},
+			{"keyword": "#ElseIf"},
+			{"keyword": "#End"},
+			{"keyword": "#If"},
+			{"keyword": "AddHandler"},
+			{"keyword": "Alias"},
+			{"keyword": "Class"},
+			{"keyword": "Declare"},
+			{"keyword": "Enum"},
+			{"keyword": "Erase"},
+			{"keyword": "Error"},
+			{"keyword": "Event"},
+			{"keyword": "Finally"},
+			{"keyword": "GetType"},
+			{"keyword": "Global"},
+			{"keyword": "GoSub"},
+			{"keyword": "GoTo"},
+			{"keyword": "Handles"},
+			{"keyword": "Implements"},
+			{"keyword": "Imports"},
+			{"keyword": "Inherits"},
+			{"keyword": "Interface"},
+			{"keyword": "Me"},
+			{"keyword": "Mod"},
+			{"keyword": "Module"},
+			{"keyword": "MustInherit"},
+			{"keyword": "MustOverride"},
+			{"keyword": "MyBase"},
+			{"keyword": "MyClass"},
+			{"keyword": "Namespace"},
+			{"keyword": "Narrowing"},
+			{"keyword": "NotInheritable"},
+			{"keyword": "NotOverridable"},
+			{"keyword": "Operator"},
+			{"keyword": "Option"},
+			{"keyword": "Overloads"},
+			{"keyword": "Overridable"},
+			{"keyword": "Overrides"},
+			{"keyword": "Partial"},
+			{"keyword": "RaiseEvent"},
+			{"keyword": "RemoveHandler"},
+			{"keyword": "Shadows"},
+			{"keyword": "Shared"},
+			{"keyword": "Structure"},
+			{"keyword": "SyncLock"},
+			{"keyword": "Throw"},
+			{"keyword": "Try"},
+			{"keyword": "TypeOf"},
+			{"keyword": "Variant"},
+			{"keyword": "Wend"},
+			{"keyword": "Widening"},
+			{"keyword": "WithEvents"}
+		]
+	},
+	{
+		"group": "methods",
+		"elements": [
+			{"keyword": "Finalize"},
+			{"keyword": "GetType"},
+			{"keyword": "MemberwiseClone"}
+		]
+	},
+	{
+		"group": "classes & namespaces",
+		"elements": [
+			{"keyword": "Application"},
+			{"keyword": "Directory"},
+			{"keyword": "File"},
+			{"keyword": "Memory"},
+			{"keyword": "Path"},
+			{"keyword": "Reflection"},
+			{"keyword": "Runtime"},
+			{"keyword": "Security"},
+			{"keyword": "System"}
+		]
+	}
+]
