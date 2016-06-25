@@ -136,9 +136,9 @@ public abstract class CodeExecutorDockerBase extends CodeExecutorBase {
 	}
 
 	/**
-	 * Gets whether or not to use Docker.
+	 * Gets whether to use Docker.
 	 *
-	 * @return whether or not to use Docker
+	 * @return whether to use Docker
 	 */
 	protected final boolean willUseDocker() {
 		return this.shouldUseDocker() && CodeExecutorDockerBase.DOCKER_CONTAINER_ID.get() != null;

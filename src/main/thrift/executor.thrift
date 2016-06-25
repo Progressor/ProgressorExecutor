@@ -76,6 +76,13 @@ service ExecutorService {
 		3: list<FunctionSignature> functions
 	)
 
+	string getCodeFile(
+		1: string language,
+		2: string fragment,
+		3: list<FunctionSignature> functions,
+		4: list<TestCase> testCases
+	)
+
 	list<Result> execute(
 		1: string language,
 		2: string fragment,

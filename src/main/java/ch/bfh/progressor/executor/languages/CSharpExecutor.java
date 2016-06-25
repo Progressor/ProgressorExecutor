@@ -217,10 +217,13 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
 
-			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);").append(CodeExecutorBase.NEWLINE).append("Console.WriteLine();").append(CodeExecutorBase.NEWLINE); //print result to the console
+			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);"); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
-			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(CodeExecutorBase.NEWLINE).append("Console.WriteLine();").append(CodeExecutorBase.NEWLINE);
+			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(CodeExecutorBase.NEWLINE);
+
+			sb.append("} finally {").append(CodeExecutorBase.NEWLINE);
+			sb.append("Console.WriteLine();").append(CodeExecutorBase.NEWLINE);
 			sb.append('}'); //finish exception handling
 		}
 

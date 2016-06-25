@@ -295,7 +295,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 	 * Gets the name of an arbitrary type.
 	 *
 	 * @param type          type to get name of
-	 * @param isDeclaration whether or not this type is used for a declaration
+	 * @param isDeclaration whether this type is used for a declaration
 	 *
 	 * @return name of type
 	 *

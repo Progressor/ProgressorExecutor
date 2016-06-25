@@ -20,6 +20,8 @@ import ch.bfh.progressor.executor.impl.FunctionSignatureImpl;
 import ch.bfh.progressor.executor.impl.ResultImpl;
 import ch.bfh.progressor.executor.impl.TestCaseImpl;
 import ch.bfh.progressor.executor.impl.VersionInformationImpl;
+import ch.bfh.progressor.executor.thrift.FunctionSignature;
+import ch.bfh.progressor.executor.thrift.TestCase;
 
 /**
  * Implementation of the {@link ch.bfh.progressor.executor.thrift.ExecutorService}.
@@ -187,6 +189,38 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 
 		} catch (Exception ex) { //wrap exception
 			String msg = String.format("Could not generate the fragment for language '%s'.", language);
+			ExecutorService.LOGGER.log(Level.WARNING, msg, ex);
+			throw new TException(msg, ex);
+
+		} finally {
+			ExecutorService.LOGGER.finer(String.format("%-6d: finished in %d ms", logId, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNano)));
+		}
+	}
+
+	/**
+	 * Generates the whole code file containing a the fragment and the test cases.
+	 *
+	 * @param language  language to code fragment is written in
+	 * @param fragment  code fragment to include in the generated code
+	 * @param functions functions the fragment implements
+	 * @param testCases test cases to include in the generated code
+	 *
+	 * @return the whole code file containing a the fragment and the test cases
+	 *
+	 * @throws TException if anything goes wrong (check cause for exception type)
+	 */
+	@Override
+	public String getCodeFile(String language, String fragment, List<FunctionSignature> functions, List<TestCase> testCases) throws TException {
+
+		final int logId = this.getLogId();
+		final long startNano = System.nanoTime();
+		ExecutorService.LOGGER.info(String.format("%-6d: getCodeFile(language=%s, fragment=..., %d testCases: %s...)", logId, language, testCases.size(), !testCases.isEmpty() ? testCases.get(0) : null));
+
+		try {
+			return this.getCodeExecutor(language).getCodeFile(fragment, TestCaseImpl.convertFromThrift(functions, testCases)); //delegate call
+
+		} catch (Exception ex) { //wrap exception
+			String msg = String.format("Could not generate the code file language '%s'.", language);
 			ExecutorService.LOGGER.log(Level.WARNING, msg, ex);
 			throw new TException(msg, ex);
 

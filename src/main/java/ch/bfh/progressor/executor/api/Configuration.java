@@ -16,12 +16,24 @@ public interface Configuration {
 		public boolean shouldUseDocker() {
 			return ExecutorPlatform.determine().hasDockerSupport();
 		}
+
+		@Override
+		public boolean shouldCleanUp() {
+			return true;
+		}
 	};
 
 	/**
-	 * Gets whether or not to use Docker containers.
+	 * Gets whether to use Docker containers.
 	 *
-	 * @return whether or not to use Docker containers
+	 * @return whether to use Docker containers
 	 */
 	boolean shouldUseDocker();
+
+	/**
+	 * Gets whether to clean up temporary files.
+	 *
+	 * @return whether to clean up temporary files
+	 */
+	boolean shouldCleanUp();
 }

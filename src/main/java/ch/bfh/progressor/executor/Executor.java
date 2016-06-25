@@ -53,6 +53,7 @@ public final class Executor {
 
 		int port = Executor.DEFAULT_SERVER_PORT;
 		boolean useDocker = Configuration.DEFAULT_CONFIGURATION.shouldUseDocker();
+		boolean cleanUp = true;
 
 		for (int i = 0; i < args.length; i++)
 			switch (args[i]) {
@@ -67,6 +68,24 @@ public final class Executor {
 
 					if (port < 0 || 65535 < port)
 						throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use unsigned 16-bit integer (0 to 65535).", args[i], args[i - 1]));
+					break;
+
+				case "-c":
+				case "-cleanup":
+					switch (args[++i]) {
+						case "true":
+						case "yes":
+							cleanUp = true;
+							break;
+
+						case "false":
+						case "no":
+							cleanUp = false;
+							break;
+
+						default:
+							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
+					}
 					break;
 
 				case "-d":
@@ -97,7 +116,7 @@ public final class Executor {
 		Executor.LOGGER.config(String.format("Using port %d.", port));
 		Executor.LOGGER.config(useDocker ? "Using Docker containers." : "Not using Docker containers.");
 
-		Configuration configuration = new ConfigurationImpl(useDocker);
+		Configuration configuration = new ConfigurationImpl(useDocker, cleanUp);
 
 		try (TServerTransport transport = new TServerSocket(port)) {
 			TProcessor processor = new ch.bfh.progressor.executor.thrift.ExecutorService.Processor<>(new ExecutorService(configuration));

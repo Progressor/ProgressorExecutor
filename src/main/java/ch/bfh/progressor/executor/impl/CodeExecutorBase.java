@@ -201,6 +201,25 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 		return this.getFunctionSignatures(functions);
 	}
 
+	@Override
+	public String getCodeFile(String codeFragment, List<TestCase> testCases) throws ExecutorException {
+
+		try {
+			StringBuilder code = this.getTemplate(); //read the template
+
+			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
+			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
+
+			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
+			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
+
+			return code.toString();
+
+		} catch (ExecutorException ex) {
+			throw new ExecutorException("Could not generate the code file.", ex);
+		}
+	}
+
 	/**
 	 * Generates the code file with the user's code fragment.
 	 *
@@ -213,17 +232,9 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected void generateCodeFile(File codeFile, String codeFragment, List<TestCase> testCases) throws ExecutorException {
 
 		try {
-			StringBuilder code = this.getTemplate(); //read the template
+			Files.write(codeFile.toPath(), this.getCodeFile(codeFragment, testCases).getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
 
-			int fragStart = code.indexOf(CodeExecutorBase.CODE_CUSTOM_FRAGMENT); //place fragment in template
-			code.replace(fragStart, fragStart + CodeExecutorBase.CODE_CUSTOM_FRAGMENT.length(), codeFragment);
-
-			int caseStart = code.indexOf(CodeExecutorBase.TEST_CASES_FRAGMENT); //generate test cases and place them in fragment
-			code.replace(caseStart, caseStart + CodeExecutorBase.TEST_CASES_FRAGMENT.length(), this.getTestCaseSignatures(testCases));
-
-			Files.write(codeFile.toPath(), code.toString().getBytes(CodeExecutorBase.CHARSET)); //and write the generated code in it
-
-		} catch (ExecutorException | IOException ex) {
+		} catch (IOException ex) {
 			throw new ExecutorException("Could not generate the code file.", ex);
 		}
 	}
@@ -281,7 +292,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	 *
 	 * @param file file to directory to delete
 	 *
-	 * @return whether or not the file or directory has been deleted
+	 * @return whether the file or directory has been deleted
 	 */
 	protected boolean tryDeleteRecursive(File file) {
 
@@ -292,7 +303,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			for (File child : children)
 				ret &= this.tryDeleteRecursive(child);
 
-		ret &= file.delete(); //delete file itself
+		if (this.getConfiguration().shouldCleanUp())
+			ret &= file.delete(); //delete file itself
 		return ret;
 	}
 
@@ -482,8 +494,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Gets a {@link Result} object without performance indicators.
 	 *
-	 * @param success whether or not the execution completed successfully
-	 * @param fatal   whether or not the execution ran into a fatal error
+	 * @param success whether the execution completed successfully
+	 * @param fatal   whether the execution ran into a fatal error
 	 * @param result  execution's actual result
 	 *
 	 * @return a {@link Result} object containing the information
@@ -501,8 +513,8 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	/**
 	 * Gets a {@link Result} object including performance indicators.
 	 *
-	 * @param success                     whether or not the execution completed successfully
-	 * @param fatal                       whether or not the execution ran into a fatal error
+	 * @param success                     whether the execution completed successfully
+	 * @param fatal                       whether the execution ran into a fatal error
 	 * @param result                      execution's actual result
 	 * @param totalCompileTimeMillis      total compilation time in milliseconds
 	 * @param totalExecutionTimeMillis    total execution time in milliseconds

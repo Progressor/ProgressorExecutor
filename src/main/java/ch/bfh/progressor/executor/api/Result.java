@@ -8,16 +8,16 @@ package ch.bfh.progressor.executor.api;
 public interface Result {
 
 	/**
-	 * Whether or not the execution completed successfully.
+	 * Whether the execution completed successfully.
 	 *
-	 * @return whether or not the execution completed successfully
+	 * @return whether the execution completed successfully
 	 */
 	boolean isSuccess();
 
 	/**
-	 * Whether or not the execution ran into a fatal error.
+	 * Whether the execution ran into a fatal error.
 	 *
-	 * @return whether or not the execution ran into a fatal error
+	 * @return whether the execution ran into a fatal error
 	 */
 	boolean isFatal();
 

@@ -54,6 +54,18 @@ public interface CodeExecutor {
 	Set<String> getBlacklist() throws ExecutorException;
 
 	/**
+	 * Gets the whole code generated in order to execute the provided code fragment.
+	 *
+	 * @param codeFragment code fragment to include in the generated code
+	 * @param testCases    test cases to include in the generated code
+	 *
+	 * @return the whole code containing the provided code fragment and generated code for each test case
+	 *
+	 * @throws ExecutorException if the blacklist could not be read
+	 */
+	String getCodeFile(String codeFragment, List<TestCase> testCases) throws ExecutorException;
+
+	/**
 	 * Executes a provided code fragment.
 	 *
 	 * @param codeFragment code fragment to execute

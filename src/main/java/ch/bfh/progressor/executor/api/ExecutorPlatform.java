@@ -74,9 +74,9 @@ public enum ExecutorPlatform {
 	}
 
 	/**
-	 * Whether or not the platform supports Docker containers.
+	 * Whether the platform supports Docker containers.
 	 *
-	 * @return whether or not the platform supports Docker containers
+	 * @return whether the platform supports Docker containers
 	 */
 	public boolean hasDockerSupport() {
 		return this.dockerSupported;

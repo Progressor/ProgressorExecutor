@@ -9,20 +9,27 @@ import ch.bfh.progressor.executor.api.Configuration;
  */
 public class ConfigurationImpl implements Configuration {
 
-	private final boolean useDocker;
+	private final boolean useDocker, cleanUp;
 
 	/**
 	 * Constructs a new {@link Configuration} object.
 	 *
-	 * @param useDocker whether or not to use Docker containers
+	 * @param useDocker whether to use Docker containers
+	 * @param cleanUp   whether to clean up temporary files
 	 */
-	public ConfigurationImpl(boolean useDocker) {
+	public ConfigurationImpl(boolean useDocker, boolean cleanUp) {
 
 		this.useDocker = useDocker;
+		this.cleanUp = cleanUp;
 	}
 
 	@Override
 	public boolean shouldUseDocker() {
 		return this.useDocker;
+	}
+
+	@Override
+	public boolean shouldCleanUp() {
+		return this.cleanUp;
 	}
 }

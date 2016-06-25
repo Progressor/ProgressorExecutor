@@ -115,7 +115,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 	 * Simulates the {@code kotlin}/{@code kotlin.bat} scripts. <br>
 	 * Needed because a Java process started by one of these scripts cannot be aborted in case of an infinite loop.
 	 *
-	 * @param safe      whether or not the command is safe to execute
+	 * @param safe      whether the command is safe to execute
 	 * @param directory the working directory for the command
 	 * @param arguments arguments to simulate
 	 *
@@ -134,7 +134,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 	 * Simulates the {@code kotlinc}/{@code kotlinc.bat} scripts. <br>
 	 * Needed because a Java process started by one of these scripts cannot be aborted in case of an infinite loop.
 	 *
-	 * @param safe      whether or not the command is safe to execute
+	 * @param safe      whether the command is safe to execute
 	 * @param directory the working directory for the command
 	 * @param arguments arguments to simulate
 	 *
