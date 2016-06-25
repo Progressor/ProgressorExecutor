@@ -28,6 +28,11 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 	public static final String CODE_LANGUAGE = "cpp";
 
 	/**
+	 * Version of the C++ language to use.
+	 */
+	protected static final String CPLUSPLUS_VERSION = "C++11";
+
+	/**
 	 * Name of the C/C++ executable.
 	 */
 	protected static final String EXECUTABLE_NAME = "main";
@@ -52,7 +57,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		if (compilerMatcher.find())
 			compilerVersion = compilerMatcher.group();
 
-		return this.createVersionInformation("C++11", "GCC", compilerVersion);
+		return this.createVersionInformation(CPlusPlusExecutor.CPLUSPLUS_VERSION, "GCC", compilerVersion);
 	}
 
 	@Override
@@ -77,7 +82,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeSafeCommand(codeDirectory, "g++", codeFile.getName(), "-std=c++11", "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
+			this.executeSafeCommand(codeDirectory, "g++", codeFile.getName(), String.format("-std=%s", CPlusPlusExecutor.CPLUSPLUS_VERSION.toLowerCase()), "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}

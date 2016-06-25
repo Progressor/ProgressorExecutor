@@ -152,9 +152,7 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 		for (FunctionSignature function : functions) {
 
 			//validate input / output types & names
-			if (function.getInputTypes().size() != function.getInputNames().size())
-				throw new ExecutorException("The same number of input types & names have to be defined.");
-			if (function.getOutputTypes().size() != 1 || function.getOutputTypes().size() != function.getOutputNames().size())
+			if (function.getOutputTypes().size() != 1)
 				throw new ExecutorException("Exactly one output type has to be defined for a C# sample.");
 
 			sb.append("public ").append(this.getTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');

@@ -239,7 +239,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 			sb.append("val success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(CodeExecutorBase.NEWLINE);
 
-			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) / 1e6, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
+			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) * 1e-6, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
 
 			sb.append("} catch (ex: Exception) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
 			sb.append("out.write(\"ER:\"); out.flush()").append(CodeExecutorBase.NEWLINE);

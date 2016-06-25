@@ -20,10 +20,17 @@ import ch.bfh.progressor.executor.api.VersionInformation;
  */
 public abstract class CodeExecutorDockerBase extends CodeExecutorBase {
 
-	private static final Logger LOGGER = Logger.getLogger(CodeExecutorDockerBase.class.getName());
+	/**
+	 * Name of the default Docker image.
+	 */
+	protected static final String DEFAULT_DOCKER_IMAGE_NAME = "progressor/executor";
 
-	private static final String DOCKER_IMAGE_NAME = String.format("progressor%sexecutor", File.separator);
-	private static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
+	/**
+	 * {@link ThreadLocal} Docker container ID.
+	 */
+	protected static final ThreadLocal<String> DOCKER_CONTAINER_ID = new ThreadLocal<>();
+
+	private static final Logger LOGGER = Logger.getLogger(CodeExecutorDockerBase.class.getName());
 
 	//***************************
 	//*** CODE EXECUTOR LOGIC ***
@@ -137,9 +144,18 @@ public abstract class CodeExecutorDockerBase extends CodeExecutorBase {
 		return this.shouldUseDocker() && CodeExecutorDockerBase.DOCKER_CONTAINER_ID.get() != null;
 	}
 
+	/**
+	 * Gets the name of the Docker image to use.
+	 *
+	 * @return name of the Docker image to use
+	 */
+	protected String getDockerImageName() {
+		return CodeExecutorDockerBase.DEFAULT_DOCKER_IMAGE_NAME;
+	}
+
 	private void startDocker(File directory) throws ExecutorException {
 
-		String output = super.executeSafeCommand(directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), CodeExecutorDockerBase.DOCKER_IMAGE_NAME);
+		String output = super.executeSafeCommand(directory, "docker", "run", "-td", "-v", String.format("%s:%sopt", directory.getAbsolutePath(), File.separator), this.getDockerImageName());
 
 		try (Scanner scanner = new Scanner(output)) {
 			if (scanner.hasNextLine())

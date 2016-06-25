@@ -41,7 +41,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 	/**
 	 * Regular expression pattern for extracting the Java language version.
 	 */
-	protected static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("java\\b.+\\bse\\b.+\\bruntime\\b.+?([\\d\\._]+(-b\\d+|))", Pattern.CASE_INSENSITIVE);
+	protected static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("\\bruntime\\b.+?([\\d\\._]+(-bu\\d+|))", Pattern.CASE_INSENSITIVE);
 
 	@Override
 	public String getLanguage() {
@@ -184,7 +184,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 			sb.append("boolean success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(';').append(CodeExecutorBase.NEWLINE);
 
-			sb.append("out.write(String.format(\"%s:%f:%s%n%n\", success ? \"OK\" : \"ER\", (end - start) / 1e6, result));").append(CodeExecutorBase.NEWLINE); //print result to the console
+			sb.append("out.write(String.format(\"%s:%f:%s%n%n\", success ? \"OK\" : \"ER\", (end - start) * 1e-6, result));").append(CodeExecutorBase.NEWLINE); //print result to the console
 
 			sb.append("} catch (Exception ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
 			sb.append("out.write(\"ER:\"); out.flush();").append(CodeExecutorBase.NEWLINE);
