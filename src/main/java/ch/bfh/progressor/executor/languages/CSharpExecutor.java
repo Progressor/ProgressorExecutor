@@ -46,7 +46,7 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 	/**
 	 * Regular expression pattern for extracting the compiler version.
 	 */
-	protected static final Pattern COMPILER_VERSION_PATTERN = Pattern.compile("[\\d\\.]+");
+	protected static final Pattern COMPILER_VERSION_PATTERN = Pattern.compile("\\d[\\d\\.]*");
 
 	@Override
 	public String getLanguage() {

@@ -40,7 +40,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 	/**
 	 * Regular expression pattern for extracting the GCC version.
 	 */
-	protected static final Pattern GCC_VERSION_PATTERN = Pattern.compile("[\\d\\.]+");
+	protected static final Pattern GCC_VERSION_PATTERN = Pattern.compile("\\d[\\d\\.]*");
 
 	@Override
 	public String getLanguage() {

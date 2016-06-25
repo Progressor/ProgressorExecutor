@@ -36,7 +36,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 	/**
 	 * Regular expression pattern for extracting the Java compiler version.
 	 */
-	protected static final Pattern JAVAC_VERSION_PATTERN = Pattern.compile("[\\d\\._]+");
+	protected static final Pattern JAVAC_VERSION_PATTERN = Pattern.compile("\\d[\\d\\._]*");
 
 	/**
 	 * Regular expression pattern for extracting the Java language version.

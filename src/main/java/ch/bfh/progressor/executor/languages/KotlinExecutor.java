@@ -38,7 +38,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 	/**
 	 * Regular expression pattern for extracting the language/compiler version.
 	 */
-	protected static final Pattern VERSION_PATTERN = Pattern.compile("[\\d\\.-]+");
+	protected static final Pattern VERSION_PATTERN = Pattern.compile("\\d[\\d\\.-]*");
 
 	@Override
 	public String getLanguage() {
