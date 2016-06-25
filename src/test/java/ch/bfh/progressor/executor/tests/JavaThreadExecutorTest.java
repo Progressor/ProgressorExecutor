@@ -20,4 +20,9 @@ public class JavaThreadExecutorTest extends JavaProcessExecutorTest {
 	protected String getFragment() {
 		return JavaProcessExecutorTest.FRAGMENT;
 	}
+
+	@Override
+	protected boolean hasTotalExecutionTime() {
+		return false;
+	}
 }

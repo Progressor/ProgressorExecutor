@@ -9,4 +9,9 @@ public class KotlinScriptExecutorTest extends KotlinExecutorTest {
 	protected CodeExecutor getCodeExecutor() {
 		return new KotlinScriptExecutor();
 	}
+
+	@Override
+	protected boolean hasTotalCompilationTime() {
+		return false;
+	}
 }

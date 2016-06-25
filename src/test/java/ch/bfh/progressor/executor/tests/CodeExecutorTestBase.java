@@ -180,6 +180,18 @@ public abstract class CodeExecutorTestBase {
 			this.testExecute(Collections.singletonList(testCase), false);
 	}
 
+	protected boolean hasTotalExecutionTime() {
+		return true;
+	}
+
+	protected boolean hasTotalCompilationTime() {
+		return true;
+	}
+
+	protected boolean hasTestCaseExecutionTime() {
+		return true;
+	}
+
 	private void testExecute(List<TestCase> testCases, boolean success) throws ExecutorException {
 
 		List<Result> results = this.codeExecutor.execute(this.getFragment(), TestCaseImpl.convertFromThrift(CodeExecutorTestBase.FUNCTIONS, testCases));
@@ -190,6 +202,16 @@ public abstract class CodeExecutorTestBase {
 			Assert.assertEquals(results.get(i).isSuccess(), success, String.format("test case #%d failed: %s", i, results.get(i).getResult()));
 			Assert.assertNotNull(results.get(i).getResult(), String.format("actual result %d is missing", i));
 			Assert.assertNotEquals(results.get(i).getResult().length(), 0, String.format("actual result %d is empty", i));
+
+			if (success) {
+				Assert.assertNotNull(results.get(i).getPerformance(), String.format("performance %d is missing", i));
+				if (this.hasTotalExecutionTime())
+					Assert.assertTrue(Double.isFinite(results.get(i).getPerformance().getTotalExecutionTimeMilliseconds()), String.format("total execution time %d is missing", i));
+				if (this.hasTotalCompilationTime())
+					Assert.assertTrue(Double.isFinite(results.get(i).getPerformance().getTotalCompilationTimeMilliseconds()), String.format("total compilation time %d is missing", i));
+				if (this.hasTestCaseExecutionTime())
+					Assert.assertTrue(Double.isFinite(results.get(i).getPerformance().getTestCaseExecutionTimeMilliseconds()), String.format("test case execution time %d is missing", i));
+			}
 		}
 	}
 }

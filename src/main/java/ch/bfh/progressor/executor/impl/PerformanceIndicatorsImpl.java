@@ -32,7 +32,7 @@ public class PerformanceIndicatorsImpl implements PerformanceIndicators {
 
 	@Override
 	public double getTotalCompilationTimeMilliseconds() {
-		return this.totalExecutionTimeMilliseconds;
+		return this.totalCompileTimeMilliseconds;
 	}
 
 	@Override

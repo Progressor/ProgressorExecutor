@@ -1,7 +1,7 @@
-############################################################
-# Dockerfile to build sandbox for executing user code			#
-# Based on Ubuntu																					#
-############################################################
+#######################################################
+# Dockerfile to build sandbox for executing user code #
+# Based on Ubuntu 14.04 x64                           #
+#######################################################
 
 FROM chug/ubuntu14.04x64
 MAINTAINER Thomas Strub, Marc Touw, Janick Weidmann

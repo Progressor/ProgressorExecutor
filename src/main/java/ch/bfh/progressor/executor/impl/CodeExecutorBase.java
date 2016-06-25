@@ -88,7 +88,6 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 	protected static final String TEST_CASES_FRAGMENT = "$TestCases$";
 
 	/**
-	/**
 	 * Gets the number of milli(second)s per nano(second).
 	 */
 	protected static final double MILLIS_IN_NANO = 1e6;
@@ -104,7 +103,7 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 
 	private static final Pattern DOUBLE_NEWLINE_PATTERN = Pattern.compile("(\\r\\n|\\r(?!\\n)|(?<!\\r)\\n){2}");
 	private static final Pattern RESULT_SUCCESS_PATTERN = Pattern.compile("(OK|ER):", Pattern.CASE_INSENSITIVE);
-	private static final Pattern RESULT_EXECUTION_TIME_PATTERN = Pattern.compile("(\\d+(\\.\\d+|)):", Pattern.CASE_INSENSITIVE);
+	private static final Pattern RESULT_EXECUTION_TIME_PATTERN = Pattern.compile(String.format("(%s):", CodeExecutorBase.NUMERIC_FLOATING_EXPONENTIAL_PATTERN.pattern()), Pattern.CASE_INSENSITIVE);
 
 	private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 	private Set<String> blacklist;

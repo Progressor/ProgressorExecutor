@@ -40,4 +40,9 @@ public class JavaScriptExecutorTest extends CodeExecutorTestBase {
 	protected String getFragment() {
 		return JavaScriptExecutorTest.FRAGMENT;
 	}
+
+	@Override
+	protected boolean hasTotalCompilationTime() {
+		return false;
+	}
 }

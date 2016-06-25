@@ -40,4 +40,9 @@ public class PythonExecutorTest extends CodeExecutorTestBase {
 	protected String getFragment() {
 		return PythonExecutorTest.FRAGMENT;
 	}
+
+	@Override
+	protected boolean hasTotalCompilationTime() {
+		return false;
+	}
 }
