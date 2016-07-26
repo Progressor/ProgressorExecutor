@@ -5,10 +5,10 @@ namespace java ch.bfh.progressor.executor.thrift
 namespace cpp progressor.executor.thrift
 namespace csharp Progressor.Executor.Thrift
 
-const string TypeContainerArray = "array"; #e.g. array<string>   --> { asdf, temp, qwertz }
-const string TypeContainerList = "list"; #e.g. list<string>      --> { asdf, temp, qwertz }
-const string TypeContainerSet = "set"; #e.g. set<string>         --> { asdf, temp, qwertz }
-const string TypeContainerMap = "map"; #e.g. map<string, string> --> { asdf: temp, qwer: tz }
+const string TypeContainerArray = "array"; #e.g. array<string>       --> { asdf, temp, qwertz }
+const string TypeContainerList = "list";   #e.g. list<string>        --> { asdf, temp, qwertz }
+const string TypeContainerSet = "set";     #e.g. set<string>         --> { asdf, temp, qwertz }
+const string TypeContainerMap = "map";     #e.g. map<string, string> --> { asdf: temp, qwer: tz }
 
 const string TypeString = "string";
 const string TypeCharacter = "char";

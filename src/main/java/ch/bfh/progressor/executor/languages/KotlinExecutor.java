@@ -111,6 +111,16 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
 
+	/////////////////////////////////////////////////////////////////
+	//              Kotlin script (bat/sh) simulations             //
+	/////////////////////////////////////////////////////////////////
+	// these simulations are only needed until Java 9 is published //
+	//      the scripts start Java in a separate child process     //
+	//       Java 8 cannot determine and kill child processes      //
+	/////////////////////////////////////////////////////////////////
+	//            TODO: remove when upgrading to Java 9            //
+	/////////////////////////////////////////////////////////////////
+
 	/**
 	 * Simulates the {@code kotlin}/{@code kotlin.bat} scripts. <br>
 	 * Needed because a Java process started by one of these scripts cannot be aborted in case of an infinite loop.
@@ -181,6 +191,8 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 		return safe ? this.executeSafeCommand(directory, command)
 								: this.executeDeferredCommand(directory, command);
 	}
+
+	// end of script simulations //
 
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {
