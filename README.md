@@ -2,12 +2,32 @@
 
 This is the code **Executor** component of the project **Progressor - The Programming Professor**.
 
-### Extensibility
+## Deployment & Installation
 
-The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
+These instructions are written for *Ubuntu* 16.04.1 LTS.
 
-New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.api.CodeExecutor* and making it discoverable by the **Executor**.
-Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).
+Note: you may have to prepend some or all of the commands with `sudo` depending on your environment.
+
+1. Install [*Docker*](https://www.docker.com/) by executing `curl -sSL https://get.docker.com/ | sh` on the server.
+2. Install [*OpenJDK*](http://openjdk.java.net/) and [*Supervisor*](http://supervisord.org/) by executing `apt-get install -y openjdk-8-jre-headless supervisor` on the server.
+   * Of course, you may use any other *Java Runtime Environment* instead.
+3. Copy the neccessary files to the server.
+   1. The compiled *JAR*-version of the **Executor** by executing `scp -P 2201 <path-to-jar> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
+   2. The *Dockerfile* by executing `scp -P 2201 <path-to-dockerfile> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
+4. Build the *Docker* container used by the Executor by executing `docker build -t progressor/executor .` on the server.
+5. Configure *Supervisor* to start the **Executor** automatically.
+   1.  Update the *Supervisor* configuration file by executing `echo "[inet_http_server]" | tee -a /etc/supervisor/supervisord.conf`,
+   2.  `echo "port = 9001`,
+   3.  `echo "username = <supervisor-username>`,
+   4.  and `echo "password = <supervisor-password>" | tee -a /etc/supervisor/supervisord.conf` on the server.
+   5.  Create the service configuration file by executing `echo "[program:executor]" | tee /etc/supervisor/conf.d/progressor-executor.conf`,
+   6.  `echo "command=java -jar /opt/Executor/ProgressorExecutor-1.0-jar-with-dependencies.jar" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
+   7.  `echo "autostart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
+   8.  `echo "autostart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
+   9.  and `echo "environment=KOTLIN_HOME=\"/kotlinc\"" | tee -a /etc/supervisor/conf.d/progressor-executor.conf` on the server.
+   10. Force *Supervisor* to apply the new configuration `sudo supervisorctl reread`
+   11. and `sudo supervisorctl update` on the server.
+   12. Start the service by executing `service supervisor start` on the server.
 
 ## Maven
 
@@ -31,7 +51,7 @@ This project has four *Maven* dependencies:
 
 ## Docker
 
-*Docker* is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with *Docker* on Windows.
+[*Docker*](https://www.docker.com/) is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with *Docker* on Windows.
 The created *Docker* image Tag is named `progressor/executor`.
 If you decide to not user *Docker*, you can specified with starting arguments `-docker false`.
 
@@ -86,4 +106,9 @@ For [*Kotlin*](http://kotlinlang.org/), a [stand-alone compiler](http://kotlinla
 * For Linux, Python 3 install using *apt-get install python3*
 * For Windows, Download [*Python 3*](https://www.python.org/downloads/release/python-351/) and install.
 
+## Extensibility
 
+The **Executor** uses a [ServiceLoader](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) to load the different code executors at runtime.
+
+New languages can be supported simply by implementing the service *ch.bfh.progressor.executor.api.CodeExecutor* and making it discoverable by the **Executor**.
+Additional information can be found in the [Java SE API Specification](http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html).
