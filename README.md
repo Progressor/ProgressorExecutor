@@ -23,7 +23,7 @@ Note: you may have to prepend some or all of the commands with `sudo` depending 
    5.  Create the service configuration file by executing `echo "[program:executor]" | tee /etc/supervisor/conf.d/progressor-executor.conf`,
    6.  `echo "command=java -jar /opt/Executor/ProgressorExecutor-1.0-jar-with-dependencies.jar" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
    7.  `echo "autostart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
-   8.  `echo "autostart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
+   8.  `echo "autorestart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
    9.  and `echo "environment=KOTLIN_HOME=\"/kotlinc\"" | tee -a /etc/supervisor/conf.d/progressor-executor.conf` on the server.
    10. Force *Supervisor* to apply the new configuration `sudo supervisorctl reread`
    11. and `sudo supervisorctl update` on the server.
