@@ -27,7 +27,8 @@ Note: you may have to prepend some or all of the commands with `sudo` depending 
    9.  and `echo "environment=KOTLIN_HOME=\"/kotlinc\"" | tee -a /etc/supervisor/conf.d/progressor-executor.conf` on the server.
    10. Force *Supervisor* to apply the new configuration `sudo supervisorctl reread`
    11. and `sudo supervisorctl update` on the server.
-   12. Start the service by executing `service supervisor start` on the server.
+   12. Start the service by executing `systemctl enable supervisor`
+   13. and `service supervisor start` on the server.
 
 ## Maven
 
