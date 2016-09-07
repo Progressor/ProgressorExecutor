@@ -17,8 +17,8 @@ Note: you may have to prepend some or all of the commands with `sudo` depending 
 4. Build the *Docker* container used by the Executor by executing `docker build -t progressor/executor .` on the server.
 5. Configure *Supervisor* to start the **Executor** automatically.
    1.  Update the *Supervisor* configuration file by executing `echo "[inet_http_server]" | tee -a /etc/supervisor/supervisord.conf`,
-   2.  `echo "port = 9001`,
-   3.  `echo "username = <supervisor-username>`,
+   2.  `echo "port = 9001" | tee -a /etc/supervisor/supervisord.conf`,
+   3.  `echo "username = <supervisor-username>" | tee -a /etc/supervisor/supervisord.conf`,
    4.  and `echo "password = <supervisor-password>" | tee -a /etc/supervisor/supervisord.conf` on the server.
    5.  Create the service configuration file by executing `echo "[program:executor]" | tee /etc/supervisor/conf.d/progressor-executor.conf`,
    6.  `echo "command=java -jar <path-to-jar>" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
