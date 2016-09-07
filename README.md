@@ -12,8 +12,8 @@ Note: you may have to prepend some or all of the commands with `sudo` depending 
 2. Install [*OpenJDK*](http://openjdk.java.net/) and [*Supervisor*](http://supervisord.org/) by executing `apt-get install -y openjdk-8-jre-headless supervisor` on the server.
    * Of course, you may use any other *Java Runtime Environment* instead.
 3. Copy the neccessary files to the server.
-   1. The compiled *JAR*-version of the **Executor** by executing `scp -P 2201 <path-to-jar> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
-   2. The *Dockerfile* by executing `scp -P 2201 <path-to-dockerfile> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
+   1. The compiled *JAR*-version of the **Executor** by executing `scp <path-to-jar> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
+   2. The *Dockerfile* by executing `scp <path-to-dockerfile> <server-user>@<server-host>:<path-to-server-directory>` on the development machine.
 4. Build the *Docker* container used by the Executor by executing `docker build -t progressor/executor .` on the server.
 5. Configure *Supervisor* to start the **Executor** automatically.
    1.  Update the *Supervisor* configuration file by executing `echo "[inet_http_server]" | tee -a /etc/supervisor/supervisord.conf`,
@@ -21,7 +21,7 @@ Note: you may have to prepend some or all of the commands with `sudo` depending 
    3.  `echo "username = <supervisor-username>`,
    4.  and `echo "password = <supervisor-password>" | tee -a /etc/supervisor/supervisord.conf` on the server.
    5.  Create the service configuration file by executing `echo "[program:executor]" | tee /etc/supervisor/conf.d/progressor-executor.conf`,
-   6.  `echo "command=java -jar /opt/Executor/ProgressorExecutor-1.0-jar-with-dependencies.jar" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
+   6.  `echo "command=java -jar <path-to-jar>" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
    7.  `echo "autostart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
    8.  `echo "autorestart=true" | tee -a /etc/supervisor/conf.d/progressor-executor.conf`,
    9.  and `echo "environment=KOTLIN_HOME=\"/kotlinc\"" | tee -a /etc/supervisor/conf.d/progressor-executor.conf` on the server.
