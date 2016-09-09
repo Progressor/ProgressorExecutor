@@ -1,13 +1,19 @@
 package ch.bfh.progressor.executor;
 
+import java.util.Collection;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import ch.bfh.progressor.executor.api.Configuration;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
@@ -51,67 +57,65 @@ public final class Executor {
 		if (platform == ExecutorPlatform.UNSUPPORTED)
 			throw new UnsupportedOperationException(String.format("Operating system '%s' (%s, %s) is not supported.", ExecutorPlatform.OPERATING_SYSTEM_NAME, ExecutorPlatform.OPERATING_SYSTEM_VERSION, ExecutorPlatform.OPERATING_SYSTEM_ARCHITECTURE));
 
+		String host = "localhost";
 		int port = Executor.DEFAULT_SERVER_PORT;
-		boolean useDocker = Configuration.DEFAULT_CONFIGURATION.shouldUseDocker();
+		boolean test = false;
 		boolean cleanUp = true;
+		boolean useDocker = Configuration.DEFAULT_CONFIGURATION.shouldUseDocker();
 
 		for (int i = 0; i < args.length; i++)
-			switch (args[i]) {
-				case "-p":
-				case "-port":
-					try {
-						port = Integer.parseInt(args[++i]);
+			try {
+				switch (args[i]) {
+					case "-h":
+					case "-host":
+						host = args[++i];
+						break;
 
-					} catch (NumberFormatException ex) {
-						throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use integer number.", args[i], args[i - 1]));
-					}
+					case "-p":
+					case "-port":
+						try {
+							port = Integer.parseInt(args[++i]);
 
-					if (port < 0 || 65535 < port)
-						throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use unsigned 16-bit integer (0 to 65535).", args[i], args[i - 1]));
-					break;
+						} catch (NumberFormatException ex) {
+							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use integer number.", args[i], args[i - 1]));
+						}
 
-				case "-c":
-				case "-cleanup":
-					switch (args[++i]) {
-						case "true":
-						case "yes":
-							cleanUp = true;
-							break;
+						if (port < 0 || 65535 < port)
+							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use unsigned 16-bit integer (0 to 65535).", args[i], args[i - 1]));
+						break;
 
-						case "false":
-						case "no":
-							cleanUp = false;
-							break;
+					case "-t":
+					case "-test":
+						test = Executor.parseBoolean(args[i], args[++i]);
+						break;
 
-						default:
-							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
-					}
-					break;
+					case "-c":
+					case "-cleanup":
+						test = Executor.parseBoolean(args[i], args[++i]);
+						break;
 
-				case "-d":
-				case "-docker":
-					switch (args[++i]) {
-						case "true":
-						case "yes":
-							if (!platform.hasDockerSupport())
-								throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", platform));
+					case "-d":
+					case "-docker":
+						test = Executor.parseBoolean(args[i], args[++i]);
+						if (useDocker && !platform.hasDockerSupport())
+							throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", platform));
+						break;
 
-							useDocker = true;
-							break;
+					default:
+						throw new IllegalArgumentException(String.format("Command-line argument '%s' is invalid.", args[i]));
+				}
 
-						case "false":
-						case "no":
-							useDocker = false;
-							break;
-
-						default:
-							throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", args[i], args[i - 1]));
-					}
-					break;
-
-				default:
-					throw new IllegalArgumentException(String.format("Command-line argument '%s' is invalid.", args[i]));
+			} catch (ArrayIndexOutOfBoundsException ex) {
+				throw new IllegalArgumentException(String.format("You did not provide a value for the command-line argument '%s'.", args[i]), ex);
 			}
+
+		if (!test)
+			Executor.run(port, useDocker, cleanUp);
+		else
+			Executor.test(host, port);
+	}
+
+	public static void run(int port, boolean useDocker, boolean cleanUp) {
 
 		Executor.LOGGER.config(String.format("Using port %d.", port));
 		Executor.LOGGER.config(useDocker ? "Using Docker containers." : "Not using Docker containers.");
@@ -145,6 +149,48 @@ public final class Executor {
 
 		} catch (InterruptedException ex) {
 			Executor.LOGGER.log(Level.WARNING, "Could not wait for server to stop.", ex);
+		}
+	}
+
+	public static void test(String host, int port) {
+
+		try (TTransport transport = new TSocket(host, port)) {
+			transport.open();
+
+			TProtocol protocol = new TBinaryProtocol(transport);
+			ch.bfh.progressor.executor.thrift.ExecutorService.Client client = new ch.bfh.progressor.executor.thrift.ExecutorService.Client(protocol);
+
+			client.ping();
+			Executor.LOGGER.info("Successfully pinged the Executor.");
+
+			Collection<String> supportedLanguages = client.getSupportedLanguages();
+			Executor.LOGGER.info(String.format("Languages the Executor supports: %s", String.join(", ", supportedLanguages)));
+
+			for (String language : supportedLanguages) {
+				ch.bfh.progressor.executor.thrift.VersionInformation versionInformation = client.getVersionInformation(language);
+				Executor.LOGGER.info(String.format("* %s: v%s, %s v%s, %s v%s (%s)", language,
+																					 versionInformation.languageVersion, versionInformation.compilerName, versionInformation.compilerVersion,
+																					 versionInformation.platformName, versionInformation.platformVersion, versionInformation.platformArchitecture));
+			}
+
+		} catch (TException ex) {
+			Executor.LOGGER.log(Level.WARNING, "Could not successfully test the Executor.", ex);
+		}
+	}
+
+	private static boolean parseBoolean(String argument, String value) throws IllegalArgumentException {
+
+		switch (value) {
+			case "true":
+			case "yes":
+				return true;
+
+			case "false":
+			case "no":
+				return false;
+
+			default:
+				throw new IllegalArgumentException(String.format("Value '%s' for command-line argument '%s' is invalid. Use true/false or yes/no.", value, argument));
 		}
 	}
 }
