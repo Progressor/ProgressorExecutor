@@ -6,6 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.FunctionSignature;
 import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
@@ -26,11 +27,6 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 	 * Unique name of the language this executor supports.
 	 */
 	public static final String CODE_LANGUAGE = "cpp";
-
-	/**
-	 * Version of the C++ language to use.
-	 */
-	protected static final String CPLUSPLUS_VERSION = "C++11";
 
 	/**
 	 * Name of the C/C++ executable.
@@ -57,7 +53,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		if (compilerMatcher.find())
 			compilerVersion = compilerMatcher.group();
 
-		return this.createVersionInformation(CPlusPlusExecutor.CPLUSPLUS_VERSION, "GCC", compilerVersion);
+		return this.createVersionInformation("C++11", "GCC", compilerVersion);
 	}
 
 	@Override
@@ -82,7 +78,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			this.executeSafeCommand(codeDirectory, "g++", codeFile.getName(), String.format("-std=%s", CPlusPlusExecutor.CPLUSPLUS_VERSION.toLowerCase()), "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
+			this.executeSafeCommand(codeDirectory, "g++", codeFile.getName(), String.format("-std=%s", CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "gnu++11" : "c++11"), "-o", CPlusPlusExecutor.EXECUTABLE_NAME);
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
