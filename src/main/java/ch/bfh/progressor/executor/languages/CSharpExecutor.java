@@ -260,7 +260,7 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 
 					if (first) first = false;
 					else sb.append(", ");
-					sb.append('{').append(this.getValueLiteral(element.get(0))).append(", ").append(this.getValueLiteral(element.get(1))).append('}'); //use C# 5 syntax for mono compatibility
+					sb.append('[').append(this.getValueLiteral(element.get(0))).append("] = ").append(this.getValueLiteral(element.get(1))); //use C# 5 syntax for mono compatibility
 				}
 
 				return sb.append(" }").toString(); //finish initialisation and return literal
