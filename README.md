@@ -85,8 +85,7 @@ The **Executor** currently supports five programming languages.
 To use the languages, the following compilers (and other tools) need to be installed and available in the **PATH**.
 
 1. *Java*: `javac` and `java`
-1. *C*: `g++`
-1. *C++*: `g++`
+1. *C/C++*: `g++`
 1. *C#*: `csc` (Windows) or `msc` (Linux)
 1. *Kotlin*: `kotlinc` and `kotlin`
 1. *Python*: `python` (Windows)
