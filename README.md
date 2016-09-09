@@ -8,7 +8,7 @@ These instructions are written for *Ubuntu* 16.04 LTS.
 
 The goal is to install the Executor in `/opt/Executor/` and run it as a Docker container.
 
-### Server setup
+### Server Setup
 
 1. Install [*Docker*](https://www.docker.com/) by executing `curl -sSL https://get.docker.com/ | sh`
 1. Install [*OpenJDK*](http://openjdk.java.net/) and [*Supervisor*](http://supervisord.org/) by executing `sudo apt-get install -y openjdk-8-jre-headless supervisor`
@@ -38,7 +38,7 @@ The goal is to install the Executor in `/opt/Executor/` and run it as a Docker c
     1. Reload *Supervisor* configuration by running `sudo supervisorctl reread`
     1. and `sudo supervisorctl update`
 
-### Uploading the Executor jar and building the docker container
+### Uploading the Executor JAR and Building the Docker Image
 
 1. If you built the Executor jar from this repo, rename it to `ProgressorExecutor.jar` and upload it to your server in `/opt/Executor/`, otherwise download the pre-compiled one:
     1. `cd /opt/Executor/`
@@ -46,8 +46,12 @@ The goal is to install the Executor in `/opt/Executor/` and run it as a Docker c
 1. If you modified the [*Dockerfile*](src/main/docker/Dockerfile), upload it to your server in `/opt/Executor/`, otherwise download the pre-compiled one:
     1. `cd /opt/Executor`
     1. `wget https://raw.githubusercontent.com/Progressor/ProgressorExecutor/master/src/main/docker/Dockerfile`
-1. On the server, still in `/opt/Executor`, build the *Docker* container used by the Executor by running `docker build -t progressor/executor .`
+1. On the server, still in `/opt/Executor`, build the *Docker* image used by the Executor by running `docker build -t progressor/executor .`
 
+The *Executor* will use this image to create one container per request.
+After the request has been processed, the container is stopped and immediately deleted.
+
+That way we make sure the different requests never interfere with each other.
 
 # Building the Executor from source
 ## Maven
