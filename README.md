@@ -6,6 +6,8 @@ This is the code of the **Executor** component of the project **Progressor - The
 
 These instructions are written for *Ubuntu* 16.04 LTS.
 
+The goal is to install the Executor in `/opt/Executor/` and run it as a Docker container.
+
 ### Server setup
 
 1. Install [*Docker*](https://www.docker.com/) by executing `curl -sSL https://get.docker.com/ | sh`
@@ -25,7 +27,7 @@ These instructions are written for *Ubuntu* 16.04 LTS.
 
         ```ini
         [program:executor]
-        command=java -jar /opt/Executor/ProgressorExecutor-1.0-jar-with-dependencies.jar
+        command=java -jar /opt/Executor/ProgressorExecutor.jar
         autostart=true
         autorestart=true
         environment=KOTLIN_HOME="/kotlinc"
@@ -38,12 +40,16 @@ These instructions are written for *Ubuntu* 16.04 LTS.
 
 ### Uploading the Executor jar and building the docker container
 
-1. On your development computer, copy the necessary files to the server:
-    1. The compiled *JAR*-version of the **Executor** by executing `scp <path-to-jar> <server-user>@<server-host>:<path-to-server-directory>`
-    1. The [*Dockerfile*](src/main/docker/Dockerfile) by executing `scp <path-to-dockerfile> <server-user>@<server-host>:<path-to-server-directory>`
-1. On the server, build the *Docker* container used by the Executor by executing `docker build -t progressor/executor .`
+1. If you built the Executor jar from this repo, rename it to `ProgressorExecutor.jar` and upload it to your server in `/opt/Executor/`, otherwise download the pre-compiled one:
+    1. `cd /opt/Executor/`
+    1. `wget https://github.com/Progressor/ProgressorMeteor/raw/master/bin/ProgressorExecutor.jar`
+1. If you modified the [*Dockerfile*](src/main/docker/Dockerfile), upload it to your server in `/opt/Executor/`, otherwise download the pre-compiled one:
+    1. `cd /opt/Executor`
+    1. `wget https://raw.githubusercontent.com/Progressor/ProgressorExecutor/master/src/main/docker/Dockerfile`
+1. On the server, still in `/opt/Executor`, build the *Docker* container used by the Executor by running `docker build -t progressor/executor .`
 
 
+# Building the Executor from source
 ## Maven
 
 This repository contains a [*Maven*](https://maven.apache.org/) project created using [*IntelliJ IDEA*](https://www.jetbrains.com/idea/).
@@ -63,7 +69,7 @@ This project has four *Maven* dependencies:
 1. [org.testng:testng:RELEASE](http://mvnrepository.com/artifact/org.testng/testng)
    for unit tests
 
-## Docker
+# Docker
 
 [*Docker*](https://www.docker.com/) is active by default on Linux distributions. On Windows it is deactivated by default, since you're not able to use the Executor with *Docker* on Windows.
 The created *Docker* image Tag is named `progressor/executor`.
@@ -72,7 +78,7 @@ If you decide not to use *Docker*, use the following `-docker false`.
 Be aware that not using *Docker* requires you to install all the compilers of the languages you want to support on your server.
 If you use *Docker* you need to install the compilers in your *Docker* image. To do that, you need to adjust the Dockerfile and rebuild your image.
 
-## Programming Languages
+# Programming Languages
 
 The **Executor** currently supports five programming languages.
 
