@@ -15,6 +15,7 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import ch.bfh.progressor.executor.api.CodeExecutor;
 import ch.bfh.progressor.executor.api.Configuration;
 import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
@@ -46,7 +47,7 @@ public final class Executor {
 
 	/**
 	 * Main method.
-	 * Starts the executor service.
+	 * Starts the Executor service.
 	 *
 	 * @param args command-line arguments (none used)
 	 */
@@ -110,17 +111,21 @@ public final class Executor {
 			}
 
 		if (!test)
-			Executor.run(port, useDocker, cleanUp);
+			Executor.run(port, new ConfigurationImpl(useDocker, cleanUp));
 		else
 			Executor.test(host, port);
 	}
 
-	public static void run(int port, boolean useDocker, boolean cleanUp) {
+	/**
+	 * Runs the Executor.
+	 *
+	 * @param port          TCP port to listen for requests
+	 * @param configuration {@link Configuration} for the {@link CodeExecutor}s
+	 */
+	public static void run(int port, Configuration configuration) {
 
 		Executor.LOGGER.config(String.format("Using port %d.", port));
-		Executor.LOGGER.config(useDocker ? "Using Docker containers." : "Not using Docker containers.");
-
-		Configuration configuration = new ConfigurationImpl(useDocker, cleanUp);
+		Executor.LOGGER.config(configuration.shouldUseDocker() ? "Using Docker containers." : "Not using Docker containers.");
 
 		try (TServerTransport transport = new TServerSocket(port)) {
 			TProcessor processor = new ch.bfh.progressor.executor.thrift.ExecutorService.Processor<>(new ExecutorService(configuration));
@@ -152,6 +157,12 @@ public final class Executor {
 		}
 	}
 
+	/**
+	 * Tests an Executor instance.
+	 *
+	 * @param host name / IP address of the instance host
+	 * @param port port the instance listens on
+	 */
 	public static void test(String host, int port) {
 
 		try (TTransport transport = new TSocket(host, port)) {
