@@ -137,6 +137,14 @@ public class JavaScriptExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+				case LIST:
+				case SET:
+					comparisonPrefix = "hasSameElements("; //compare collections using custom equality comparison
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
