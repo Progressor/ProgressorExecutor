@@ -192,7 +192,8 @@ public abstract class CodeExecutorDockerBase extends CodeExecutorBase {
 	private void stopDocker(File directory) throws ExecutorException {
 
 		super.executeSafeCommand(directory, "docker", "stop", CodeExecutorDockerBase.DOCKER_CONTAINER_ID.get());
-		super.executeSafeCommand(directory, "docker", "rm", CodeExecutorDockerBase.DOCKER_CONTAINER_ID.get());
+		if (this.getConfiguration().shouldCleanUp())
+			super.executeSafeCommand(directory, "docker", "rm", CodeExecutorDockerBase.DOCKER_CONTAINER_ID.get());
 		CodeExecutorDockerBase.DOCKER_CONTAINER_ID.set(null);
 	}
 }

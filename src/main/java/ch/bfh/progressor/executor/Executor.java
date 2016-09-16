@@ -92,12 +92,12 @@ public final class Executor {
 
 					case "-c":
 					case "-cleanup":
-						test = Executor.parseBoolean(args[i], args[++i]);
+						cleanUp = Executor.parseBoolean(args[i], args[++i]);
 						break;
 
 					case "-d":
 					case "-docker":
-						test = Executor.parseBoolean(args[i], args[++i]);
+						useDocker = Executor.parseBoolean(args[i], args[++i]);
 						if (useDocker && !platform.hasDockerSupport())
 							throw new IllegalArgumentException(String.format("Cannot use Docker on %s platform.", platform));
 						break;
