@@ -159,6 +159,12 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					comparisonPrefix = "Arrays.equals("; //use helper method to compare arrays
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
 				case CHARACTER:
 				case BOOLEAN:
 				case INT8:
