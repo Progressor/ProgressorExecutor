@@ -273,8 +273,26 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 			case LIST:
 			case SET:
 				StringBuilder sb = new StringBuilder();
-				sb.append(value.getType().getBaseType() == ValueType.BaseType.ARRAY ? "arrayOf(" :
-									value.getType().getBaseType() == ValueType.BaseType.LIST ? "listOf(" : "setOf(");
+
+				if (value.getType().getBaseType() == ValueType.BaseType.ARRAY)
+					switch (value.getType().getGenericParameters().get(0).getBaseType()) {
+						case CHARACTER:
+						case BOOLEAN:
+						case INT8:
+						case INT16:
+						case INT32:
+						case INT64:
+						case FLOAT32:
+						case FLOAT64:
+							sb.append(String.format("%sArrayOf(", this.getTypeName(value.getType().getGenericParameters().get(0)).toLowerCase())); //use 'primitive' array helper
+							break;
+
+						default:
+							sb.append("arrayOf("); //use standard array helper
+					}
+
+				else
+					sb.append(value.getType().getBaseType() == ValueType.BaseType.LIST ? "listOf(" : "setOf(");
 
 				boolean first = true; //generate collection elements
 				for (Value element : value.getCollection()) {
@@ -359,13 +377,28 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 
 		switch (type.getBaseType()) {
 			case ARRAY:
+				switch (type.getGenericParameters().get(0).getBaseType()) {
+					case CHARACTER:
+					case BOOLEAN:
+					case INT8:
+					case INT16:
+					case INT32:
+					case INT64:
+					case FLOAT32:
+					case FLOAT64:
+						return String.format("%sArray", this.getTypeName(type.getGenericParameters().get(0))); //return 'primitive' array type
+
+					default:
+						//fallthrough
+				}
+
 			case LIST:
 			case SET:
 				return String.format("%s<%s>", type.getBaseType() == ValueType.BaseType.ARRAY ? "Array" : type.getBaseType() == ValueType.BaseType.LIST ? "List" : "Set",
-														 this.getTypeName(type.getGenericParameters().get(0))); //return class name
+														 this.getTypeName(type.getGenericParameters().get(0))); //return standard type
 
 			case MAP:
-				return String.format("Map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0)), this.getTypeName(type.getGenericParameters().get(1))); //return class name
+				return String.format("Map<%s, %s>", this.getTypeName(type.getGenericParameters().get(0)), this.getTypeName(type.getGenericParameters().get(1)));
 
 			case STRING:
 				return "String";
