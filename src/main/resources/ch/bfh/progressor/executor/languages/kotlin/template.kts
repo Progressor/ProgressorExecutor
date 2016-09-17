@@ -1,4 +1,4 @@
-import java.math.BigDecimal; $CustomCode$
+import java.math.*; import java.util.*; import java.util.regex.*; $CustomCode$
 
 java.io.OutputStreamWriter(System.out, java.nio.charset.Charset.forName("UTF-8").newEncoder()).use { `out` ->
 $TestCases$

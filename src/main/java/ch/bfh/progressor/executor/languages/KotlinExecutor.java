@@ -237,6 +237,12 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					comparisonPrefix = "Arrays.equals("; //use helper method to compare arrays
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
 				case FLOAT32:
 				case FLOAT64:
 					comparisonSeparator = ".hasMinimalDifference("; //compare floating-point numbers using custom equality comparison

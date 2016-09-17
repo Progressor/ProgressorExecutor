@@ -1,4 +1,4 @@
-@file:JvmName("Program") import java.math.BigDecimal; $CustomCode$
+@file:JvmName("Program") import java.math.*; import java.util.*; import java.util.regex.*; $CustomCode$
 
 fun main(vararg args: String) {
 
