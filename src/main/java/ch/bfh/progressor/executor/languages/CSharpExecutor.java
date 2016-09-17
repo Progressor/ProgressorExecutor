@@ -190,6 +190,11 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					comparisonSeparator = ".SequenceEqual("; //use helper method to compare arrays
+					comparisonSuffix = ")";
+					break;
+
 				case STRING:
 				case CHARACTER:
 				case BOOLEAN:
