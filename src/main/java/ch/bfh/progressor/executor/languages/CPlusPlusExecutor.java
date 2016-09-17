@@ -151,6 +151,12 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					comparisonPrefix = "hasSameElements("; //compare arrays using custom equality comparison
+					comparisonSeparator = ", ";
+					comparisonSuffix = String.format(", %d)", testCase.getExpectedOutputValues().get(0).getCollection().size());
+					break;
+
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
