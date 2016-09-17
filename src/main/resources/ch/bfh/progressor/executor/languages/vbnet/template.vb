@@ -1,4 +1,4 @@
-Imports System : Imports System.Collections.Generic : Imports System.Linq : Class Program
+Imports System : Imports System.Collections.Generic : Imports System.Linq : Imports System.Text.RegularExpressions : Class Program
 $CustomCode$
 
 	Shared Sub Main(ParamArray args As String())

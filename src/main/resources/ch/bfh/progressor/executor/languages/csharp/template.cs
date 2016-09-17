@@ -1,4 +1,4 @@
-using System; using System.Collections.Generic; using System.Linq; class Program { $CustomCode$
+using System; using System.Collections.Generic; using System.Linq; using System.Text.RegularExpressions; class Program { $CustomCode$
 
 	static void Main(params string[] args) {
 

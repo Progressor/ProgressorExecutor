@@ -1,4 +1,5 @@
 from decimal import *
+import re
 $CustomCode$
 
 ### source: http://stackoverflow.com/a/3064143/1325979 ###
