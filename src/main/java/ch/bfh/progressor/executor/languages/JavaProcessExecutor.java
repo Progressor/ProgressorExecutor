@@ -231,7 +231,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 					sb.append(this.getValueLiteral(element));
 				}
 
-				return sb.append(isArr ? " }" : isLst ? ')' : "))").toString(); //finish collection initialisation and return literal
+				return sb.append(isArr ? " }" : isLst ? ")" : "))").toString(); //finish collection initialisation and return literal
 
 			case MAP:
 				sb = new StringBuilder(); //begin map initialisation using anonymous class with initialisation block
