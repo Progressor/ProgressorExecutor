@@ -1,6 +1,6 @@
 # Progressor - Executor
 
-This is the code of the **Executor** component of the project **Progressor - The Programming Professor**.
+This is the code of the **Executor** component of the project [**Progressor - The Programming Professor**](https://github.com/Progressor/ProgressorMeteor).
 
 ## Deployment & Installation
 
