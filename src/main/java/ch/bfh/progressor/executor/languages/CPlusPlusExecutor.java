@@ -17,7 +17,7 @@ import ch.bfh.progressor.executor.impl.CodeExecutorBase;
 import ch.bfh.progressor.executor.impl.CodeExecutorDockerBase;
 
 /**
- * Code execution engine for C/C++ code.
+ * Code execution engine for C++ code.
  *
  * @author strut1, touwm1 &amp; weidj1
  */
@@ -29,7 +29,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 	public static final String CODE_LANGUAGE = "cpp";
 
 	/**
-	 * Name of the C/C++ executable.
+	 * Name of the C++ executable.
 	 */
 	protected static final String EXECUTABLE_NAME = "main";
 
@@ -114,7 +114,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		StringBuilder sb = new StringBuilder();
 		for (FunctionSignature function : functions) {
 			if (function.getOutputTypes().size() != 1)
-				throw new ExecutorException("Exactly one output type has to be defined for a C/C++ sample.");
+				throw new ExecutorException("Exactly one output type has to be defined for a C++ sample.");
 
 			sb.append(this.getTypeName(function.getOutputTypes().get(0), true)).append(' ').append(function.getName()).append('(');
 
@@ -135,7 +135,7 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 		StringBuilder sb = new StringBuilder();
 		for (TestCase testCase : testCases) {
 			if (testCase.getExpectedOutputValues().size() != 1)
-				throw new ExecutorException("Exactly one output value has to be defined for a C/C++ example.");
+				throw new ExecutorException("Exactly one output value has to be defined for a C++ example.");
 
 			sb.append(CodeExecutorBase.NEWLINE).append("try {").append(CodeExecutorBase.NEWLINE); //begin test case block
 

@@ -30,7 +30,7 @@ RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y software-properties-common && \
     add-apt-repository ppa:ondrej/php
 
-#Install C\C++ compiler (GCC & G++), Python 3, Mono, Node.js, and PHP
+#Install C++ compiler (GCC & G++), Python 3, Mono, Node.js, and PHP
 RUN apt-get update && \
     apt-get install -y --force-yes g++ gcc \
     python3-pip \

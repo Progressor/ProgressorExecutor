@@ -9,13 +9,13 @@ public enum ExecutorPlatform {
 
 	/**
 	 * Windows platform.
-	 * Supports Java, C/C++, C# and Kotlin.
+	 * Supports Java, C++, C# and Kotlin.
 	 */
 	WINDOWS(false),
 
 	/**
 	 * Unix platform.
-	 * Supports Java, C/C++, C# (Mono), Kotlin and Docker (containerisation).
+	 * Supports Java, C++, C# (Mono), Kotlin and Docker (containerisation).
 	 */
 	UNIX_LINUX(true),
 
