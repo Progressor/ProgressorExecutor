@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.thrift.TException;
 import ch.bfh.progressor.executor.api.CodeExecutor;
@@ -252,7 +253,10 @@ public class ExecutorService implements ch.bfh.progressor.executor.thrift.Execut
 			CodeExecutor codeExecutor = this.getCodeExecutor(language);
 			List<Result> results;
 
-			List<String> blacklist = codeExecutor.getBlacklist().stream().filter(fragment::contains).collect(Collectors.toList());
+			List<String> blacklist = codeExecutor.getBlacklist().stream()
+																					 .filter(b -> Pattern.compile(String.format("\\b\\Q%s\\E\\b", b)).matcher(fragment).find())
+																					 .collect(Collectors.toList());
+
 			if (!blacklist.isEmpty()) { //validate fragment against blacklist
 				results = Collections.nCopies(testCases.size(),
 																			new ResultImpl(false, true, String.format("Validation against blacklist failed (illegal: %s).", String.join(", ", blacklist))));
