@@ -29,7 +29,6 @@
 			{"keyword": "globals"},
 			{"keyword": "hasattr"},
 			{"keyword": "help"},
-			{"keyword": "id"},
 			{"keyword": "input"},
 			{"keyword": "isinstance"},
 			{"keyword": "issubclass"},
