@@ -24,8 +24,10 @@
     <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpcore:4.4.1" level="project" />
     <orderEntry type="library" name="Maven: org.json:json:20151123" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-simple:1.7.13" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: org.testng:testng:6.9.10" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.testng:testng:6.9.13.6" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: com.beust:jcommander:1.48" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.ant:ant:1.9.7" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.ant:ant-launcher:1.9.7" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.beanshell:bsh:2.0b4" level="project" />
     <orderEntry type="library" name="Maven: commons-io:commons-io:2.5" level="project" />
   </component>
