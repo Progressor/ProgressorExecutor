@@ -17,7 +17,7 @@ public class KotlinExecutorTest extends CodeExecutorTestBase {
 																															.append("fun sumFloat32(a: Float, b: Float) = a + b").append(CodeExecutorBase.NEWLINE)
 																															.append("fun sumFloat64(a: Double, b: Double) = a + b").append(CodeExecutorBase.NEWLINE)
 																															.append("fun sumDecimal(a: BigDecimal, b: BigDecimal) = a + b").append(CodeExecutorBase.NEWLINE)
-																															.append("fun sumInt32Array(a: Array<Int>, l: Int) = a.sum()").append(CodeExecutorBase.NEWLINE)
+																															.append("fun sumInt32Array(a: IntArray, l: Int) = a.sum()").append(CodeExecutorBase.NEWLINE)
 																															.append("fun sumInt32List(l: List<Int>) = l.sum()").append(CodeExecutorBase.NEWLINE)
 																															.append("fun sumInt32Set(s: Set<Int>) = s.sum()").append(CodeExecutorBase.NEWLINE)
 																															.append("fun getMapEntry(m: Map<Int, String>, k: Int) = m[k]").append(CodeExecutorBase.NEWLINE)
