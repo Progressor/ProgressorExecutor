@@ -12,6 +12,8 @@ This project has the following *Maven* dependencies.
    for unit tests
 1. [commons-io:commons-io:2.5](http://mvnrepository.com/artifact/commons-io/commons-io/2.5)
    for proper *UTF-8* support on streams
+1. [javax.annotation:javax.annotation-api:1.3.1](https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.1)
+   for generated thrift code
 
 And relies on the following plugins.
 
