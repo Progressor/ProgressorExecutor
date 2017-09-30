@@ -1,17 +1,28 @@
 # Progressor - Executor Dependencies
 
-This project has five *Maven* dependencies:
+This project has the following *Maven* dependencies.
 
-1. [org.apache.thrift:libthrift:0.9.3](http://mvnrepository.com/artifact/org.apache.thrift/libthrift/0.9.3)
+1. [org.apache.thrift:libthrift:0.10.0](http://mvnrepository.com/artifact/org.apache.thrift/libthrift/0.10.0)
    for *Apache Thrift*
-1. [org.json:json:20151123](http://mvnrepository.com/artifact/org.json/json/20151123)
+1. [org.json:json:20170516](http://mvnrepository.com/artifact/org.json/json/20170516)
    for *JSON* decoding
-1. [org.slf4j:slf4j-simple:1.7.13](http://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.13)
+1. [org.slf4j:slf4j-simple:1.7.25](http://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.25)
    for logging
-1. [org.testng:testng:RELEASE](http://mvnrepository.com/artifact/org.testng/testng)
+1. [org.testng:testng:6.11](http://mvnrepository.com/artifact/org.testng/testng/6.11)
    for unit tests
 1. [commons-io:commons-io:2.5](http://mvnrepository.com/artifact/commons-io/commons-io/2.5)
    for proper *UTF-8* support on streams
+
+And relies on the following plugins.
+
+1. [org.apache.maven.plugins:maven-compiler-plugin:3.7.0](http://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin/3.7.0)
+   for targeting JDK 1.8
+1. [org.apache.maven.plugins:maven-assembly-plugin:3.1.0](http://mvnrepository.com/artifact/org.apache.maven.plugins/maven-assembly-plugin/3.1.0)
+   for specifying the main class and additional assembly settings
+1. [org.apache.thrift.tools:maven-thrift-plugin:0.1.11](http://mvnrepository.com/artifact/org.apache.thrift.tools/maven-thrift-plugin/0.1.11)
+   for automatically generating Java and Node.js thrift libraries
+1. [org.codehaus.mojo:build-helper-maven-plugin:1.12](http://mvnrepository.com/artifact/org.codehaus.mojo/build-helper-maven-plugin/1.12)
+   for including the previously generated Java library
 
 ## Docker
 
