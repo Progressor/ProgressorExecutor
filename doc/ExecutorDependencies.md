@@ -45,7 +45,7 @@ To use the languages, the following compilers (and other tools) need to be insta
 1. *Python*: `python` (Windows)
 1. *JavaScript* ([Node.js](https://nodejs.org/)): `node` 
 1. *PHP*: `php`
-1. *Kotlin*: `kotlinc` and `kotlin` (these scripts are actually simulated until a security issue can be solved with *Java 9*)
+1. *Kotlin*: `kotlinc` and `kotlin`
 1. *VB.NET*: `vbc` (Windows) or `vbnc` and `mono` (Linux)
 
 As already mentioned, if you are using *Docker* these compilers need to be installed inside the *Docker* image via the *Dockerfile*.

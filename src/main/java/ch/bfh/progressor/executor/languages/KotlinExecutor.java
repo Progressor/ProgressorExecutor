@@ -1,7 +1,6 @@
 package ch.bfh.progressor.executor.languages;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -79,8 +78,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 		final long compilationStart = System.nanoTime();
 
 		try {
-			//this.executeSafeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName());
-			this.simulateKotlinCompilerScript(true, codeDirectory, codeFile.getName());
+			this.executeSafeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", codeFile.getName());
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not compile the user code.", ex);
 		}
@@ -94,8 +92,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 
 		String executionOutput;
 		try {
-			//executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME);
-			executionOutput = this.simulateKotlinScript(false, codeDirectory, KotlinExecutor.CODE_CLASS_NAME);
+			executionOutput = this.executeCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlin.bat" : "kotlin", KotlinExecutor.CODE_CLASS_NAME);
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);
@@ -110,89 +107,6 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 															(compilationEnd - compilationStart) / CodeExecutorBase.MILLIS_IN_NANO,
 															(executionEnd - executionStart) / CodeExecutorBase.MILLIS_IN_NANO);
 	}
-
-	/////////////////////////////////////////////////////////////////
-	//              Kotlin script (bat/sh) simulations             //
-	/////////////////////////////////////////////////////////////////
-	// these simulations are only needed until Java 9 is published //
-	//      the scripts start Java in a separate child process     //
-	//       Java 8 cannot determine and kill child processes      //
-	/////////////////////////////////////////////////////////////////
-	//            TODO: remove when upgrading to Java 9            //
-	/////////////////////////////////////////////////////////////////
-
-	/**
-	 * Simulates the {@code kotlin}/{@code kotlin.bat} scripts. <br>
-	 * Needed because a Java process started by one of these scripts cannot be aborted in case of an infinite loop.
-	 *
-	 * @param safe      whether the command is safe to execute
-	 * @param directory the working directory for the command
-	 * @param arguments arguments to simulate
-	 *
-	 * @return the output of the command
-	 *
-	 * @throws ExecutorException if the command cannot be executed successfully
-	 * @see #executeCommand(File, String...)
-	 * @see #executeSafeCommand(File, String...)
-	 */
-	protected String simulateKotlinScript(boolean safe, File directory, String... arguments) throws ExecutorException {
-
-		return this.simulateKotlinCompilerScript(safe, true, directory, arguments);
-	}
-
-	/**
-	 * Simulates the {@code kotlinc}/{@code kotlinc.bat} scripts. <br>
-	 * Needed because a Java process started by one of these scripts cannot be aborted in case of an infinite loop.
-	 *
-	 * @param safe      whether the command is safe to execute
-	 * @param directory the working directory for the command
-	 * @param arguments arguments to simulate
-	 *
-	 * @return the output of the command
-	 *
-	 * @throws ExecutorException if the command cannot be executed successfully
-	 * @see #executeCommand(File, String...)
-	 * @see #executeSafeCommand(File, String...)
-	 */
-	protected String simulateKotlinCompilerScript(boolean safe, File directory, String... arguments) throws ExecutorException {
-
-		return this.simulateKotlinCompilerScript(safe, false, directory, arguments);
-	}
-
-	//all the variable names and values have been taken from the kotlin[c][.bat] scripts
-	@SuppressWarnings({ "LocalVariableNamingConvention", "MethodParameterNamingConvention" })
-	private String simulateKotlinCompilerScript(boolean safe, boolean KOTLIN_RUNNER, File directory, String... arguments) throws ExecutorException {
-
-		final String KOTLIN_COMPILER = "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler";
-
-		final String JAVACMD = "java"; //ignore JAVA_HOME
-
-		final String[] JAVA_OPTS = { "-Xmx256M", "-Xms32M" };
-
-		final String KOTLIN_HOME = System.getenv("KOTLIN_HOME"); //ignored fallback: find script and extract path; ignored workaround for cygwin
-		if (KOTLIN_HOME == null)
-			throw new ExecutorException("Cannot find Kotlin libraries.");
-
-		//ignored: extract java arguments (-D*, -J*)
-
-		String[] command;
-		if (KOTLIN_RUNNER)
-			command = this.concatenateArrays(new String[] { JAVACMD }, JAVA_OPTS,
-																			 new String[] { String.format("-Dkotlin.home=%s", KOTLIN_HOME),
-																											"-cp", Paths.get(KOTLIN_HOME, "lib", "kotlin-runner.jar").toString(), "org.jetbrains.kotlin.runner.Main" },
-																			 arguments);
-		else
-			command = this.concatenateArrays(new String[] { JAVACMD }, JAVA_OPTS,
-																			 new String[] { "-noverify",
-																											"-cp", Paths.get(KOTLIN_HOME, "lib", "kotlin-preloader.jar").toString(), "org.jetbrains.kotlin.preloading.Preloader",
-																											"-cp", Paths.get(KOTLIN_HOME, "lib", "kotlin-compiler.jar").toString(), KOTLIN_COMPILER },
-																			 arguments);
-
-		return safe ? this.executeSafeCommand(directory, command)
-								: this.executeDeferredCommand(directory, command);
-	}
-
-	// end of script simulations //
 
 	@Override
 	protected String getFunctionSignatures(List<FunctionSignature> functions) throws ExecutorException {

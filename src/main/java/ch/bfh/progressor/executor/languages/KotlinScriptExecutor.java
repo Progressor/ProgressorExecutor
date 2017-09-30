@@ -3,6 +3,7 @@ package ch.bfh.progressor.executor.languages;
 import java.io.File;
 import java.util.List;
 import ch.bfh.progressor.executor.api.ExecutorException;
+import ch.bfh.progressor.executor.api.ExecutorPlatform;
 import ch.bfh.progressor.executor.api.Result;
 import ch.bfh.progressor.executor.api.TestCase;
 import ch.bfh.progressor.executor.impl.CodeExecutorBase;
@@ -37,8 +38,7 @@ public class KotlinScriptExecutor extends KotlinExecutor {
 
 		String executionOutput;
 		try {
-			//executionOutput = this.executeDeferredCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
-			executionOutput = this.simulateKotlinCompilerScript(false, codeDirectory, "-script", "-nowarn", codeFile.getName());
+			executionOutput = this.executeDeferredCommand(codeDirectory, CodeExecutorBase.PLATFORM == ExecutorPlatform.WINDOWS ? "kotlinc.bat" : "kotlinc", "-script", "-nowarn", codeFile.getName());
 
 		} catch (ExecutorException ex) {
 			throw new ExecutorException("Could not execute the user code.", ex);

@@ -411,10 +411,17 @@ public abstract class CodeExecutorBase implements CodeExecutor {
 			throw new ExecutorException("Could not execute command.", ex);
 
 		} finally {
-			if (process != null && process.isAlive())
-				//use Java 9 ProcessHandle to destroy children as well
-				process.destroyForcibly();
+			if (process != null)
+				CodeExecutorBase.destroyProcessRecursively(process.toHandle());
 		}
+	}
+
+	private static void destroyProcessRecursively(ProcessHandle process) {
+
+		process.children().forEach(CodeExecutorBase::destroyProcessRecursively);
+
+		if (process.isAlive())
+			process.destroyForcibly();
 	}
 
 	/**
