@@ -26,8 +26,7 @@
 			{"keyword": "typeid"},
 			{"keyword": "typename"},
 			{"keyword": "union"},
-			{"keyword": "virtual"},
-			{"keyword": "while"}
+			{"keyword": "virtual"}
 		]
 	},
 	{
