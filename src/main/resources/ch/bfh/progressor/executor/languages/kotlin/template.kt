@@ -1,4 +1,4 @@
-@file:JvmName("Program") import java.math.*; import java.util.*; import java.util.regex.*; $CustomCode$
+@file:JvmName("Program") import java.math.*; import java.util.*; import java.util.function.*; import java.util.stream.*; import java.util.regex.*; $CustomCode$
 
 fun main(vararg args: String) {
 

@@ -171,10 +171,30 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 			}
 
 			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(';').append(CodeExecutorBase.NEWLINE);
 
-			String resultPrefix = "";
+			String formattingPrefix = "", formattingSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					formattingPrefix = "printArray("; //use custom helper method to print collection values
+					formattingSuffix = String.format(", %d)", testCase.getExpectedOutputValues().get(0).getCollection().size());
+					break;
+
+				case LIST:
+				case SET:
+					formattingPrefix = "printCollection("; //use custom helper method to print collection values
+					formattingSuffix = ")";
+					break;
+
+				case MAP:
+					formattingPrefix = "printMap("; //use custom helper method to print collection values
+					formattingSuffix = ")";
+					break;
+
+				case BOOLEAN:
+					formattingPrefix = "boolalpha << "; //print booleans as true/false
+					break;
+
 				case INT8: //force numeric types to be printed as numbers (not chars or the like)
 				case INT16:
 				case INT32:
@@ -182,10 +202,11 @@ public class CPlusPlusExecutor extends CodeExecutorDockerBase {
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
-					resultPrefix = "+";
+					formattingPrefix = "+";
 			}
 
-			sb.append("cout << (success ? \"OK\" : \"ER\") << \":\" << ").append("duration.count()").append(" << \":\" << ").append(resultPrefix).append("result << endl << endl;").append(CodeExecutorBase.NEWLINE); //print result to the console
+			sb.append("cout << (success ? \"OK\" : \"ER\") << \":\" << ").append("duration.count()").append(" << \":\" << "); //print result to the console
+			sb.append(formattingPrefix).append("result").append(formattingSuffix).append(" << endl << endl;").append(CodeExecutorBase.NEWLINE);
 			sb.append("} catch (const exception &ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling (standard exception class)
 			sb.append("cout << \"ER:\" << ex.what() << endl << endl;").append(CodeExecutorBase.NEWLINE);
 			sb.append("} catch (const string &ex) {").append(CodeExecutorBase.NEWLINE); //secondary exception handling (exception C++-string)

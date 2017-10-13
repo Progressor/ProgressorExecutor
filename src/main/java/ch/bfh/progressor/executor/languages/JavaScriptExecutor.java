@@ -140,6 +140,7 @@ public class JavaScriptExecutor extends CodeExecutorDockerBase {
 				case ARRAY:
 				case LIST:
 				case SET:
+				case MAP:
 					comparisonPrefix = "hasSameElements("; //compare collections using custom equality comparison
 					comparisonSeparator = ", ";
 					comparisonSuffix = ")";
@@ -159,9 +160,34 @@ public class JavaScriptExecutor extends CodeExecutorDockerBase {
 			}
 
 			sb.append("const success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(';').append(CodeExecutorBase.NEWLINE);
 
-			sb.append("console.log(`${success ? 'OK' : 'ER'}:${diff[0] * 1e3 + diff[1] * 1e-6}:${result}\\n`);").append(CodeExecutorBase.NEWLINE); //print result to the console
+			String formattingStringPrefix = "", formattingCodePrefix = "", formattingCodeSuffix = "", formattingStringSuffix = "";
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+				case LIST:
+					formattingStringPrefix = "{ ";
+					formattingStringSuffix = " }";
+					break;
+
+				case SET:
+					formattingStringPrefix = "{ ";
+					formattingCodePrefix = "Array.from(";
+					formattingCodeSuffix = ")";
+					formattingStringSuffix = " }";
+					break;
+
+				case MAP:
+					formattingStringPrefix = "{ ";
+					formattingCodePrefix = "Array.from(";
+					formattingCodeSuffix = ").map(function(i) { return `${i[0]}:${i[1]}` })";
+					formattingStringSuffix = " }";
+					break;
+			}
+
+			sb.append("console.log(`${success ? 'OK' : 'ER'}:${diff[0] * 1e3 + diff[1] * 1e-6}:"); //print result to the console
+			sb.append(formattingStringPrefix).append("${").append(formattingCodePrefix).append("result");
+			sb.append(formattingCodeSuffix).append('}').append(formattingStringSuffix).append("\\n`);").append(CodeExecutorBase.NEWLINE);
 
 			sb.append("} catch (ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
 			sb.append("console.log(`ER:${ex}\\n`);").append(CodeExecutorBase.NEWLINE);

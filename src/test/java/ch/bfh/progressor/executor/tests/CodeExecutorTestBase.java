@@ -36,6 +36,10 @@ public abstract class CodeExecutorTestBase {
 																																					 new FunctionSignature("sumInt32Set", Collections.singletonList("s"), Collections.singletonList(String.format("%s<%s>", executorConstants.TypeContainerSet, executorConstants.TypeInt32)), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeInt32)),
 																																					 new FunctionSignature("getMapEntry", Arrays.asList("m", "k"), Arrays.asList(String.format("%s<%s, %s>", executorConstants.TypeContainerMap, executorConstants.TypeInt32, executorConstants.TypeString), executorConstants.TypeInt32), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeString)),
 																																					 new FunctionSignature("getMapListEntry", Arrays.asList("m", "k", "i"), Arrays.asList(String.format("%s<%s, %s<%s>>", executorConstants.TypeContainerMap, executorConstants.TypeInt32, executorConstants.TypeContainerList, executorConstants.TypeString), executorConstants.TypeInt32, executorConstants.TypeInt32), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeString)),
+																																					 new FunctionSignature("intersectArray", Arrays.asList("a1", "l1", "a2", "l2"), Arrays.asList(String.format("%s<%s>", executorConstants.TypeContainerArray, executorConstants.TypeInt32), executorConstants.TypeInt32, String.format("%s<%s>", executorConstants.TypeContainerArray, executorConstants.TypeInt32), executorConstants.TypeInt32), Collections.singletonList("return"), Collections.singletonList(String.format("%s<%s>", executorConstants.TypeContainerArray, executorConstants.TypeInt32))),
+																																					 new FunctionSignature("intersectList", Arrays.asList("l1", "l2"), Arrays.asList(String.format("%s<%s>", executorConstants.TypeContainerList, executorConstants.TypeInt32), String.format("%s<%s>", executorConstants.TypeContainerList, executorConstants.TypeInt32)), Collections.singletonList("return"), Collections.singletonList(String.format("%s<%s>", executorConstants.TypeContainerList, executorConstants.TypeInt32))),
+																																					 new FunctionSignature("intersectSet", Arrays.asList("s1", "s2"), Arrays.asList(String.format("%s<%s>", executorConstants.TypeContainerSet, executorConstants.TypeInt32), String.format("%s<%s>", executorConstants.TypeContainerSet, executorConstants.TypeInt32)), Collections.singletonList("return"), Collections.singletonList(String.format("%s<%s>", executorConstants.TypeContainerSet, executorConstants.TypeInt32))),
+																																					 new FunctionSignature("intersectMap", Arrays.asList("m1", "m2"), Arrays.asList(String.format("%s<%s, %s>", executorConstants.TypeContainerMap, executorConstants.TypeInt32, executorConstants.TypeString), String.format("%s<%s, %s>", executorConstants.TypeContainerMap, executorConstants.TypeInt32, executorConstants.TypeString)), Collections.singletonList("return"), Collections.singletonList(String.format("%s<%s, %s>", executorConstants.TypeContainerMap, executorConstants.TypeInt32, executorConstants.TypeString))),
 																																					 new FunctionSignature("infiniteLoop", Collections.emptyList(), Collections.emptyList(), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeInt32)),
 																																					 new FunctionSignature("recursion", Collections.emptyList(), Collections.emptyList(), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeInt32)),
 																																					 new FunctionSignature("error", Collections.emptyList(), Collections.emptyList(), Collections.singletonList("return"), Collections.singletonList(executorConstants.TypeInt32)));
@@ -98,9 +102,64 @@ public abstract class CodeExecutorTestBase {
 																																					 new TestCase("getMapEntry", Arrays.asList("{2:touwm1,3:weidj1,1:strut1}", "3"), Collections.singletonList("weidj1")),
 																																					 new TestCase("getMapListEntry", Arrays.asList("{ 1: { strut1, Thomas Strub } }", "1", "0"), Collections.singletonList("strut1")),
 																																					 new TestCase("getMapListEntry", Arrays.asList("{1:{strut1,Thomas Strub},2:{touwm1,Marc Touw},3:{weidj1,Janick Weidmann}}", "2", "1"), Collections.singletonList("Marc Touw")),
-																																					 new TestCase("getMapListEntry", Arrays.asList("{2:{touwm1,Marc Touw},3:{weidj1,Janick Weidmann},1:{strut1,Thomas Strub}}", "3", "0"), Collections.singletonList("weidj1")));
+																																					 new TestCase("getMapListEntry", Arrays.asList("{2:{touwm1,Marc Touw},3:{weidj1,Janick Weidmann},1:{strut1,Thomas Strub}}", "3", "0"), Collections.singletonList("weidj1")),
+																																					 new TestCase("intersectArray", Arrays.asList("{}", "0", "{}", "0"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{}", "0", "{0,1,2,3}", "4"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{0,1,2,3}", "4", "{}", "0"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1}", "3", "{1,2,3}", "3"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1,0}", "4", "{0,1,2,3}", "4"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "9", "{-5,-4,-3,-2,-1,0,1,2,3}", "9"), Collections.singletonList("{-3,-2,-1,0,1,2,3}")),
+																																					 new TestCase("intersectList", Arrays.asList("{}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectList", Arrays.asList("{}", "{0,1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectList", Arrays.asList("{0,1,2,3}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1}", "{1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1,0}", "{0,1,2,3}"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{-3,-2,-1,0,1,2,3}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{}", "{0,1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{0,1,2,3}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1}", "{1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1,0}", "{0,1,2,3}"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{-3,-2,-1,0,1,2,3}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{0,1,-1,2,-2,3,-3}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{}", "{1:strut1,2:touwm1,3:weidj1}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:Thomas Strub,2:Marc Touw,3:Janick Weidmann}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,2:cenga1}"), Collections.singletonList("{1:strut1}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,4:cenga1}"), Collections.singletonList("{1:strut1}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,2:touwm1,3:weidj1}"), Collections.singletonList("{1:strut1,2:touwm1,3:weidj1}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,2:touwm1,3:weidj1}"), Collections.singletonList("{2:touwm1,1:strut1,3:weidj1}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{2:touwm1,1:strut1,3:weidj1}"), Collections.singletonList("{1:strut1,2:touwm1,3:weidj1}")));
 
-	protected static final List<TestCase> TEST_CASES_FAILURE = Arrays.asList(new TestCase("error", Collections.emptyList(), Collections.singletonList("0")));
+	protected static final List<TestCase> TEST_CASES_FAILURE = Arrays.asList(new TestCase("helloWorld", Collections.emptyList(), Collections.singletonList("Hello World")),
+																																					 new TestCase("minChar", Arrays.asList("b", "a"), Collections.singletonList("b")),
+																																					 new TestCase("exor", Arrays.asList("true", "true"), Collections.singletonList("true")),
+																																					 new TestCase("sumInt8", Arrays.asList("0", "0"), Collections.singletonList("1")),
+																																					 new TestCase("sumInt16", Arrays.asList("0", "0"), Collections.singletonList("1")),
+																																					 new TestCase("sumInt32", Arrays.asList("0", "0"), Collections.singletonList("1")),
+																																					 new TestCase("sumInt64", Arrays.asList("0", "0"), Collections.singletonList("1")),
+																																					 new TestCase("sumFloat32", Arrays.asList("0.0", "0.0"), Collections.singletonList("1.0")),
+																																					 new TestCase("sumFloat64", Arrays.asList("0.0", "0.0"), Collections.singletonList("1.0")),
+																																					 new TestCase("sumDecimal", Arrays.asList("0.0", "0.0"), Collections.singletonList("1.0")),
+																																					 new TestCase("sumInt32Array", Arrays.asList("{0}", "1"), Collections.singletonList("1")),
+																																					 new TestCase("sumInt32List", Collections.singletonList("{0}"), Collections.singletonList("1")),
+																																					 new TestCase("sumInt32Set", Collections.singletonList("{0}"), Collections.singletonList("1")),
+																																					 new TestCase("getMapEntry", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "2"), Collections.singletonList("strut1")),
+																																					 new TestCase("getMapListEntry", Arrays.asList("{1:{strut1,Thomas Strub},2:{touwm1,Marc Touw},3:{weidj1,Janick Weidmann}}", "2", "1"), Collections.singletonList("strut1")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "11", "{-5,-4,-3,-2,-1,0,1,2,3}", "11"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "11", "{-5,-4,-3,-2,-1,0,1,2,3}", "11"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectArray", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "11", "{-5,-4,-3,-2,-1,0,1,2,3}", "11"), Collections.singletonList("{-2,-3,-1,0,1,2,3}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectList", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{-2,-3,-1,0,1,2,3}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{}")),
+																																					 new TestCase("intersectSet", Arrays.asList("{-3,-2,-1,0,1,2,3,4,5}", "{-5,-4,-3,-2,-1,0,1,2,3}"), Collections.singletonList("{0}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,4:cenga1}"), Collections.singletonList("{2:strut1}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,4:cenga1}"), Collections.singletonList("{1:touwm}")),
+																																					 new TestCase("intersectMap", Arrays.asList("{1:strut1,2:touwm1,3:weidj1}", "{1:strut1,4:cenga1}"), Collections.singletonList("{2:touwm}")));
+
+	protected static final List<TestCase> TEST_CASES_ERROR = Arrays.asList(new TestCase("error", Collections.emptyList(), Collections.singletonList("0")));
 
 	protected static final List<TestCase> TEST_CASES_FATAL = Arrays.asList(new TestCase("infiniteLoop", Collections.emptyList(), Collections.singletonList("0")),
 																																				 new TestCase("recursion", Collections.emptyList(), Collections.singletonList("0")));
@@ -171,6 +230,12 @@ public abstract class CodeExecutorTestBase {
 	public void testExecuteFailure() throws ExecutorException {
 
 		this.testExecute(CodeExecutorTestBase.TEST_CASES_FAILURE, false);
+	}
+
+	@Test
+	public void testExecuteError() throws ExecutorException {
+
+		this.testExecute(CodeExecutorTestBase.TEST_CASES_ERROR, false);
 	}
 
 	@Test

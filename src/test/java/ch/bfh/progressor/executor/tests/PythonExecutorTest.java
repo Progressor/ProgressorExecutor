@@ -22,6 +22,10 @@ public class PythonExecutorTest extends CodeExecutorTestBase {
 																															.append("def sumInt32Set(s): return sum(s)").append(CodeExecutorBase.NEWLINE)
 																															.append("def getMapEntry(m, k): return m[k]").append(CodeExecutorBase.NEWLINE)
 																															.append("def getMapListEntry(m, k, i): return m[k][i]").append(CodeExecutorBase.NEWLINE)
+																															.append("def intersectArray(a1, l1, a2, l2): return list(filter(a1.__contains__, a2))").append(CodeExecutorBase.NEWLINE)
+																															.append("def intersectList(l1, l2): return list(filter(l1.__contains__, l2))").append(CodeExecutorBase.NEWLINE)
+																															.append("def intersectSet(s1, s2): return set(filter(s1.__contains__, s2))").append(CodeExecutorBase.NEWLINE)
+																															.append("def intersectMap(m1, m2): return { i: m1[i] for i in filter(lambda i: i in m2 and m1[i] == m2[i], m1.keys())}").append(CodeExecutorBase.NEWLINE)
 																															.append("def infiniteLoop():").append(CodeExecutorBase.NEWLINE).append(" while True: 0").append(CodeExecutorBase.NEWLINE)
 																															.append("def recursion(): return recursion()").append(CodeExecutorBase.NEWLINE)
 																															.append("def error(): raise Exception()").toString();

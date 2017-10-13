@@ -22,6 +22,10 @@ public class PHPExecutorTest extends CodeExecutorTestBase {
 																															.append("function sumInt32Set(array $s) : int { return array_sum($s); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function getMapEntry(array $m, int $k) : string { return $m[$k]; }").append(CodeExecutorBase.NEWLINE)
 																															.append("function getMapListEntry(array $m, int $k, int $i) : string { return $m[$k][$i]; }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectArray(array $a1, int $l1, array $a2, int $l2) : array { return array_intersect($a1, $a2); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectList(array $l1, array $l2) : array { return array_intersect($l1, $l2); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectSet(array $s1, array $s2) : array { return array_intersect($s1, $s2); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectMap(array $m1, array $m2) : array { return array_filter($m1, function(string $v, int $k) use($m2) : bool { return array_key_exists($k, $m2) && $v === $m2[$k]; }, ARRAY_FILTER_USE_BOTH); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function infiniteLoop() : int { while(true); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function recursion() : int { return recursion(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function error() : int { throw new Exception('error'); }").toString();

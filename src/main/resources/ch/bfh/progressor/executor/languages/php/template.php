@@ -54,6 +54,20 @@ class MathFloat { //source: https://github.com/OakbankTechnologyInc/Math/blob/ma
     }
 }
 
+function compareArrays(array $a1, array $a2) : bool {
+    return array_values($a1) === array_values($a2);
+}
+function compareSets(array $s1, array $s2) : bool {
+    sort($s1);
+    sort($s2);
+    return $s1 === $s2;
+}
+function compareMaps(array $m1, array $m2) : bool {
+    ksort($m1);
+    ksort($m2);
+    return $m1 === $m2;
+}
+
 $out = fopen('php://output', 'wb');
 $TestCases$
 

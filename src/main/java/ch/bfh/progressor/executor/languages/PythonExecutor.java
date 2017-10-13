@@ -174,6 +174,9 @@ public class PythonExecutor extends CodeExecutorDockerBase {
 			case ARRAY:
 			case LIST:
 			case SET:
+				if (value.getType().getBaseType() == ValueType.BaseType.SET && value.getCollection().isEmpty())
+					return "set()"; //{} creates an empty dictionary (map)
+
 				StringBuilder sb = new StringBuilder();
 				sb.append(value.getType().getBaseType() == ValueType.BaseType.SET ? "{ " : "[ ");
 				boolean first = true; //generate collection elements

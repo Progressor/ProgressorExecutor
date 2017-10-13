@@ -7,7 +7,7 @@ using System; using System.Collections.Generic; using System.Linq; using System.
 $TestCases$
 	}
 
-	public static bool HasMinimalDifference(float value1, float value2, int units) {
+	static bool HasMinimalDifference(float value1, float value2, int units) {
 
 		if (float.IsNaN(value1) || float.IsInfinity(value1) || float.IsNaN(value2) || float.IsInfinity(value2)) return value1 == value2;
 		if (value1 == value2) return true;
@@ -19,7 +19,7 @@ $TestCases$
 		return Math.Abs(iValue1 - iValue2) <= units;
 	}
 
-	public static bool HasMinimalDifference(double value1, double value2, int units) {
+	static bool HasMinimalDifference(double value1, double value2, int units) {
 
 		if (double.IsNaN(value1) || double.IsInfinity(value1) || double.IsNaN(value2) || double.IsInfinity(value2)) return value1 == value2;
 		if (value1 == value2) return true;
@@ -29,5 +29,14 @@ $TestCases$
 
 		if ((lValue1 >> 63) != (lValue2 >> 63)) return value1 == value2;
 		return Math.Abs(lValue1 - lValue2) <= units;
+	}
+
+	static bool DictionaryEquals<TKey, TValue>(Dictionary<TKey, TValue> a, Dictionary<TKey, TValue> b) {
+
+		if (ReferenceEquals(a, b)) return true;
+		if (ReferenceEquals(a, null) || ReferenceEquals(b, null)) return false;
+		if (a.Count != b.Count) return false;
+
+		return a.All(p => b.ContainsKey(p.Key) && Equals(p.Value, b[p.Key]));
 	}
 }

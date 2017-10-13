@@ -257,7 +257,16 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 			sb.append("val success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(CodeExecutorBase.NEWLINE);
 
-			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) * 1e-6, result))").append(CodeExecutorBase.NEWLINE); //print result to the console
+			String formattingPrefix = "", formattingSuffix = "";
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+					formattingPrefix = "Arrays.toString(";
+					formattingSuffix = ")";
+					break;
+			}
+
+			sb.append("out.write(\"%s:%f:%s%n%n\".format(if (success) \"OK\" else \"ER\", (end - start) * 1e-6, "); //print result to the console
+			sb.append(formattingPrefix).append("result").append(formattingSuffix).append("))").append(CodeExecutorBase.NEWLINE);
 
 			sb.append("} catch (ex: Exception) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
 			sb.append("out.write(\"ER:\"); out.flush()").append(CodeExecutorBase.NEWLINE);
@@ -297,8 +306,10 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 							sb.append("arrayOf("); //use standard array helper
 					}
 
-				else
-					sb.append(value.getType().getBaseType() == ValueType.BaseType.LIST ? "listOf(" : "setOf(");
+				else {
+					sb.append(value.getType().getBaseType() == ValueType.BaseType.LIST ? "listOf" : "setOf");
+					sb.append('<').append(this.getTypeName(value.getType().getGenericParameters().get(0))).append(">(");
+				}
 
 				boolean first = true; //generate collection elements
 				for (Value element : value.getCollection()) {
@@ -310,7 +321,8 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 				return sb.append(')').toString(); //finish collection initialisation and return literal
 
 			case MAP:
-				sb = new StringBuilder("mapOf("); //begin map initialisation
+				sb = new StringBuilder("mapOf<").append(this.getTypeName(value.getType().getGenericParameters().get(0))).append(", "); //begin map initialisation
+				sb.append(this.getTypeName(value.getType().getGenericParameters().get(1))).append(">(");
 
 				first = true; //generate key/value pairs
 				for (List<Value> element : value.get2DCollection()) {
@@ -322,7 +334,7 @@ public class KotlinExecutor extends CodeExecutorDockerBase {
 					sb.append(this.getValueLiteral(element.get(0))).append(" to ").append(this.getValueLiteral(element.get(1)));
 				}
 
-				return sb.append(")").toString(); //finish initialisation and return literal
+				return sb.append(')').toString(); //finish initialisation and return literal
 
 			case STRING:
 			case CHARACTER:

@@ -138,6 +138,25 @@ public class PHPExecutor extends CodeExecutorDockerBase {
 
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+				case LIST:
+					comparisonPrefix = "compareArrays("; //use custom helper method to compare arrays, drop indices
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
+				case SET:
+					comparisonPrefix = "compareSets("; //use custom helper method to compare 'sets', sort & drop indices
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
+				case MAP:
+					comparisonPrefix = "compareMaps("; //use custom helper method to compare maps
+					comparisonSeparator = ", ";
+					comparisonSuffix = ")";
+					break;
+
 				case FLOAT32:
 				case FLOAT64:
 				case DECIMAL:
@@ -155,7 +174,28 @@ public class PHPExecutor extends CodeExecutorDockerBase {
 			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix);
 			sb.append(" ? 'OK' : 'ER';").append(CodeExecutorBase.NEWLINE);
 
-			sb.append("$resultString = !is_bool($result) ? $result : ($result ? 'TRUE' : 'FALSE');").append(CodeExecutorBase.NEWLINE);
+			String resultString;
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+				case LIST:
+				case SET:
+					resultString = "'{ ' . implode(', ', $result) . ' }'";
+					break;
+
+				case MAP:
+					resultString = "'{ ' . implode(', ', array_map(function($v, $k) { return sprintf('%s: %s', $k, $v); }, $result, array_keys($result))) . ' }'";
+					break;
+
+				case BOOLEAN:
+					resultString = "$result ? 'TRUE' : 'FALSE'";
+					break;
+
+				default:
+					resultString = "$result";
+					break;
+			}
+
+			sb.append("$resultString = ").append(resultString).append(";").append(CodeExecutorBase.NEWLINE);
 			sb.append("fwrite($out, \"{$success}:{$diff}:{$resultString}\");").append(CodeExecutorBase.NEWLINE); //print result to the console
 
 			sb.append("} catch (Exception $ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling

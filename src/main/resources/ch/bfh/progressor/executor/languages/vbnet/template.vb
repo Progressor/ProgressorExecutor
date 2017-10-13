@@ -8,7 +8,7 @@ $CustomCode$
 $TestCases$
 	End Sub
 
-	Public Shared Function HasMinimalDifference(value1 As Single, value2 As Single, units As Integer) As Boolean
+	Shared Function HasMinimalDifference(value1 As Single, value2 As Single, units As Integer) As Boolean
 
 		If Single.IsNaN(value1) OrElse Single.IsInfinity(value1) OrElse Single.IsNaN(value2) OrElse Single.IsInfinity(value2) Then Return value1 = value2
 		If value1 = value2 Then Return True
@@ -20,7 +20,7 @@ $TestCases$
 		Return Math.Abs(iValue1 - iValue2) <= units
 	End Function
 
-	Public Shared Function HasMinimalDifference(value1 As Double, value2 As Double, units As Integer) As Boolean
+	Shared Function HasMinimalDifference(value1 As Double, value2 As Double, units As Integer) As Boolean
 
 		If Double.IsNaN(value1) OrElse Double.IsInfinity(value1) OrElse Double.IsNaN(value2) OrElse Double.IsInfinity(value2) Then Return value1 = value2
 		If value1 = value2 Then Return True
@@ -30,5 +30,14 @@ $TestCases$
 
 		If (lValue1 >> 63) <> (lValue2 >> 63) Then Return value1 = value2
 		Return Math.Abs(lValue1 - lValue2) <= units
+	End Function
+
+	Shared Function DictionaryEquals(Of TKey, TValue)(a As Dictionary(Of TKey, TValue), b As Dictionary(Of TKey, TValue)) As Boolean
+
+		If ReferenceEquals(a, b) Then Return True
+		If ReferenceEquals(a, Nothing) OrElse ReferenceEquals(b, Nothing) Then Return False
+		If a.Count <> b.Count Then Return False
+
+		Return a.All(Function(p) b.ContainsKey(p.Key) AndAlso Equals(p.Value, b(p.Key)))
 	End Function
 End Class

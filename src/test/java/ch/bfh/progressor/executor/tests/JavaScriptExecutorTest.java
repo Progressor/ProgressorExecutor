@@ -22,6 +22,10 @@ public class JavaScriptExecutorTest extends CodeExecutorTestBase {
 																															.append("function sumInt32Set(s) { return [...s].reduce((b, c) => b + c, 0); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function getMapEntry(m, k) { return m.get(k); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function getMapListEntry(m, k, i) { return m.get(k)[i]; }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectArray(a1, l1, a2, l2) { return a1.filter(i => a2.includes(i)); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectList( l1, l2) { return l1.filter(i => l2.includes(i)); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectSet(s1, s2) { var a2 = [...s2]; return new Set(Array.from(s1).filter(i => a2.includes(i))); }").append(CodeExecutorBase.NEWLINE)
+																															.append("function intersectMap(m1, m2) { var a2 = [...m2.keys()]; return new Map(Array.from(m1).filter(([k, v]) => a2.includes(k) && v === m2.get(k))); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function infiniteLoop() { while(true); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function recursion() { return recursion(); }").append(CodeExecutorBase.NEWLINE)
 																															.append("function error() { throw 'error'; }").toString();

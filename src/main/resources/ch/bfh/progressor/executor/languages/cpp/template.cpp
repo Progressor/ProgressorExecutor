@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <regex>
 #include <algorithm>
 #include <iterator>
@@ -18,6 +19,15 @@ bool hasMinimalDifference(T value1, T value2);
 
 template<class T>
 bool hasSameElements(T *array1, T *array2, int length);
+
+template<class T>
+string printArray(T a, int32_t l);
+
+template<class T>
+string printCollection(T c);
+
+template<class T>
+string printMap(T m);
 
 #line 1
 $CustomCode$
@@ -49,4 +59,46 @@ bool hasMinimalDifference(T value1, T value2) {
 template<class T>
 bool hasSameElements(T *array1, T *array2, int length) {
 	return equal(array1, array1 + length, array2);
+}
+
+template<class T>
+string printArray(T a, int32_t l) {
+
+	stringstream r;
+	r << "{ ";
+	for (int32_t i = 0; i < l; i++) {
+		if (i != 0)
+			r << ", ";
+		r << a[i];
+	}
+	r << " }";
+	return r.str();
+}
+
+template<class T>
+string printCollection(T c) {
+
+	stringstream r;
+	r << "{ ";
+	for (typename T::iterator i = c.begin(); i != c.end(); i++) {
+		if (i != c.begin())
+			r << ", ";
+		r << *i;
+	}
+	r << " }";
+	return r.str();
+}
+
+template<class T>
+string printMap(T m) {
+
+	stringstream r;
+	r << "{ ";
+	for (typename T::iterator i = m.begin(); i != m.end(); i++) {
+		if (i != m.begin())
+			r << ", ";
+		r << i->first << ": " << i->second;
+	}
+	r << " }";
+	return r.str();
 }

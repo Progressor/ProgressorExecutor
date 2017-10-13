@@ -191,7 +191,19 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 			String comparisonPrefix = "", comparisonSeparator = "", comparisonSuffix = "";
 			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
 				case ARRAY:
-					comparisonSeparator = ".SequenceEqual("; //use helper method to compare arrays
+				case LIST:
+					comparisonSeparator = ".SequenceEqual("; //use extension method to compare ordered collections
+					comparisonSuffix = ")";
+					break;
+
+				case SET:
+					comparisonSeparator = ".SetEquals("; //use extension method to compare sets
+					comparisonSuffix = ")";
+					break;
+
+				case MAP:
+					comparisonPrefix = "DictionaryEquals("; //use helper method to compare directories
+					comparisonSeparator = ", ";
 					comparisonSuffix = ")";
 					break;
 
@@ -220,9 +232,25 @@ public class CSharpExecutor extends CodeExecutorDockerBase {
 			}
 
 			sb.append("bool success = ").append(comparisonPrefix).append("result").append(comparisonSeparator); //result evaluation
-			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(";").append(CodeExecutorBase.NEWLINE);
+			sb.append(this.getValueLiteral(testCase.getExpectedOutputValues().get(0))).append(comparisonSuffix).append(';').append(CodeExecutorBase.NEWLINE);
 
-			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, result);"); //print result to the console
+			String  formattingPrefix = "", formattingSuffix = "";
+			switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
+				case ARRAY:
+				case LIST:
+				case SET:
+					formattingPrefix = "string.Format(\"{{ {0} }}\", string.Join(\", \", ";
+					formattingSuffix = "))";
+					break;
+
+				case MAP:
+					formattingPrefix = "string.Format(\"{{ {0} }}\", string.Join(\", \", ";
+					formattingSuffix = ".Select(p => string.Format(\"{0}: {1}\", p.Key, p.Value))))";
+					break;
+			}
+
+			sb.append("Console.WriteLine(\"{0}:{1}:{2}\", success ? \"OK\" : \"ER\", watch.Elapsed.TotalMilliseconds, "); //print result to the console
+			sb.append(formattingPrefix).append("result").append(formattingSuffix).append(");");
 
 			sb.append("} catch (Exception ex) {").append(CodeExecutorBase.NEWLINE); //finish test case block / begin exception handling
 			sb.append("Console.WriteLine(\"ER:{0}\", ex);").append(CodeExecutorBase.NEWLINE);
