@@ -125,7 +125,7 @@ public class JavaProcessExecutor extends CodeExecutorDockerBase {
 			if (function.getOutputTypes().size() != 1)
 				throw new ExecutorException("Exactly one output type has to be defined for a Java sample.");
 
-			sb.append("public ").append(this.getPrimitiveTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
+			sb.append(this.getPrimitiveTypeName(function.getOutputTypes().get(0))).append(' ').append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypes().size(); i++) {
 				if (i > 0) sb.append(", ");

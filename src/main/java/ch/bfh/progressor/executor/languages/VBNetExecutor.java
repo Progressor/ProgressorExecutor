@@ -142,7 +142,7 @@ public class VBNetExecutor extends CodeExecutorDockerBase {
 			if (function.getOutputTypes().size() != 1)
 				throw new ExecutorException("Exactly one output type has to be defined for a VB.NET sample.");
 
-			sb.append("Public Function ").append(function.getName()).append('(');
+			sb.append("Function ").append(function.getName()).append('(');
 
 			for (int i = 0; i < function.getInputTypes().size(); i++) {
 				if (i > 0) sb.append(", ");
@@ -232,7 +232,7 @@ public class VBNetExecutor extends CodeExecutorDockerBase {
 
 				case MAP:
 					formattingPrefix = "string.Format(\"{{ {0} }}\", string.Join(\", \", ";
-					formattingSuffix = ".Select(p => string.Format(\"{0}: {1}\", p.Key, p.Value))))";
+					formattingSuffix = ".Select(Function(p) string.Format(\"{0}: {1}\", p.Key, p.Value))))";
 					break;
 			}
 

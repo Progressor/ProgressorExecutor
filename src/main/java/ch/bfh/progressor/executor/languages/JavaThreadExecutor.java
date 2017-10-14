@@ -11,6 +11,7 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -154,14 +155,45 @@ public class JavaThreadExecutor extends CodeExecutorBase {
 						Object expectedOutput = this.getValue(testCase.getExpectedOutputValues().get(0));
 						boolean success;
 						switch (testCase.getFunction().getOutputTypes().get(0).getBaseType()) {
-							//case CHARACTER:
-							//case BOOLEAN:
-							//case INT8:
-							//case INT16:
-							//case INT32:
-							//case INT64:
-							//	//compare primitive types using equality operator
-							//	break;
+							case ARRAY:
+								switch (testCase.getFunction().getOutputTypes().get(0).getGenericParameters().get(0).getBaseType()) {
+									case CHARACTER:
+										success = Arrays.equals((char[])output, (char[])expectedOutput);
+										break;
+
+									case BOOLEAN:
+										success = Arrays.equals((boolean[])output, (boolean[])expectedOutput);
+										break;
+
+									case INT8:
+										success = Arrays.equals((byte[])output, (byte[])expectedOutput);
+										break;
+
+									case INT16:
+										success = Arrays.equals((short[])output, (short[])expectedOutput);
+										break;
+
+									case INT32:
+										success = Arrays.equals((int[])output, (int[])expectedOutput);
+										break;
+
+									case INT64:
+										success = Arrays.equals((long[])output, (long[])expectedOutput);
+										break;
+
+									case FLOAT32:
+										success = Arrays.equals((float[])output, (float[])expectedOutput);
+										break;
+
+									case FLOAT64:
+										success = Arrays.equals((double[])output, (double[])expectedOutput);
+										break;
+
+									default:
+										success = Arrays.equals((Object[])output, (Object[])expectedOutput);
+										break;
+								}
+								break;
 
 							case FLOAT32:
 								success = this.hasMinimalDifference((Float)output, (Float)expectedOutput); //compare floating-point numbers using custom equality comparison
